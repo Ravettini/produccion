@@ -1,0 +1,90 @@
+{
+  "event": {
+    "titulo": "Lanzamiento Programa de Innovación 2025",
+    "descripcion": "Evento de presentación del nuevo programa de innovación institucional ante autoridades, socios estratégicos y prensa. Se busca posicionar a la institución como referente en innovación.",
+    "requiere": ["Producción", "Institucionales", "Cobertura"],
+    "areaSolicitante": "Secretaría de Innovación",
+    "usuarioSolicitante": "María García",
+    "publico": "MIXTO",
+    "fechaTentativa": "2025-03-15",
+    "estado": "CONFIRMADO"
+  },
+  "proposals": [
+    {
+      "status": "APPROVED",
+      "categoria": "LOGISTICA",
+      "titulo": "Sede principal - Salón Auditorio",
+      "nombreProyecto": "Eventos 2025",
+      "descripcion": "Reserva del Salón Auditorio para 150 personas con acceso a estacionamiento.",
+      "impacto": "ALTO",
+      "datosExtra": {
+        "lugar": "Salón Auditorio - Edificio Central",
+        "horarioMontaje": "08:00"
+      }
+    },
+    {
+      "status": "APPROVED",
+      "categoria": "TECNICA",
+      "titulo": "Equipamiento audiovisual",
+      "descripcion": "Se requiere pantalla LED, proyector, sonido profesional y 4 micrófonos inalámbricos.",
+      "impacto": "ALTO",
+      "datosExtra": {
+        "equipamientoNecesario": "Pantalla LED 3x2, proyector 5000 lúmenes, 4 micrófonos",
+        "requerimientosTecnicos": "Sonido con mesa de mezclas, WiFi para streaming"
+      }
+    },
+    {
+      "status": "APPROVED",
+      "categoria": "CATERING",
+      "titulo": "Coffee break matutino",
+      "descripcion": "Coffee break para 80 personas previo al acto central. Incluir opciones sin TACC.",
+      "impacto": "MEDIO",
+      "datosExtra": {
+        "cantidadPersonas": "80",
+        "restriccionesAlimentarias": "Incluir opciones sin TACC y veganas"
+      }
+    },
+    {
+      "status": "APPROVED",
+      "categoria": "AGENDA",
+      "titulo": "Apertura y palabras de bienvenida",
+      "descripcion": "Palabras del Director General.",
+      "impacto": "ALTO",
+      "datosExtra": {
+        "horario": "09:00 - 09:15",
+        "duracionEstimada": "15 min"
+      }
+    },
+    {
+      "status": "APPROVED",
+      "categoria": "AGENDA",
+      "titulo": "Presentación del Programa",
+      "descripcion": "Exposición del equipo de Innovación sobre objetivos y alcance.",
+      "impacto": "ALTO",
+      "datosExtra": {
+        "horario": "09:15 - 10:00",
+        "duracionEstimada": "45 min"
+      }
+    },
+    {
+      "status": "APPROVED",
+      "categoria": "PRODUCCION",
+      "titulo": "Material gráfico y señalética",
+      "descripcion": "Banners de bienvenida, piezas para redes y folletos del programa.",
+      "impacto": "MEDIO",
+      "datosExtra": {
+        "horarioCitacion": "07:30",
+        "cantidadPersonas": "3",
+        "equipamientoNecesario": "Impresora para últimos ajustes"
+      }
+    },
+    {
+      "status": "REJECTED",
+      "categoria": "TECNICA",
+      "titulo": "Streaming 4K",
+      "descripcion": "Transmisión en vivo en 4K (rechazado por costo).",
+      "impacto": "BAJO",
+      "datosExtra": {}
+    }
+  ]
+}

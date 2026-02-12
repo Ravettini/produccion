@@ -1,0 +1,945 @@
+import { useState } from "react";
+import { Link, useParams, useNavigate } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getEvent, updateEvent, deleteEvent } from "../api/events";
+import { listProposals, createProposal } from "../api/proposals";
+import { generarBriefIA, exportarBriefDocx } from "../api/ai";
+import {
+  listAttachments,
+  uploadAttachment,
+  deleteAttachment,
+  openAttachment,
+  type EventAttachment,
+} from "../api/attachments";
+import type { EventStatus, Proposal, ProposalCategory, ProposalStatus } from "../types";
+import { useAuth } from "../hooks/useAuth";
+import { canCreateProposal, canConfirmEvent, canDeleteEvent } from "../hooks/usePermissions";
+import {
+  Button,
+  Badge,
+  Card,
+  CardHeader,
+  CardBody,
+  Tabs,
+  Modal,
+  TextArea,
+  Select,
+  Input,
+  DetailSkeleton,
+  EmptyState,
+} from "../components/ui";
+import {
+  eventStatusLabels,
+  eventStatusColors,
+  proposalStatusLabels,
+  proposalStatusColors,
+  categoryLabels,
+} from "../utils/labels";
+import { categoryExtraFields } from "../config/proposalCategoryFields";
+import { formatDate } from "../utils/formatters";
+import { EventHealthChecklist } from "../components/event/EventHealthChecklist";
+
+export default function EventDetail() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [tab, setTab] = useState<"brief" | "estado" | "propuestas" | "documentos">("brief");
+  const [filterEstado, setFilterEstado] = useState<ProposalStatus | "">("");
+  const [filterCategoria, setFilterCategoria] = useState<ProposalCategory | "">("");
+  const [editingResumen, setEditingResumen] = useState(false);
+  const [resumenDraft, setResumenDraft] = useState("");
+  const [showBriefModal, setShowBriefModal] = useState(false);
+  const [briefGenerado, setBriefGenerado] = useState("");
+  const [exportandoDocx, setExportandoDocx] = useState(false);
+  const [confirmEstado, setConfirmEstado] = useState<EventStatus | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const { data: event, isLoading: loadingEvent } = useQuery({
+    queryKey: ["event", id],
+    queryFn: () => getEvent(id!),
+    enabled: !!id,
+  });
+  const { data: proposals = [], isLoading: loadingProposals } = useQuery({
+    queryKey: ["proposals", id],
+    queryFn: () => listProposals(id!),
+    enabled: !!id,
+  });
+  const { data: attachments = [], isLoading: loadingAttachments } = useQuery({
+    queryKey: ["attachments", id],
+    queryFn: () => listAttachments(id!),
+    enabled: !!id && tab === "documentos",
+  });
+
+  const aprobadas = proposals.filter((p: Proposal) => p.estado === "APPROVED");
+  const pendientes = proposals.filter((p: Proposal) => p.estado === "DRAFT" || p.estado === "SUBMITTED");
+  const rechazadas = proposals.filter((p: Proposal) => p.estado === "REJECTED");
+
+  const filtered = proposals.filter((p: Proposal) => {
+    if (filterEstado && p.estado !== filterEstado) return false;
+    if (filterCategoria && p.categoria !== filterCategoria) return false;
+    return true;
+  });
+
+  const qc = useQueryClient();
+  const updateResumen = useMutation({
+    mutationFn: (resumen: string) => updateEvent(id!, { resumen: resumen || null }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["event", id] });
+      setEditingResumen(false);
+    },
+  });
+  const updateEventMutation = useMutation({
+    mutationFn: (data: { estado: EventStatus }) => updateEvent(id!, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["event", id] });
+      qc.invalidateQueries({ queryKey: ["events"] });
+      setConfirmEstado(null);
+    },
+  });
+  const generarBrief = useMutation({
+    mutationFn: () => generarBriefIA(id!),
+    onSuccess: (data) => {
+      setBriefGenerado(data.brief);
+      setShowBriefModal(true);
+    },
+  });
+  const deleteEventMutation = useMutation({
+    mutationFn: () => deleteEvent(id!),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["events"] });
+      navigate("/");
+    },
+  });
+
+  if (loadingEvent || !event) {
+    return <DetailSkeleton />;
+  }
+
+  const tabs = [
+    { id: "brief", label: "Brief" },
+    { id: "estado", label: "Estado de la información" },
+    { id: "propuestas", label: "Propuestas" },
+    { id: "documentos", label: "Documentos" },
+  ];
+
+  const publicoLabel =
+    event.publico === "EXTERNO"
+      ? "Externo"
+      : event.publico === "INTERNO"
+        ? "Interno"
+        : event.publico === "MIXTO"
+          ? "Mixto"
+          : null;
+  const subtitleParts = [event.areaSolicitante, publicoLabel, formatDate(event.fechaTentativa)].filter(Boolean);
+
+  const handleGoToTab = (targetTab: "estado" | "propuestas", filterEstado?: ProposalStatus) => {
+    setTab(targetTab);
+    if (filterEstado !== undefined) setFilterEstado(filterEstado);
+  };
+
+  return (
+    <div className="max-w-5xl mx-auto">
+      {/* Breadcrumb */}
+      <nav className="mb-3" aria-label="Navegación">
+        <Link
+          to="/"
+          className="text-sm text-slate-600 hover:text-slate-800 focus:outline-none focus:ring-2 focus:ring-gov-500 focus:ring-offset-2 rounded"
+        >
+          ← Eventos
+        </Link>
+      </nav>
+
+      {/* Header del evento */}
+      <header className="mb-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl sm:text-2xl font-semibold text-slate-800 break-words">
+              {event.titulo}
+            </h1>
+            {subtitleParts.length > 0 && (
+              <p className="mt-1 text-sm text-slate-500">
+                {subtitleParts.join(" · ")}
+                {event._count && ` · ${event._count.proposals} propuestas`}
+              </p>
+            )}
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <Badge className={eventStatusColors[event.estado as EventStatus]}>
+                {eventStatusLabels[event.estado as EventStatus]}
+              </Badge>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 flex-shrink-0">
+            <Link to={`/events/${id}/edit`}>
+              <Button variant="secondary" size="sm">Editar evento</Button>
+            </Link>
+            {canConfirmEvent(user) && event.estado !== "CONFIRMADO" && event.estado !== "CANCELADO" && (
+              <Button size="sm" onClick={() => setConfirmEstado("CONFIRMADO")}>
+                Confirmar evento
+              </Button>
+            )}
+            {canDeleteEvent(user) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="text-red-600 hover:text-red-800 hover:bg-red-50"
+              >
+                Eliminar
+              </Button>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* Event Health / Checklist */}
+      <div className="mb-6">
+        <EventHealthChecklist
+          eventId={id!}
+          eventTitle={event.titulo}
+          proposals={proposals}
+          loading={loadingProposals}
+          onGoToTab={handleGoToTab}
+        />
+      </div>
+
+      <Tabs tabs={tabs} active={tab} onChange={(id) => setTab(id as typeof tab)} />
+
+      {tab === "brief" && (
+        <div className="mt-6 space-y-6">
+          <Card>
+            <CardHeader
+              action={
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={exportandoDocx}
+                    onClick={async () => {
+                      setExportandoDocx(true);
+                      try {
+                        await exportarBriefDocx(id!, `Brief - ${event.titulo}`);
+                      } catch (e) {
+                        console.error(e);
+                        alert((e as Error).message);
+                      } finally {
+                        setExportandoDocx(false);
+                      }
+                    }}
+                  >
+                    {exportandoDocx ? "Exportando…" : "Exportar brief DOCX"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => generarBrief.mutate()}
+                    disabled={generarBrief.isPending}
+                  >
+                    {generarBrief.isPending ? "Generando…" : "Generar brief con IA"}
+                  </Button>
+                </div>
+              }
+            >
+              Resumen y brief
+            </CardHeader>
+            <CardBody>
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-sm font-medium text-slate-500">Descripción</h3>
+                <p className="text-slate-800 mt-1 whitespace-pre-wrap">{event.descripcion}</p>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <h3 className="text-sm font-medium text-slate-500">Requiere</h3>
+                  <p className="text-slate-800">{event.tipoEvento}</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-slate-500">Área solicitante</h3>
+                  <p className="text-slate-800">{event.areaSolicitante}</p>
+                </div>
+                {event.usuarioSolicitante && (
+                  <div>
+                    <h3 className="text-sm font-medium text-slate-500">Usuario solicitante</h3>
+                    <p className="text-slate-800">{event.usuarioSolicitante}</p>
+                  </div>
+                )}
+                {event.publico && (
+                  <div>
+                    <h3 className="text-sm font-medium text-slate-500">Público</h3>
+                    <p className="text-slate-800">
+                      {event.publico === "EXTERNO" ? "Externo" : event.publico === "INTERNO" ? "Interno" : "Mixto"}
+                    </p>
+                  </div>
+                )}
+              </div>
+              {event.resumen && (
+                <div>
+                  <h3 className="text-sm font-medium text-slate-500">Resumen</h3>
+                  <p className="text-slate-800 mt-1 whitespace-pre-wrap">{event.resumen}</p>
+                </div>
+              )}
+              {!event.resumen && (
+                <p className="text-slate-500 text-sm italic">
+                  Sin resumen. Generá uno con IA o agregalo desde la pestaña Estado de la información.
+                </p>
+              )}
+            </div>
+            </CardBody>
+          </Card>
+        </div>
+      )}
+
+      {tab === "estado" && (
+        <div className="mt-6 space-y-6">
+          <Card>
+            <CardHeader
+              action={
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={exportandoDocx}
+                    onClick={async () => {
+                      setExportandoDocx(true);
+                      try {
+                        await exportarBriefDocx(id!, `Brief - ${event.titulo}`);
+                      } catch (e) {
+                        console.error(e);
+                        alert((e as Error).message);
+                      } finally {
+                        setExportandoDocx(false);
+                      }
+                    }}
+                  >
+                    {exportandoDocx ? "Exportando…" : "Exportar brief DOCX"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => generarBrief.mutate()}
+                    disabled={generarBrief.isPending}
+                  >
+                    {generarBrief.isPending ? "Generando…" : "Generar brief con IA"}
+                  </Button>
+                  {!editingResumen && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setResumenDraft(event.resumen ?? "");
+                        setEditingResumen(true);
+                      }}
+                    >
+                      {event.resumen ? "Editar resumen" : "Agregar resumen"}
+                    </Button>
+                  )}
+                </div>
+              }
+            >
+              Resumen
+            </CardHeader>
+            <CardBody>
+              {editingResumen ? (
+                <div className="space-y-3">
+                  <TextArea
+                    value={resumenDraft}
+                    onChange={(e) => setResumenDraft(e.target.value)}
+                    rows={4}
+                    placeholder="El evento se va a hacer en [lugar], se necesita producción [detalle], catering [detalle]..."
+                  />
+                  {generarBrief.error && (
+                    <p className="text-red-600 text-sm">{generarBrief.error.message}</p>
+                  )}
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => updateResumen.mutate(resumenDraft)}
+                      disabled={updateResumen.isPending}
+                    >
+                      {updateResumen.isPending ? "Guardando…" : "Guardar"}
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        setEditingResumen(false);
+                        setResumenDraft(event.resumen ?? "");
+                      }}
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
+                  {updateResumen.error && (
+                    <p className="text-red-600 text-sm">{updateResumen.error.message}</p>
+                  )}
+                </div>
+              ) : event.resumen ? (
+                <p className="text-slate-800 whitespace-pre-wrap">{event.resumen}</p>
+              ) : (
+                <p className="text-slate-500 text-sm italic">
+                  Sin resumen. Podés agregar un texto o generar uno con IA.
+                </p>
+              )}
+            </CardBody>
+          </Card>
+
+          <p className="text-slate-600 text-sm">
+            Qué está aprobado, qué está pendiente y qué fue rechazado.
+          </p>
+
+          {loadingProposals ? (
+            <div className="py-8 text-center text-slate-600">Cargando propuestas…</div>
+          ) : (
+            <>
+              <Card>
+                <CardHeader>
+                  <span className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    Información aprobada ({aprobadas.length})
+                  </span>
+                </CardHeader>
+                <CardBody>
+                  {aprobadas.length === 0 ? (
+                    <p className="text-slate-500 text-sm">Ninguna propuesta aprobada aún.</p>
+                  ) : (
+                    <ul className="space-y-3">
+                      {aprobadas.map((p: Proposal) => (
+                        <li key={p.id} className="border-l-4 border-emerald-500 pl-4 py-2">
+                          <Link
+                            to={`/proposals/${p.id}`}
+                            className="font-medium text-slate-800 hover:text-gov-600"
+                          >
+                            {p.titulo}
+                          </Link>
+                          <p className="text-sm text-slate-600 mt-0.5">{p.descripcion}</p>
+                          <p className="text-xs text-slate-500 mt-1">
+                            {categoryLabels[p.categoria]} · Impacto {p.impacto}
+                            {p.validatedBy && ` · Aprobado por ${p.validatedBy.name}`}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </CardBody>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <span className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-amber-500" />
+                    Pendiente de validación ({pendientes.length})
+                  </span>
+                </CardHeader>
+                <CardBody>
+                  {pendientes.length === 0 ? (
+                    <p className="text-slate-500 text-sm">Nada pendiente.</p>
+                  ) : (
+                    <ul className="space-y-3">
+                      {pendientes.map((p: Proposal) => (
+                        <li key={p.id} className="border-l-4 border-amber-400 pl-4 py-2">
+                          <Link
+                            to={`/proposals/${p.id}`}
+                            className="font-medium text-slate-800 hover:text-gov-600"
+                          >
+                            {p.titulo}
+                          </Link>
+                          <p className="text-sm text-slate-600 mt-0.5 line-clamp-2">{p.descripcion}</p>
+                          <p className="text-xs text-slate-500 mt-1">
+                            {categoryLabels[p.categoria]} · {proposalStatusLabels[p.estado]}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </CardBody>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <span className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-red-500" />
+                    Rechazado ({rechazadas.length})
+                  </span>
+                </CardHeader>
+                <CardBody>
+                  {rechazadas.length === 0 ? (
+                    <p className="text-slate-500 text-sm">Ninguna propuesta rechazada.</p>
+                  ) : (
+                    <ul className="space-y-3">
+                      {rechazadas.map((p: Proposal) => (
+                        <li key={p.id} className="border-l-4 border-red-500 pl-4 py-2">
+                          <Link
+                            to={`/proposals/${p.id}`}
+                            className="font-medium text-slate-800 hover:text-gov-600"
+                          >
+                            {p.titulo}
+                          </Link>
+                          <p className="text-sm text-slate-600 mt-0.5 line-clamp-2">{p.descripcion}</p>
+                          {p.decisionReason && (
+                            <p className="text-sm text-red-700 mt-2 italic">
+                              Motivo: {p.decisionReason}
+                            </p>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </CardBody>
+              </Card>
+            </>
+          )}
+        </div>
+      )}
+
+      {tab === "propuestas" && (
+        <div className="mt-6">
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+            <h2 className="text-lg font-semibold text-slate-800">Propuestas</h2>
+            {canCreateProposal(user) && (
+              <Button
+                size="sm"
+                onClick={() =>
+                  document.getElementById("new-proposal-form")?.scrollIntoView({ behavior: "smooth" })
+                }
+              >
+                Nueva propuesta
+              </Button>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2 mb-4">
+            <Select
+              options={[
+                { value: "", label: "Todos los estados" },
+                ...(Object.entries(proposalStatusLabels) as [ProposalStatus, string][]).map(
+                  ([v, l]) => ({ value: v, label: l })
+                ),
+              ]}
+              value={filterEstado}
+              onChange={(e) => setFilterEstado((e.target.value || "") as ProposalStatus)}
+              className="w-40"
+            />
+            <Select
+              options={[
+                { value: "", label: "Todas las categorías" },
+                ...(Object.entries(categoryLabels) as [ProposalCategory, string][]).map(
+                  ([v, l]) => ({ value: v, label: l })
+                ),
+              ]}
+              value={filterCategoria}
+              onChange={(e) => setFilterCategoria((e.target.value || "") as ProposalCategory)}
+              className="w-44"
+            />
+          </div>
+          {loadingProposals ? (
+            <div className="py-8 text-center text-slate-600">Cargando…</div>
+          ) : filtered.length === 0 ? (
+            <EmptyState
+              title="No hay propuestas"
+              description="Creá una desde el formulario de abajo."
+            />
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {filtered.map((p: Proposal) => (
+                        <Link
+                            key={p.id}
+                            to={`/proposals/${p.id}`}
+                            className="block p-4 bg-white rounded-xl border border-slate-200 shadow-sm hover:border-gov-400 hover:shadow transition"
+                          >
+                          <h3 className="font-medium text-slate-800 truncate">{p.titulo}</h3>
+                          {p.nombreProyecto && (
+                            <p className="text-xs text-slate-500 mt-0.5 truncate">Proyecto: {p.nombreProyecto}</p>
+                          )}
+                  <p className="text-sm text-slate-600 mt-1 line-clamp-2">{p.descripcion}</p>
+                  <div className="mt-3 flex flex-wrap gap-1 items-center">
+                    <Badge className={proposalStatusColors[p.estado]}>
+                      {proposalStatusLabels[p.estado]}
+                    </Badge>
+                    <span className="text-slate-500 text-xs">{categoryLabels[p.categoria]}</span>
+                  </div>
+                  {p.createdBy && (
+                    <p className="text-xs text-slate-500 mt-2">Por {p.createdBy.name}</p>
+                  )}
+                </Link>
+              ))}
+            </div>
+          )}
+          {canCreateProposal(user) && <NewProposalForm eventId={id!} />}
+        </div>
+      )}
+
+      {tab === "documentos" && (
+        <div className="mt-6">
+          <Card>
+            <CardHeader>
+              <span className="flex items-center gap-2">
+                <span className="text-lg">📎</span>
+                Documentos PDF
+              </span>
+            </CardHeader>
+            <CardBody>
+              <DocumentosSection eventId={id!} attachments={attachments} isLoading={loadingAttachments} />
+            </CardBody>
+          </Card>
+        </div>
+      )}
+
+      <Modal
+        title="Brief generado con IA"
+        open={showBriefModal}
+        onClose={() => setShowBriefModal(false)}
+        size="xl"
+      >
+        <div className="flex flex-col max-h-[70vh]">
+          <div className="flex-1 overflow-y-auto mb-4 rounded-lg border border-slate-200 bg-slate-50/50">
+            <div className="p-6 space-y-4">
+              <div className="bg-[#153244] text-white px-4 py-3 rounded-t-lg -mt-6 -mx-6 mb-4">
+                <p className="font-semibold text-lg">
+                  Brief de Evento: {event.titulo}
+                </p>
+              </div>
+              {briefGenerado
+                .split(/\n\n+/)
+                .filter(Boolean)
+                .map((paragraph, i) => (
+                  <p
+                    key={i}
+                    className="text-slate-800 text-[15px] leading-relaxed"
+                  >
+                    {paragraph}
+                  </p>
+                ))}
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end flex-wrap border-t border-slate-200 pt-4">
+            <Button
+              variant="secondary"
+              disabled={exportandoDocx}
+              onClick={async () => {
+                setExportandoDocx(true);
+                try {
+                  await exportarBriefDocx(id!, `Brief - ${event.titulo}`);
+                } catch (e) {
+                  console.error(e);
+                  alert((e as Error).message);
+                } finally {
+                  setExportandoDocx(false);
+                }
+              }}
+            >
+              {exportandoDocx ? "Exportando…" : "Exportar como documento de Word"}
+            </Button>
+            <Button variant="secondary" onClick={() => setShowBriefModal(false)}>
+              Cerrar
+            </Button>
+            <Button
+              onClick={() => {
+                updateResumen.mutate(briefGenerado);
+                setShowBriefModal(false);
+              }}
+              disabled={updateResumen.isPending}
+            >
+              {updateResumen.isPending ? "Guardando…" : "Usar como resumen"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        title="Confirmar evento"
+        open={!!confirmEstado}
+        onClose={() => setConfirmEstado(null)}
+      >
+        {confirmEstado && (
+          <div className="space-y-4">
+            <p className="text-slate-600">
+              ¿Marcar este evento como {eventStatusLabels[confirmEstado].toLowerCase()}?
+            </p>
+            <div className="flex gap-2 justify-end">
+              <Button variant="secondary" onClick={() => setConfirmEstado(null)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={() => updateEventMutation.mutate({ estado: confirmEstado })}
+                disabled={updateEventMutation.isPending}
+              >
+                Confirmar
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        title="Eliminar evento"
+        open={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+      >
+        <div className="space-y-4">
+          <p className="text-slate-600">
+            ¿Estás seguro de que querés eliminar este evento? Se eliminarán también todas las propuestas y adjuntos asociados. Esta acción no se puede deshacer.
+          </p>
+          <div className="flex gap-2 justify-end">
+            <Button variant="secondary" onClick={() => setShowDeleteConfirm(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => deleteEventMutation.mutate()}
+              disabled={deleteEventMutation.isPending}
+            >
+              {deleteEventMutation.isPending ? "Eliminando…" : "Eliminar"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
+}
+
+function DocumentosSection({
+  eventId,
+  attachments,
+  isLoading,
+}: {
+  eventId: string;
+  attachments: EventAttachment[];
+  isLoading: boolean;
+}) {
+  const qc = useQueryClient();
+  const upload = useMutation({
+    mutationFn: (file: File) => uploadAttachment(eventId, file),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["attachments", eventId] });
+    },
+    onError: (e: Error) => setUploadError(e.message),
+  });
+  const remove = useMutation({
+    mutationFn: (attachmentId: string) => deleteAttachment(eventId, attachmentId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["attachments", eventId] });
+    },
+  });
+  const [uploadError, setUploadError] = useState("");
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.type !== "application/pdf") {
+      setUploadError("Solo se permiten archivos PDF");
+      return;
+    }
+    setUploadError("");
+    upload.mutate(file);
+    e.target.value = "";
+  };
+
+  const formatSize = (bytes?: number | null) => {
+    if (!bytes) return "";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  if (isLoading) {
+    return <div className="py-6 text-center text-slate-600">Cargando documentos…</div>;
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="cursor-pointer inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium rounded-lg bg-gov-600 text-white hover:bg-gov-700 focus:outline-none focus:ring-2 focus:ring-gov-500 focus:ring-offset-2 disabled:opacity-50">
+          <input
+            type="file"
+            accept=".pdf,application/pdf"
+            onChange={handleFileChange}
+            className="hidden"
+            disabled={upload.isPending}
+          />
+          <span>{upload.isPending ? "Subiendo…" : "Subir PDF"}</span>
+        </label>
+        <span className="text-slate-500 text-sm">Máx. 10 MB por archivo</span>
+      </div>
+      {uploadError && <p className="text-red-600 text-sm">{uploadError}</p>}
+      {upload.error && !uploadError && (
+        <p className="text-red-600 text-sm">{upload.error.message}</p>
+      )}
+      {attachments.length === 0 ? (
+        <p className="text-slate-500 text-sm py-4">No hay documentos subidos. Subí un PDF para comenzar.</p>
+      ) : (
+        <ul className="space-y-2">
+          {attachments.map((a) => (
+            <li
+              key={a.id}
+              className="flex items-center justify-between gap-2 p-3 rounded-lg bg-slate-50 border border-slate-200"
+            >
+              <div className="min-w-0 flex-1">
+                <button
+                  type="button"
+                  onClick={() => openAttachment(eventId, a.id, a.originalName)}
+                  className="text-slate-800 font-medium hover:text-gov-600 truncate block text-left"
+                >
+                  📄 {a.originalName}
+                </button>
+                {a.size != null && (
+                  <span className="text-slate-500 text-xs">{formatSize(a.size)}</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => openAttachment(eventId, a.id, a.originalName)}
+                >
+                  Descargar
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => remove.mutate(a.id)}
+                  disabled={remove.isPending}
+                  className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                >
+                  Eliminar
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function NewProposalForm({ eventId }: { eventId: string }) {
+  const [nombreProyecto, setNombreProyecto] = useState("");
+  const [titulo, setTitulo] = useState("");
+  const [descripcion, setDescripcion] = useState("");
+  const [categoria, setCategoria] = useState<ProposalCategory>("OTRO");
+  const [impacto, setImpacto] = useState<"ALTO" | "MEDIO" | "BAJO">("MEDIO");
+  const [datosExtra, setDatosExtra] = useState<Record<string, string>>({});
+  const [error, setError] = useState("");
+  const qc = useQueryClient();
+  const create = useMutation({
+    mutationFn: (data: {
+      titulo: string;
+      nombreProyecto?: string;
+      descripcion: string;
+      categoria?: string;
+      impacto?: string;
+      datosExtra?: Record<string, string>;
+    }) => createProposal(eventId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["proposals", eventId] });
+      setNombreProyecto("");
+      setTitulo("");
+      setDescripcion("");
+      setDatosExtra({});
+      setError("");
+    },
+    onError: (e: Error) => setError(e.message),
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const extra = Object.keys(datosExtra).length > 0 ? datosExtra : undefined;
+    create.mutate({
+      titulo,
+      nombreProyecto: nombreProyecto.trim() || undefined,
+      descripcion,
+      categoria,
+      impacto,
+      datosExtra: extra,
+    });
+  };
+
+  const handleCategoriaChange = (newCat: ProposalCategory) => {
+    setCategoria(newCat);
+    setDatosExtra({});
+  };
+
+  const categoryOptions = (Object.entries(categoryLabels) as [ProposalCategory, string][]).map(
+    ([value, label]) => ({ value, label })
+  );
+
+  const extraFields = categoryExtraFields[categoria];
+
+  return (
+    <div id="new-proposal-form">
+    <Card className="mt-8">
+      <CardHeader>Nueva propuesta</CardHeader>
+      <CardBody>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <Input
+            label="Nombre del proyecto"
+            placeholder="Nombre del proyecto"
+            value={nombreProyecto}
+            onChange={(e) => setNombreProyecto(e.target.value)}
+          />
+          <Input
+            placeholder="Título"
+            value={titulo}
+            onChange={(e) => setTitulo(e.target.value)}
+            required
+          />
+          <TextArea
+            placeholder="Descripción"
+            value={descripcion}
+            onChange={(e) => setDescripcion(e.target.value)}
+            required
+            rows={2}
+          />
+          <div className="flex flex-wrap gap-2">
+            <Select
+              options={categoryOptions}
+              value={categoria}
+              onChange={(e) => handleCategoriaChange(e.target.value as ProposalCategory)}
+              className="flex-1 min-w-[120px]"
+            />
+            <Select
+              options={[
+                { value: "ALTO", label: "Alto" },
+                { value: "MEDIO", label: "Medio" },
+                { value: "BAJO", label: "Bajo" },
+              ]}
+              value={impacto}
+              onChange={(e) => setImpacto(e.target.value as "ALTO" | "MEDIO" | "BAJO")}
+              className="flex-1 min-w-[100px]"
+            />
+          </div>
+          {extraFields.length > 0 && (
+            <div className="space-y-3 pt-2 border-t border-slate-200">
+              <p className="text-sm font-medium text-slate-600">
+                Datos adicionales para {categoryLabels[categoria]}
+              </p>
+              {extraFields.map((field) => (
+                <div key={field.key}>
+                  {field.type === "textarea" ? (
+                    <TextArea
+                      label={field.label}
+                      placeholder={field.placeholder}
+                      value={datosExtra[field.key] ?? ""}
+                      onChange={(e) =>
+                        setDatosExtra((prev) => ({ ...prev, [field.key]: e.target.value }))
+                      }
+                      rows={2}
+                    />
+                  ) : (
+                    <Input
+                      label={field.label}
+                      placeholder={field.placeholder}
+                      value={datosExtra[field.key] ?? ""}
+                      onChange={(e) =>
+                        setDatosExtra((prev) => ({ ...prev, [field.key]: e.target.value }))
+                      }
+                      type={field.type === "number" ? "number" : field.type === "date" ? "date" : "text"}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          {error && <p className="text-red-600 text-sm">{error}</p>}
+          <Button type="submit" disabled={create.isPending}>
+            {create.isPending ? "Creando…" : "Crear propuesta"}
+          </Button>
+        </form>
+      </CardBody>
+    </Card>
+    </div>
+  );
+}

@@ -1,0 +1,124 @@
+// Prisma schema - Eventos y Propuestas MVP
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// SQLite no soporta enums nativos; usamos String. Valores: ADMIN, ORGANIZACION, PRODUCCION, AGENDA, VALIDADOR
+// EventStatus: BORRADOR, EN_ANALISIS, CONFIRMADO, CANCELADO
+// ProposalCategory: LOGISTICA, CATERING, TECNICA, AGENDA, PRODUCCION, OTRO
+// ProposalImpact: ALTO, MEDIO, BAJO
+// ProposalStatus: DRAFT, SUBMITTED, APPROVED, REJECTED, CANCELLED
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  proposalsCreated   Proposal[]         @relation("CreatedBy")
+  proposalsValidated Proposal[]         @relation("ValidatedBy")
+  comments           ProposalComment[]
+  auditEntries       ProposalAudit[]
+}
+
+model Event {
+  id                     String    @id @default(cuid())
+  titulo                 String
+  descripcion            String
+  tipoEvento             String
+  areaSolicitante       String
+  fechaTentativa         DateTime
+  estado                 String    @default("BORRADOR")
+  resumen                String?   // Resumen de lo aprobado: lugar, producción, etc.
+  usuarioSolicitante     String?   // Referente / usuario que solicita (nombre)
+  publico                String?   // EXTERNO, INTERNO, MIXTO
+  lugar                  String?   // Lugar o dirección prevista (para el brief)
+  programa               String?   // Programa o funcionarios (para el brief)
+  imagenBuscadaSugerida  String?   // Imagen buscada sugerida (para el brief)
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  proposals   Proposal[]
+  attachments EventAttachment[]
+}
+
+model EventAttachment {
+  id          String   @id @default(cuid())
+  eventId     String
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  originalName String  // Nombre original del archivo
+  storedPath  String   // Ruta en disco
+  mimeType   String   @default("application/pdf")
+  size       Int?     // Tamaño en bytes
+  createdAt  DateTime @default(now())
+
+  @@index([eventId])
+}
+
+// Configuración clave-valor (ej: IA API key y modelo)
+model Config {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+}
+
+model Proposal {
+  id             String           @id @default(cuid())
+  eventId        String
+  event          Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  titulo         String
+  nombreProyecto String?          // Nombre del proyecto asociado
+  descripcion    String
+  categoria      String
+  impacto        String
+  estado         String       @default("DRAFT")
+  createdById    String
+  createdBy      User             @relation("CreatedBy", fields: [createdById], references: [id])
+  validatedById  String?
+  validatedBy    User?            @relation("ValidatedBy", fields: [validatedById], references: [id])
+  decisionReason String?
+  datosExtra     String?          // JSON con campos según categoría (horarioCitacion, lugar, etc.)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  comments ProposalComment[]
+  audits   ProposalAudit[]
+
+  @@index([eventId])
+  @@index([estado])
+}
+
+model ProposalComment {
+  id         String   @id @default(cuid())
+  proposalId String
+  proposal   Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  body       String
+  createdAt  DateTime @default(now())
+
+  @@index([proposalId])
+}
+
+model ProposalAudit {
+  id         String   @id @default(cuid())
+  proposalId String
+  proposal   Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  action     String
+  fromStatus String?
+  toStatus   String?
+  reason     String?
+  createdAt  DateTime @default(now())
+
+  @@index([proposalId])
+}

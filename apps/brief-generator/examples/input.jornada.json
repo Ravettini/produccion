@@ -1,0 +1,36 @@
+{
+  "event": {
+    "titulo": "Jornada de Gobierno Abierto 2025",
+    "descripcion": "Evento anual de transparencia y participación ciudadana.",
+    "requiere": ["Producción", "Logística", "Institucionales"],
+    "areaSolicitante": "Subsecretaría de Gestión Pública",
+    "usuarioSolicitante": "Juan Pérez",
+    "publico": "MIXTO",
+    "fechaTentativa": "2025-03-15",
+    "estado": "CONFIRMADO"
+  },
+  "proposals": [
+    {
+      "status": "APPROVED",
+      "categoria": "LOGISTICA",
+      "titulo": "Sede CCK",
+      "descripcion": "Centro Cultural Kirchner por mayor capacidad y visibilidad.",
+      "impacto": "ALTO",
+      "datosExtra": {
+        "lugar": "Centro Cultural Kirchner (CCK)",
+        "horarioMontaje": "08:00"
+      }
+    },
+    {
+      "status": "APPROVED",
+      "categoria": "CATERING",
+      "titulo": "Opciones alimentarias",
+      "descripcion": "Coffee break con opciones veganas y sin gluten.",
+      "impacto": "MEDIO",
+      "datosExtra": {
+        "cantidadPersonas": "80",
+        "restriccionesAlimentarias": "vegano y sin TACC"
+      }
+    }
+  ]
+}
