@@ -9,6 +9,7 @@ export interface EventAttachment {
   storedPath: string;
   mimeType: string;
   size?: number | null;
+  tipo?: string | null; // "documento" | "impacto"
   createdAt: string;
 }
 
@@ -24,10 +25,11 @@ export async function listAttachments(eventId: string): Promise<EventAttachment[
   return res.json();
 }
 
-export async function uploadAttachment(eventId: string, file: File): Promise<EventAttachment> {
+export async function uploadAttachment(eventId: string, file: File, tipo: "documento" | "impacto" = "documento"): Promise<EventAttachment> {
   const token = getAuthToken();
   const form = new FormData();
   form.append("file", file);
+  form.append("tipo", tipo);
   const res = await fetch(`${BASE}/events/${eventId}/attachments`, {
     method: "POST",
     headers: token ? { Authorization: `Bearer ${token}` } : {},

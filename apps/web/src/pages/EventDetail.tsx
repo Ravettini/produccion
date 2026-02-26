@@ -52,6 +52,11 @@ export default function EventDetail() {
   const [briefGenerado, setBriefGenerado] = useState("");
   const [exportandoDocx, setExportandoDocx] = useState(false);
   const [confirmEstado, setConfirmEstado] = useState<EventStatus | null>(null);
+  const [motivoCancelacion, setMotivoCancelacion] = useState("");
+  const [realizacionAsistentes, setRealizacionAsistentes] = useState<string>("");
+  const [realizacionImpacto, setRealizacionImpacto] = useState("");
+  const [realizacionLinkImpacto, setRealizacionLinkImpacto] = useState("");
+  const [realizacionPdfFile, setRealizacionPdfFile] = useState<File | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const { data: event, isLoading: loadingEvent } = useQuery({
@@ -89,11 +94,14 @@ export default function EventDetail() {
     },
   });
   const updateEventMutation = useMutation({
-    mutationFn: (data: { estado: EventStatus }) => updateEvent(id!, data),
+    mutationFn: (data: Parameters<typeof updateEvent>[1]) => updateEvent(id!, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["event", id] });
       qc.invalidateQueries({ queryKey: ["events"] });
       setConfirmEstado(null);
+      setMotivoCancelacion("");
+      setRealizacionAsistentes("");
+      setRealizacionImpacto("");
     },
   });
   const generarBrief = useMutation({
@@ -172,10 +180,20 @@ export default function EventDetail() {
             <Link to={`/events/${id}/edit`}>
               <Button variant="secondary" size="sm">Editar evento</Button>
             </Link>
-            {canConfirmEvent(user) && event.estado !== "CONFIRMADO" && event.estado !== "CANCELADO" && (
+            {canConfirmEvent(user) && event.estado !== "CONFIRMADO" && event.estado !== "CANCELADO" && event.estado !== "REALIZADO" && (
               <Button size="sm" onClick={() => setConfirmEstado("CONFIRMADO")}>
                 Confirmar evento
               </Button>
+            )}
+            {canConfirmEvent(user) && (event.estado === "CONFIRMADO" || event.estado === "EN_ANALISIS" || event.estado === "BORRADOR") && (
+              <>
+                <Button size="sm" variant="secondary" onClick={() => setConfirmEstado("REALIZADO")}>
+                  Marcar como realizado
+                </Button>
+                <Button size="sm" variant="ghost" className="text-red-600 hover:text-red-800 hover:bg-red-50" onClick={() => setConfirmEstado("CANCELADO")}>
+                  Cancelar evento
+                </Button>
+              </>
             )}
             {canDeleteEvent(user) && (
               <Button
@@ -269,11 +287,64 @@ export default function EventDetail() {
                     </p>
                   </div>
                 )}
+                {(event as { programa?: string | null }).programa && (
+                  <div>
+                    <h3 className="text-sm font-medium text-slate-500">Programa</h3>
+                    <p className="text-slate-800">{(event as { programa?: string | null }).programa}</p>
+                  </div>
+                )}
+                {(event as { funcionario?: string | null }).funcionario && (
+                  <div>
+                    <h3 className="text-sm font-medium text-slate-500">Funcionario(s)</h3>
+                    <p className="text-slate-800">{(event as { funcionario?: string | null }).funcionario}</p>
+                  </div>
+                )}
+                {(event as { necesitaAcreditacion?: boolean | null }).necesitaAcreditacion != null && (
+                  <div>
+                    <h3 className="text-sm font-medium text-slate-500">¿Se necesita acreditación?</h3>
+                    <p className="text-slate-800">{(event as { necesitaAcreditacion?: boolean }).necesitaAcreditacion ? "Sí" : "No"}</p>
+                  </div>
+                )}
+                {(event as { linkAcreditacionConvocados?: string | null }).linkAcreditacionConvocados && (
+                  <div>
+                    <h3 className="text-sm font-medium text-slate-500">Link a convocados para acreditar</h3>
+                    <a href={(event as { linkAcreditacionConvocados: string }).linkAcreditacionConvocados} target="_blank" rel="noopener noreferrer" className="text-gov-600 hover:underline truncate block">
+                      {(event as { linkAcreditacionConvocados: string }).linkAcreditacionConvocados}
+                    </a>
+                  </div>
+                )}
               </div>
               {event.resumen && (
                 <div>
                   <h3 className="text-sm font-medium text-slate-500">Resumen</h3>
                   <p className="text-slate-800 mt-1 whitespace-pre-wrap">{event.resumen}</p>
+                </div>
+              )}
+              {event.estado === "CANCELADO" && (event as { motivoCancelacion?: string | null }).motivoCancelacion && (
+                <div className="rounded-lg bg-red-50 border border-red-200 p-4">
+                  <h3 className="text-sm font-medium text-red-800">Motivo de cancelación</h3>
+                  <p className="text-red-900 mt-1 whitespace-pre-wrap">{(event as { motivoCancelacion: string }).motivoCancelacion}</p>
+                </div>
+              )}
+              {event.estado === "REALIZADO" && ((event as { realizacionAsistentes?: number | null }).realizacionAsistentes != null || (event as { realizacionImpacto?: string | null }).realizacionImpacto || (event as { realizacionLinkImpacto?: string | null }).realizacionLinkImpacto) && (
+                <div className="rounded-lg bg-blue-50 border border-blue-200 p-4">
+                  <h3 className="text-sm font-medium text-blue-800">Datos del evento realizado</h3>
+                  <div className="mt-2 space-y-1 text-blue-900">
+                    {(event as { realizacionAsistentes?: number | null }).realizacionAsistentes != null && (
+                      <p><strong>Asistentes:</strong> {(event as { realizacionAsistentes: number }).realizacionAsistentes}</p>
+                    )}
+                    {(event as { realizacionImpacto?: string | null }).realizacionImpacto && (
+                      <p className="whitespace-pre-wrap"><strong>Impacto:</strong> {(event as { realizacionImpacto: string }).realizacionImpacto}</p>
+                    )}
+                    {(event as { realizacionLinkImpacto?: string | null }).realizacionLinkImpacto && (
+                      <p>
+                        <strong>Link PDF / recurso:</strong>{" "}
+                        <a href={(event as { realizacionLinkImpacto: string }).realizacionLinkImpacto} target="_blank" rel="noopener noreferrer" className="underline">
+                          {(event as { realizacionLinkImpacto: string }).realizacionLinkImpacto}
+                        </a>
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
               {!event.resumen && (
@@ -572,7 +643,13 @@ export default function EventDetail() {
               </span>
             </CardHeader>
             <CardBody>
-              <DocumentosSection eventId={id!} attachments={attachments} isLoading={loadingAttachments} />
+              <DocumentosSection eventId={id!} attachments={attachments.filter((a) => a.tipo !== "impacto")} isLoading={loadingAttachments} />
+              {event.estado === "REALIZADO" && (
+                <div className="mt-6 pt-6 border-t border-slate-200">
+                  <h4 className="text-sm font-semibold text-slate-800 mb-2">PDF de métricas de impacto</h4>
+                  <DocumentosSection eventId={id!} attachments={attachments.filter((a) => a.tipo === "impacto")} isLoading={loadingAttachments} tipo="impacto" title="Archivo de impacto (opcional)" />
+                </div>
+              )}
             </CardBody>
           </Card>
         </div>
@@ -640,22 +717,125 @@ export default function EventDetail() {
       </Modal>
 
       <Modal
-        title="Confirmar evento"
+        title={confirmEstado === "CANCELADO" ? "Cancelar evento" : confirmEstado === "REALIZADO" ? "Marcar como realizado" : "Confirmar evento"}
         open={!!confirmEstado}
-        onClose={() => setConfirmEstado(null)}
+        onClose={() => { setConfirmEstado(null); setMotivoCancelacion(""); setRealizacionAsistentes(""); setRealizacionImpacto(""); setRealizacionLinkImpacto(""); setRealizacionPdfFile(null); }}
       >
         {confirmEstado && (
           <div className="space-y-4">
-            <p className="text-slate-600">
-              ¿Marcar este evento como {eventStatusLabels[confirmEstado].toLowerCase()}?
-            </p>
+            {confirmEstado === "CANCELADO" && (
+              <>
+                <p className="text-slate-600">
+                  Indicá el motivo o razón de la cancelación (obligatorio).
+                </p>
+                <textarea
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm min-h-[80px]"
+                  placeholder="Ej: Cambio de fecha, falta de presupuesto..."
+                  value={motivoCancelacion}
+                  onChange={(e) => setMotivoCancelacion(e.target.value)}
+                />
+              </>
+            )}
+            {confirmEstado === "REALIZADO" && (
+              <>
+                <p className="text-slate-600">
+                  Cargá datos del evento realizado (opcional pero recomendado).
+                </p>
+                <div className="grid gap-3">
+                  <label className="block text-sm font-medium text-slate-700">
+                    Cantidad de asistentes
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
+                    placeholder="Ej: 120"
+                    value={realizacionAsistentes}
+                    onChange={(e) => setRealizacionAsistentes(e.target.value)}
+                  />
+                  <label className="block text-sm font-medium text-slate-700">
+                    Impacto / comentarios
+                  </label>
+                  <textarea
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm min-h-[60px]"
+                    placeholder="Breve descripción del impacto o resultado del evento"
+                    value={realizacionImpacto}
+                    onChange={(e) => setRealizacionImpacto(e.target.value)}
+                  />
+                  <label className="block text-sm font-medium text-slate-700">
+                    Link a PDF o recurso de impacto (opcional)
+                  </label>
+                  <input
+                    type="url"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
+                    placeholder="https://..."
+                    value={realizacionLinkImpacto}
+                    onChange={(e) => setRealizacionLinkImpacto(e.target.value)}
+                  />
+                  <label className="block text-sm font-medium text-slate-700">
+                    Subir PDF de métricas (opcional)
+                  </label>
+                  <input
+                    type="file"
+                    accept=".pdf,application/pdf"
+                    className="w-full text-sm text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-gov-100 file:text-gov-800"
+                    onChange={(e) => setRealizacionPdfFile(e.target.files?.[0] ?? null)}
+                  />
+                  {realizacionPdfFile && (
+                    <p className="text-xs text-slate-500">{realizacionPdfFile.name}</p>
+                  )}
+                </div>
+              </>
+            )}
+            {confirmEstado !== "CANCELADO" && confirmEstado !== "REALIZADO" && (
+              <p className="text-slate-600">
+                ¿Marcar este evento como {eventStatusLabels[confirmEstado].toLowerCase()}?
+              </p>
+            )}
             <div className="flex gap-2 justify-end">
-              <Button variant="secondary" onClick={() => setConfirmEstado(null)}>
+              <Button variant="secondary" onClick={() => { setConfirmEstado(null); setMotivoCancelacion(""); setRealizacionAsistentes(""); setRealizacionImpacto(""); setRealizacionLinkImpacto(""); setRealizacionPdfFile(null); }}>
                 Cancelar
               </Button>
               <Button
-                onClick={() => updateEventMutation.mutate({ estado: confirmEstado })}
-                disabled={updateEventMutation.isPending}
+                onClick={() => {
+                  if (confirmEstado === "CANCELADO") {
+                    if (!motivoCancelacion.trim()) return;
+                    updateEventMutation.mutate({ estado: "CANCELADO", motivoCancelacion: motivoCancelacion.trim() });
+                  } else if (confirmEstado === "REALIZADO") {
+                    const asistentes = realizacionAsistentes.trim() ? parseInt(realizacionAsistentes, 10) : undefined;
+                    const link = realizacionLinkImpacto.trim() || undefined;
+                    const file = realizacionPdfFile;
+                    updateEventMutation.mutate(
+                      {
+                        estado: "REALIZADO",
+                        realizacionAsistentes: asistentes != null && !Number.isNaN(asistentes) ? asistentes : undefined,
+                        realizacionImpacto: realizacionImpacto.trim() || undefined,
+                        realizacionLinkImpacto: link,
+                      },
+                      {
+                        onSuccess: async () => {
+                          qc.invalidateQueries({ queryKey: ["event", id] });
+                          if (file && id) {
+                            try {
+                              await uploadAttachment(id, file, "impacto");
+                              qc.invalidateQueries({ queryKey: ["attachments", id] });
+                            } catch (e) {
+                              console.error(e);
+                            }
+                          }
+                          setConfirmEstado(null);
+                          setRealizacionAsistentes("");
+                          setRealizacionImpacto("");
+                          setRealizacionLinkImpacto("");
+                          setRealizacionPdfFile(null);
+                        },
+                      }
+                    );
+                  } else {
+                    updateEventMutation.mutate({ estado: confirmEstado });
+                  }
+                }}
+                disabled={updateEventMutation.isPending || (confirmEstado === "CANCELADO" && !motivoCancelacion.trim())}
               >
                 Confirmar
               </Button>
@@ -695,14 +875,18 @@ function DocumentosSection({
   eventId,
   attachments,
   isLoading,
+  tipo = "documento",
+  title,
 }: {
   eventId: string;
   attachments: EventAttachment[];
   isLoading: boolean;
+  tipo?: "documento" | "impacto";
+  title?: string;
 }) {
   const qc = useQueryClient();
   const upload = useMutation({
-    mutationFn: (file: File) => uploadAttachment(eventId, file),
+    mutationFn: (file: File) => uploadAttachment(eventId, file, tipo),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["attachments", eventId] });
     },
@@ -741,6 +925,7 @@ function DocumentosSection({
 
   return (
     <div className="space-y-4">
+      {title && <p className="text-sm font-medium text-slate-700">{title}</p>}
       <div className="flex flex-wrap items-center gap-3">
         <label className="cursor-pointer inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium rounded-lg bg-gov-600 text-white hover:bg-gov-700 focus:outline-none focus:ring-2 focus:ring-gov-500 focus:ring-offset-2 disabled:opacity-50">
           <input
@@ -750,7 +935,7 @@ function DocumentosSection({
             className="hidden"
             disabled={upload.isPending}
           />
-          <span>{upload.isPending ? "Subiendo…" : "Subir PDF"}</span>
+          <span>{upload.isPending ? "Subiendo…" : tipo === "impacto" ? "Subir PDF de impacto" : "Subir PDF"}</span>
         </label>
         <span className="text-slate-500 text-sm">Máx. 10 MB por archivo</span>
       </div>
@@ -759,7 +944,7 @@ function DocumentosSection({
         <p className="text-red-600 text-sm">{upload.error.message}</p>
       )}
       {attachments.length === 0 ? (
-        <p className="text-slate-500 text-sm py-4">No hay documentos subidos. Subí un PDF para comenzar.</p>
+        <p className="text-slate-500 text-sm py-4">{tipo === "impacto" ? "No hay archivo de impacto. Podés subir un PDF con las métricas." : "No hay documentos subidos. Subí un PDF para comenzar."}</p>
       ) : (
         <ul className="space-y-2">
           {attachments.map((a) => (
@@ -917,6 +1102,15 @@ function NewProposalForm({ eventId }: { eventId: string }) {
                         setDatosExtra((prev) => ({ ...prev, [field.key]: e.target.value }))
                       }
                       rows={2}
+                    />
+                  ) : field.type === "select" && field.options?.length ? (
+                    <Select
+                      label={field.label}
+                      options={field.options}
+                      value={datosExtra[field.key] ?? ""}
+                      onChange={(e) =>
+                        setDatosExtra((prev) => ({ ...prev, [field.key]: e.target.value }))
+                      }
                     />
                   ) : (
                     <Input

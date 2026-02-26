@@ -69,7 +69,7 @@ export function matchTecnicaItem(
   const keywords = TECNICA_KEYWORDS[itemKey];
   if (!keywords) return { found: false, detail: NO_DEFINIDO };
 
-  const techProposals = proposals.filter((p) => p.categoria === "TECNICA");
+  const techProposals = proposals.filter((p) => p.categoria === "TECNICA" || p.categoria === "PRODUCCION");
   const allText = techProposals
     .flatMap((p) => [
       p.descripcion,
@@ -101,7 +101,11 @@ export function matchTecnicaItem(
 }
 
 export function getMicrofonosCount(proposals: ApprovedProposal[]): string {
-  const techProposals = proposals.filter((p) => p.categoria === "TECNICA");
+  const techProposals = proposals.filter((p) => p.categoria === "TECNICA" || p.categoria === "PRODUCCION");
+  const fromStructured = techProposals
+    .map((p) => p.datosExtra?.microfonosCantidad)
+    .find((v) => v != null && String(v).trim() !== "");
+  if (fromStructured != null && String(fromStructured).trim() !== "") return String(fromStructured).trim();
   const allText = techProposals
     .flatMap((p) => [
       p.descripcion,
@@ -112,11 +116,62 @@ export function getMicrofonosCount(proposals: ApprovedProposal[]): string {
   return extractMicrofonosCount(allText);
 }
 
+/** Lee campos estructurados Sí/No (+ cantidad) de propuestas TECNICA/PRODUCCION aprobadas */
+export function getTecnicaStructured(
+  proposals: ApprovedProposal[],
+  itemKey: "pantallaLED" | "pantallaRetractil" | "proyector" | "sonido" | "microfonos"
+): { found: boolean; text: string } {
+  const techProposals = proposals.filter((p) => p.categoria === "TECNICA" || p.categoria === "PRODUCCION");
+  const cantidadKey =
+    itemKey === "pantallaLED"
+      ? "pantallaLEDCantidad"
+      : itemKey === "microfonos"
+        ? "microfonosCantidad"
+        : null;
+
+  const hasSi = techProposals.some(
+    (p) => String(p.datosExtra?.[itemKey] ?? "").toLowerCase() === "si"
+  );
+  const hasNo = techProposals.some(
+    (p) => String(p.datosExtra?.[itemKey] ?? "").toLowerCase() === "no"
+  );
+
+  if (hasSi) {
+    const cantidadVal = cantidadKey
+      ? techProposals
+          .map((p) => p.datosExtra?.[cantidadKey])
+          .find((v) => v != null && String(v).trim() !== "")
+      : null;
+    const cantidadStr =
+      cantidadVal != null && String(cantidadVal).trim() !== ""
+        ? ` Cantidad: ${String(cantidadVal).trim()}`
+        : "";
+    return { found: true, text: `Sí.${cantidadStr}` };
+  }
+  if (hasNo && !hasSi) {
+    return { found: true, text: "No" };
+  }
+  return { found: false, text: NO_DEFINIDO };
+}
+
 /** Catering: tipo (Desayuno / Almuerzo / Cena / Coffee break) */
 const CATERING_TIPOS = ["desayuno", "almuerzo", "cena", "coffee break", "break", "refrigerio"];
 
 export function matchCateringTipo(proposals: ApprovedProposal[]): Record<string, boolean> {
-  const catProposals = proposals.filter((p) => p.categoria === "CATERING");
+  const catProposals = proposals.filter((p) => p.categoria === "CATERING" || p.categoria === "PRODUCCION");
+  const result: Record<string, boolean> = {
+    desayuno: false,
+    almuerzo: false,
+    cena: false,
+    coffeeBreak: false,
+  };
+  for (const p of catProposals) {
+    const tipo = String(p.datosExtra?.tipoCatering ?? "").toLowerCase().trim();
+    if (tipo === "desayuno") result.desayuno = true;
+    if (tipo === "almuerzo") result.almuerzo = true;
+    if (tipo === "cena") result.cena = true;
+    if (tipo === "coffee break" || tipo === "coffee") result.coffeeBreak = true;
+  }
   const allText = catProposals
     .flatMap((p) => [
       p.descripcion,
@@ -124,13 +179,6 @@ export function matchCateringTipo(proposals: ApprovedProposal[]): Record<string,
     ])
     .join(" ")
     .toLowerCase();
-
-  const result: Record<string, boolean> = {
-    desayuno: false,
-    almuerzo: false,
-    cena: false,
-    coffeeBreak: false,
-  };
   if (allText.includes("desayuno")) result.desayuno = true;
   if (allText.includes("almuerzo")) result.almuerzo = true;
   if (allText.includes("cena")) result.cena = true;
@@ -139,7 +187,7 @@ export function matchCateringTipo(proposals: ApprovedProposal[]): Record<string,
 }
 
 export function getCateringRestricciones(proposals: ApprovedProposal[]): string {
-  const catProposals = proposals.filter((p) => p.categoria === "CATERING");
+  const catProposals = proposals.filter((p) => p.categoria === "CATERING" || p.categoria === "PRODUCCION");
   const rest = catProposals
     .map((p) => (p.datosExtra?.restriccionesAlimentarias as string) ?? "")
     .filter(Boolean)
@@ -148,9 +196,9 @@ export function getCateringRestricciones(proposals: ApprovedProposal[]): string 
 }
 
 export function getCateringCantidad(proposals: ApprovedProposal[]): string {
-  const catProposals = proposals.filter((p) => p.categoria === "CATERING");
+  const catProposals = proposals.filter((p) => p.categoria === "CATERING" || p.categoria === "PRODUCCION");
   for (const p of catProposals) {
-    const n = p.datosExtra?.cantidadPersonas;
+    const n = p.datosExtra?.cateringCantidad ?? p.datosExtra?.cantidadPersonas;
     if (n != null && n !== "") return String(n);
   }
   const descMatch = catProposals
@@ -216,6 +264,28 @@ export function resolveLugar(proposals: ApprovedProposal[]): string {
     if (p.categoria === "PRODUCCION" && p.datosExtra?.lugar) return String(p.datosExtra.lugar);
   }
   return POR_CONFIRMAR;
+}
+
+/** Pedido de piezas de comunicación desde propuestas PRODUCCION aprobadas */
+export function getComunicacionPiezas(proposals: ApprovedProposal[]): {
+  pieza: string;
+  medio: string;
+  mensajeClave: string;
+  restriccionesDiseno: string;
+  plazoEntrega: string;
+} {
+  const prod = proposals.filter((p) => p.categoria === "PRODUCCION");
+  const first = (key: string) => {
+    const v = prod.map((p) => p.datosExtra?.[key]).find((x) => x != null && String(x).trim() !== "");
+    return v != null ? resolveValue(String(v).trim()) : POR_CONFIRMAR;
+  };
+  return {
+    pieza: first("comunicacionPieza"),
+    medio: first("comunicacionMedio"),
+    mensajeClave: first("comunicacionMensajeClave"),
+    restriccionesDiseno: first("comunicacionRestriccionesDiseno"),
+    plazoEntrega: first("comunicacionPlazoEntrega"),
+  };
 }
 
 /** Genera párrafos en prosa narrativa (estilo Brief institucional de referencia) */

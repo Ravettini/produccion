@@ -20,6 +20,7 @@ model User {
   password  String
   name      String
   role      String
+  area      String?  // Área/dirección del usuario (para vincular área solicitante)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -36,13 +37,20 @@ model Event {
   tipoEvento             String
   areaSolicitante       String
   fechaTentativa         DateTime
-  estado                 String    @default("BORRADOR")
+  estado                 String    @default("BORRADOR") // BORRADOR | EN_ANALISIS | CONFIRMADO | CANCELADO | REALIZADO
   resumen                String?   // Resumen de lo aprobado: lugar, producción, etc.
   usuarioSolicitante     String?   // Referente / usuario que solicita (nombre)
   publico                String?   // EXTERNO, INTERNO, MIXTO
   lugar                  String?   // Lugar o dirección prevista (para el brief)
-  programa               String?   // Programa o funcionarios (para el brief)
-  imagenBuscadaSugerida  String?   // Imagen buscada sugerida (para el brief)
+  programa               String?   // Programa (para el brief)
+  funcionario            String?   // Funcionario(s) clave (para el brief)
+  necesitaAcreditacion   Boolean?  // ¿Se necesita acreditación?
+  linkAcreditacionConvocados String? // Link a convocados para acreditar
+  motivoCancelacion      String?   // Obligatorio cuando estado = CANCELADO
+  realizacionAsistentes  Int?      // Cuando estado = REALIZADO: cantidad de asistentes
+  realizacionImpacto     String?   // Cuando estado = REALIZADO: impacto post-evento
+  realizacionLinkImpacto String?   // Link a PDF o recurso de métricas de impacto (opcional)
+  datosProduccion        String?   // JSON: misma estructura que propuesta Producción (técnica, catering, piezas)
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
 
@@ -58,6 +66,7 @@ model EventAttachment {
   storedPath  String   // Ruta en disco
   mimeType   String   @default("application/pdf")
   size       Int?     // Tamaño en bytes
+  tipo       String?  @default("documento") // "documento" | "impacto" (PDF de métricas cuando realizado)
   createdAt  DateTime @default(now())
 
   @@index([eventId])

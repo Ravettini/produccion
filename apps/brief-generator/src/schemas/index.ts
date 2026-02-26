@@ -6,6 +6,24 @@ const datosExtraProducion = z.object({
   cantidadPersonas: z.union([z.string(), z.number()]).optional().nullable(),
   equipamiento: z.string().optional().nullable(),
   equipamientoNecesario: z.string().optional().nullable(),
+  // Técnica (Producción incluye técnica)
+  pantallaLED: z.string().optional().nullable(),
+  pantallaLEDCantidad: z.union([z.string(), z.number()]).optional().nullable(),
+  pantallaRetractil: z.string().optional().nullable(),
+  proyector: z.string().optional().nullable(),
+  sonido: z.string().optional().nullable(),
+  microfonos: z.string().optional().nullable(),
+  microfonosCantidad: z.union([z.string(), z.number()]).optional().nullable(),
+  requerimientosTecnicos: z.string().optional().nullable(),
+  // Catering (Producción incluye catering)
+  tipoCatering: z.string().optional().nullable(),
+  cateringCantidad: z.union([z.string(), z.number()]).optional().nullable(),
+  restriccionesAlimentarias: z.string().optional().nullable(),
+  comunicacionPieza: z.string().optional().nullable(),
+  comunicacionMedio: z.string().optional().nullable(),
+  comunicacionMensajeClave: z.string().optional().nullable(),
+  comunicacionRestriccionesDiseno: z.string().optional().nullable(),
+  comunicacionPlazoEntrega: z.string().optional().nullable(),
 }).passthrough();
 
 const datosExtraAgenda = z.object({
@@ -28,6 +46,13 @@ const datosExtraTecnica = z.object({
   equipamiento: z.string().optional().nullable(),
   equipamientoNecesario: z.string().optional().nullable(),
   requerimientosTecnicos: z.string().optional().nullable(),
+  pantallaLED: z.string().optional().nullable(),
+  pantallaLEDCantidad: z.union([z.string(), z.number()]).optional().nullable(),
+  pantallaRetractil: z.string().optional().nullable(),
+  proyector: z.string().optional().nullable(),
+  sonido: z.string().optional().nullable(),
+  microfonos: z.string().optional().nullable(),
+  microfonosCantidad: z.union([z.string(), z.number()]).optional().nullable(),
 }).passthrough();
 
 const datosExtraSchema = z.union([
@@ -62,7 +87,8 @@ export const eventSchema = z.object({
   estado: z.string().optional(),
   lugar: z.string().optional().nullable(),
   programa: z.string().optional().nullable(),
-  imagenBuscadaSugerida: z.string().optional().nullable(),
+  funcionario: z.string().optional().nullable(),
+  datosProduccion: z.record(z.unknown()).optional().nullable(),
 });
 
 export const briefInputSchema = z.object({

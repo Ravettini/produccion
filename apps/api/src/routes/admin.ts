@@ -334,24 +334,24 @@ adminRouter.post("/vaciar", async (_req, res) => {
 adminRouter.get("/users", async (_req, res) => {
   const users = await prisma.user.findMany({
     orderBy: { createdAt: "desc" },
-    select: { id: true, email: true, name: true, role: true, createdAt: true },
+    select: { id: true, email: true, name: true, role: true, area: true, createdAt: true },
   });
   res.json(users);
 });
 
 /**
- * PUT /admin/users/:id - Actualizar usuario (name, role, opcionalmente password).
- * Body: { name?, role?, password? }
+ * PUT /admin/users/:id - Actualizar usuario (name, role, area, opcionalmente password).
+ * Body: { name?, role?, area?, password? }
  */
 adminRouter.put("/users/:id", async (req, res) => {
   const { id } = req.params;
-  const { name, role, password } = req.body ?? {};
+  const { name, role, area, password } = req.body ?? {};
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user) {
     res.status(404).json({ error: "Usuario no encontrado" });
     return;
   }
-  const data: { name?: string; role?: string; password?: string } = {};
+  const data: { name?: string; role?: string; area?: string | null; password?: string } = {};
   if (name !== undefined) data.name = String(name).trim();
   if (role !== undefined) {
     if (!validRoles.includes(String(role))) {
@@ -360,6 +360,7 @@ adminRouter.put("/users/:id", async (req, res) => {
     }
     data.role = String(role);
   }
+  if (area !== undefined) data.area = String(area).trim() || null;
   if (password !== undefined && String(password).trim() !== "") {
     data.password = await bcrypt.hash(String(password), 10);
   }
@@ -370,7 +371,7 @@ adminRouter.put("/users/:id", async (req, res) => {
   const updated = await prisma.user.update({
     where: { id },
     data: data as Parameters<typeof prisma.user.update>[0]["data"],
-    select: { id: true, email: true, name: true, role: true, createdAt: true },
+    select: { id: true, email: true, name: true, role: true, area: true, createdAt: true },
   });
   res.json(updated);
 });

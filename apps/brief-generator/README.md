@@ -93,5 +93,5 @@ Formato BRIEF ESTRATÉGICO (con colores institucionales):
 
 1. **Encabezado**: "BRIEF ESTRATÉGICO" en blanco sobre fondo verde azulado (#153244)
 2. **Título de la actividad** centrado, color institucional
-3. **Secciones** con emojis y color: Datos básicos, Sentido estratégico, Funcionarios clave, Participación del público, Imagen buscada, Definiciones aprobadas, Cronograma, BRIEF PRODUCCIÓN, Pedido de piezas de comunicación
+3. **Secciones** con emojis y color: Datos básicos, Sentido estratégico, Funcionarios clave, Participación del público, Definiciones aprobadas, Cronograma, BRIEF PRODUCCIÓN, Pedido de piezas de comunicación
 4. **Tablas** con encabezados en gris claro (E8EEF2)

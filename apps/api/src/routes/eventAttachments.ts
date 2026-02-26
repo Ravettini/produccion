@@ -101,6 +101,7 @@ eventAttachmentsRouter.post("/:eventId/attachments", (req, res, next) => {
     res.status(404).json({ error: "Evento no encontrado" });
     return;
   }
+  const tipo = req.body?.tipo === "impacto" ? "impacto" : "documento";
   const attachment = await prisma.eventAttachment.create({
     data: {
       eventId,
@@ -108,6 +109,7 @@ eventAttachmentsRouter.post("/:eventId/attachments", (req, res, next) => {
       storedPath: path.relative(path.join(UPLOADS_DIR, eventId), file.path),
       mimeType: file.mimetype,
       size: file.size,
+      tipo,
     },
   });
   res.status(201).json(attachment);

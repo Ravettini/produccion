@@ -7,6 +7,7 @@ export { ErrorState } from "./ErrorState";
 export { Input } from "./Input";
 export { LoadingSkeleton, EventListSkeleton, DetailSkeleton } from "./LoadingSkeleton";
 export { Modal } from "./Modal";
+export { SearchableSelect } from "./SearchableSelect";
 export { Select } from "./Select";
 export { Tabs } from "./Tabs";
 export { TextArea } from "./TextArea";

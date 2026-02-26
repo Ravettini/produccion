@@ -14,6 +14,7 @@ export async function createUser(data: {
   password: string;
   name: string;
   role: string;
+  area?: string | null;
 }): Promise<{ user: User }> {
   return api<{ user: User }>("/auth/register", {
     method: "POST",
@@ -23,7 +24,7 @@ export async function createUser(data: {
 
 export async function updateUser(
   id: string,
-  data: { name?: string; role?: string; password?: string }
+  data: { name?: string; role?: string; area?: string | null; password?: string }
 ): Promise<AdminUser> {
   return api<AdminUser>(`/admin/users/${id}`, {
     method: "PUT",

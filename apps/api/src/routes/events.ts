@@ -4,7 +4,7 @@ import { authMiddleware, requireRoles } from "../middleware/auth.js";
 
 export const eventsRouter = Router();
 
-const validStatuses = ["BORRADOR", "EN_ANALISIS", "CONFIRMADO", "CANCELADO"];
+const validStatuses = ["BORRADOR", "EN_ANALISIS", "CONFIRMADO", "CANCELADO", "REALIZADO"];
 
 /**
  * GET /events - Listado de eventos (todos pueden ver).
@@ -50,7 +50,14 @@ eventsRouter.post("/", authMiddleware, async (req, res) => {
     usuarioSolicitante: bodyUsuario,
     lugar,
     programa,
-    imagenBuscadaSugerida,
+    funcionario,
+    necesitaAcreditacion,
+    linkAcreditacionConvocados,
+    motivoCancelacion,
+    realizacionAsistentes,
+    realizacionImpacto,
+    realizacionLinkImpacto,
+    datosProduccion,
   } = req.body ?? {};
   if (!titulo || !descripcion || !tipoEvento || !areaSolicitante || !fechaTentativa) {
     res.status(400).json({
@@ -84,10 +91,14 @@ eventsRouter.post("/", authMiddleware, async (req, res) => {
       publico: validPublico,
       lugar: lugar !== undefined && String(lugar).trim() !== "" ? String(lugar).trim() : null,
       programa: programa !== undefined && String(programa).trim() !== "" ? String(programa).trim() : null,
-      imagenBuscadaSugerida:
-        imagenBuscadaSugerida !== undefined && String(imagenBuscadaSugerida).trim() !== ""
-          ? String(imagenBuscadaSugerida).trim()
-          : null,
+      funcionario: funcionario !== undefined && String(funcionario).trim() !== "" ? String(funcionario).trim() : null,
+      necesitaAcreditacion: necesitaAcreditacion === undefined ? undefined : (necesitaAcreditacion === true || String(necesitaAcreditacion) === "true"),
+      linkAcreditacionConvocados: linkAcreditacionConvocados !== undefined && String(linkAcreditacionConvocados).trim() !== "" ? String(linkAcreditacionConvocados).trim() : null,
+      motivoCancelacion: motivoCancelacion != null && String(motivoCancelacion).trim() !== "" ? String(motivoCancelacion).trim() : null,
+      realizacionAsistentes: realizacionAsistentes != null && (typeof realizacionAsistentes === "number" ? !Number.isNaN(realizacionAsistentes) : String(realizacionAsistentes).trim() !== "") ? (typeof realizacionAsistentes === "number" ? realizacionAsistentes : parseInt(String(realizacionAsistentes), 10)) : null,
+      realizacionImpacto: realizacionImpacto != null && String(realizacionImpacto).trim() !== "" ? String(realizacionImpacto).trim() : null,
+      realizacionLinkImpacto: realizacionLinkImpacto != null && String(realizacionLinkImpacto).trim() !== "" ? String(realizacionLinkImpacto).trim() : null,
+      datosProduccion: datosProduccion != null && typeof datosProduccion === "object" ? JSON.stringify(datosProduccion) : (typeof datosProduccion === "string" && datosProduccion.trim() !== "" ? datosProduccion : null),
     },
   });
   res.status(201).json(event);
@@ -114,7 +125,14 @@ eventsRouter.put("/:id", authMiddleware, async (req, res) => {
     usuarioSolicitante,
     lugar,
     programa,
-    imagenBuscadaSugerida,
+    funcionario,
+    necesitaAcreditacion,
+    linkAcreditacionConvocados,
+    motivoCancelacion,
+    realizacionAsistentes,
+    realizacionImpacto,
+    realizacionLinkImpacto,
+    datosProduccion,
   } = req.body ?? {};
   const updates: Record<string, unknown> = {};
   if (titulo !== undefined) updates.titulo = String(titulo);
@@ -131,6 +149,14 @@ eventsRouter.put("/:id", authMiddleware, async (req, res) => {
       res.status(403).json({ error: "Solo un administrador puede confirmar el evento" });
       return;
     }
+    if (String(estado) === "CANCELADO") {
+      const motivo = motivoCancelacion != null ? String(motivoCancelacion).trim() : (existing as { motivoCancelacion?: string | null }).motivoCancelacion ?? "";
+      if (!motivo) {
+        res.status(400).json({ error: "Al cancelar el evento es obligatorio indicar el motivo o razón de cancelación." });
+        return;
+      }
+      updates.motivoCancelacion = motivo;
+    }
     updates.estado = String(estado);
   }
   if (resumen !== undefined) updates.resumen = resumen === null || resumen === "" ? null : String(resumen);
@@ -146,8 +172,34 @@ eventsRouter.put("/:id", authMiddleware, async (req, res) => {
   if (programa !== undefined) {
     updates.programa = programa === null || String(programa).trim() === "" ? null : String(programa).trim();
   }
-  if (imagenBuscadaSugerida !== undefined) {
-    updates.imagenBuscadaSugerida = imagenBuscadaSugerida === null || String(imagenBuscadaSugerida).trim() === "" ? null : String(imagenBuscadaSugerida).trim();
+  if (funcionario !== undefined) {
+    updates.funcionario = funcionario === null || String(funcionario).trim() === "" ? null : String(funcionario).trim();
+  }
+  if (necesitaAcreditacion !== undefined) {
+    updates.necesitaAcreditacion = necesitaAcreditacion === true || String(necesitaAcreditacion) === "true";
+  }
+  if (linkAcreditacionConvocados !== undefined) {
+    updates.linkAcreditacionConvocados = linkAcreditacionConvocados === null || String(linkAcreditacionConvocados).trim() === "" ? null : String(linkAcreditacionConvocados).trim();
+  }
+  if (motivoCancelacion !== undefined) {
+    updates.motivoCancelacion = motivoCancelacion == null || String(motivoCancelacion).trim() === "" ? null : String(motivoCancelacion).trim();
+  }
+  if (realizacionAsistentes !== undefined) {
+    const n = realizacionAsistentes === null || String(realizacionAsistentes).trim() === "" ? null : parseInt(String(realizacionAsistentes), 10);
+    updates.realizacionAsistentes = n != null && !Number.isNaN(n) ? n : null;
+  }
+  if (realizacionImpacto !== undefined) {
+    updates.realizacionImpacto = realizacionImpacto == null || String(realizacionImpacto).trim() === "" ? null : String(realizacionImpacto).trim();
+  }
+  if (realizacionLinkImpacto !== undefined) {
+    updates.realizacionLinkImpacto = realizacionLinkImpacto == null || String(realizacionLinkImpacto).trim() === "" ? null : String(realizacionLinkImpacto).trim();
+  }
+  if (datosProduccion !== undefined) {
+    updates.datosProduccion = datosProduccion == null || (typeof datosProduccion === "string" && datosProduccion.trim() === "")
+      ? null
+      : typeof datosProduccion === "object"
+        ? JSON.stringify(datosProduccion)
+        : String(datosProduccion);
   }
 
   const event = await prisma.event.update({

@@ -170,12 +170,6 @@ El sistema genera un DOCX con formato **BRIEF ESTRATÉGICO**. Cada campo del doc
 |------------------|--------|
 | Párrafo | `event.publico` + "Por confirmar" |
 
-### Imagen buscada sugerida
-
-| Campo en el DOCX | Origen |
-|------------------|--------|
-| Texto | Fijo: "Por confirmar" |
-
 ### Definiciones aprobadas por área
 
 Cada **categoría** (Logística, Catering, Técnica, Agenda, Producción, Otro) que tenga al menos una propuesta **APPROVED** se lista. Para cada propuesta se escribe:

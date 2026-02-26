@@ -12,16 +12,22 @@ import { Select } from "../components/ui/Select";
 import { CheckboxGroup } from "../components/ui/CheckboxGroup";
 import { Modal } from "../components/ui/Modal";
 import { Card, CardBody } from "../components/ui/Card";
+import { SearchableSelect } from "../components/ui/SearchableSelect";
 import { eventStatusLabels } from "../utils/labels";
+import { categoryExtraFields, cateringFields, comunicacionPiezasFields } from "../config/proposalCategoryFields";
+import { AREAS_OPTIONS } from "../config/areas";
+import { getProgramasParaArea } from "../config/programasPorArea";
+import { FUNCIONARIOS_OPTIONS } from "../config/funcionarios";
 
 const statusOptions = (Object.entries(eventStatusLabels) as [EventStatus, string][]).map(
   ([value, label]) => ({ value, label })
 );
 
 const TIPO_OPCIONES = [
-  { value: "Producción", label: "Producción" },
-  { value: "Institucionales", label: "Institucionales" },
-  { value: "Cobertura", label: "Cobertura" },
+  { value: "Otro", label: "Otro", title: "Otro tipo de evento (especificar en el campo siguiente)." },
+  { value: "Producción", label: "Producción", title: "Incluye técnica (pantallas, sonido), catering, materiales y piezas de comunicación." },
+  { value: "Institucionales", label: "Institucionales", title: "Eventos formales con autoridades, protocolo y funcionarios." },
+  { value: "Cobertura", label: "Cobertura", title: "Registro audiovisual, fotográfico o de prensa del evento." },
 ];
 
 export default function EventForm() {
@@ -43,7 +49,13 @@ export default function EventForm() {
   const [usuarioSolicitante, setUsuarioSolicitante] = useState("");
   const [lugar, setLugar] = useState("");
   const [programa, setPrograma] = useState("");
-  const [imagenBuscadaSugerida, setImagenBuscadaSugerida] = useState("");
+  const [funcionario, setFuncionario] = useState("");
+  const [necesitaAcreditacion, setNecesitaAcreditacion] = useState<boolean | "">("");
+  const [linkAcreditacionConvocados, setLinkAcreditacionConvocados] = useState("");
+  const [datosProduccion, setDatosProduccion] = useState<Record<string, string>>({});
+  const [realizacionAsistentes, setRealizacionAsistentes] = useState<string>("");
+  const [realizacionImpacto, setRealizacionImpacto] = useState("");
+  const [motivoCancelacion, setMotivoCancelacion] = useState("");
   const [confirmModal, setConfirmModal] = useState<{ action: "CONFIRMADO" | "CANCELADO" } | null>(null);
   const [tipoError, setTipoError] = useState("");
   const [archivosPdf, setArchivosPdf] = useState<File[]>([]);
@@ -53,6 +65,12 @@ export default function EventForm() {
     queryFn: () => getEvent(id!),
     enabled: !isNew,
   });
+
+  useEffect(() => {
+    if (user?.area && isNew && !existing) {
+      setAreaSolicitante(user.area);
+    }
+  }, [user?.area, isNew, existing]);
 
   useEffect(() => {
     if (existing) {
@@ -73,7 +91,17 @@ export default function EventForm() {
       setUsuarioSolicitante(existing.usuarioSolicitante ?? "");
       setLugar(existing.lugar ?? "");
       setPrograma(existing.programa ?? "");
-      setImagenBuscadaSugerida(existing.imagenBuscadaSugerida ?? "");
+      setFuncionario((existing as { funcionario?: string | null }).funcionario ?? "");
+      setNecesitaAcreditacion((existing as { necesitaAcreditacion?: boolean | null }).necesitaAcreditacion ?? "");
+      setLinkAcreditacionConvocados((existing as { linkAcreditacionConvocados?: string | null }).linkAcreditacionConvocados ?? "");
+      const dp = existing.datosProduccion;
+      if (dp != null) {
+        const parsed = typeof dp === "string" ? (() => { try { return JSON.parse(dp); } catch { return {}; } })() : dp;
+        setDatosProduccion(parsed && typeof parsed === "object" ? (parsed as Record<string, string>) : {});
+      }
+      setRealizacionAsistentes((existing as { realizacionAsistentes?: number | null }).realizacionAsistentes != null ? String((existing as { realizacionAsistentes: number }).realizacionAsistentes) : "");
+      setRealizacionImpacto((existing as { realizacionImpacto?: string | null }).realizacionImpacto ?? "");
+      setMotivoCancelacion((existing as { motivoCancelacion?: string | null }).motivoCancelacion ?? "");
     }
   }, [existing]);
 
@@ -142,6 +170,14 @@ export default function EventForm() {
       setTipoError("Seleccioná al menos una opción o completá «Otro»");
       return;
     }
+    if (!isNew && estado === "CANCELADO" && !motivoCancelacion.trim()) {
+      setTipoError("Al cancelar el evento es obligatorio indicar el motivo o razón.");
+      return;
+    }
+    if (isAdmin && !areaSolicitante.trim()) {
+      setTipoError("Seleccioná un área solicitante.");
+      return;
+    }
     if (isNew) {
       create.mutate({
         titulo,
@@ -155,7 +191,11 @@ export default function EventForm() {
         usuarioSolicitante: usuarioSolicitante.trim() || undefined,
         lugar: lugar.trim() || undefined,
         programa: programa.trim() || undefined,
-        imagenBuscadaSugerida: imagenBuscadaSugerida.trim() || undefined,
+        funcionario: funcionario.trim() || undefined,
+        necesitaAcreditacion: necesitaAcreditacion === true || necesitaAcreditacion === false ? necesitaAcreditacion : undefined,
+        linkAcreditacionConvocados: linkAcreditacionConvocados.trim() || undefined,
+        areaSolicitante: (user?.area && !isAdmin) ? user.area : areaSolicitante.trim(),
+        datosProduccion: Object.keys(datosProduccion).length > 0 ? datosProduccion : undefined,
         files: archivosPdf,
       });
     } else {
@@ -173,7 +213,14 @@ export default function EventForm() {
           usuarioSolicitante: usuarioSolicitante.trim() || null,
           lugar: lugar.trim() || null,
           programa: programa.trim() || null,
-          imagenBuscadaSugerida: imagenBuscadaSugerida.trim() || null,
+          funcionario: funcionario.trim() || null,
+          necesitaAcreditacion: necesitaAcreditacion === true || necesitaAcreditacion === false ? necesitaAcreditacion : null,
+          linkAcreditacionConvocados: linkAcreditacionConvocados.trim() || null,
+          areaSolicitante: (user?.area && !isAdmin) ? user.area : areaSolicitante.trim(),
+          datosProduccion: Object.keys(datosProduccion).length > 0 ? datosProduccion : null,
+          realizacionAsistentes: estado === "REALIZADO" && realizacionAsistentes.trim() ? parseInt(realizacionAsistentes, 10) : undefined,
+          realizacionImpacto: estado === "REALIZADO" && realizacionImpacto.trim() ? realizacionImpacto.trim() : undefined,
+          motivoCancelacion: estado === "CANCELADO" ? (motivoCancelacion.trim() || null) : undefined,
         },
         files: archivosPdf,
       });
@@ -239,12 +286,29 @@ export default function EventForm() {
               rows={4}
             />
             <div className="grid gap-4 sm:grid-cols-2">
-              <Input
-                label="Área solicitante"
-                value={areaSolicitante}
-                onChange={(e) => setAreaSolicitante(e.target.value)}
-                required
-              />
+              {user?.area && !isAdmin ? (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Área solicitante</label>
+                  <p className="text-slate-800 py-2 px-3 bg-slate-100 rounded-lg border border-slate-200">{user.area}</p>
+                  <input type="hidden" name="areaSolicitante" value={user.area} />
+                </div>
+              ) : !user?.area && !isAdmin ? (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Área solicitante</label>
+                  <p className="text-amber-700 text-sm">No tenés un área asignada. Contactá al administrador.</p>
+                  <Input value={areaSolicitante} onChange={(e) => setAreaSolicitante(e.target.value)} placeholder="Área" required />
+                </div>
+              ) : (
+                <Select
+                  label="Área solicitante"
+                  options={[
+                    { value: "", label: "Seleccionar área…" },
+                    ...AREAS_OPTIONS,
+                  ]}
+                  value={areaSolicitante}
+                  onChange={(e) => setAreaSolicitante(e.target.value)}
+                />
+              )}
               <Input
                 label="Fecha tentativa"
                 type="date"
@@ -276,19 +340,189 @@ export default function EventForm() {
               onChange={(e) => setLugar(e.target.value)}
               placeholder="Ej: Auditorio Lezama, Av. Pedro Goyena 1054"
             />
-            <Input
-              label="Programa / funcionarios (opcional)"
-              value={programa}
-              onChange={(e) => setPrograma(e.target.value)}
-              placeholder="Programa o funcionarios clave para el brief"
+            {(() => {
+              const areaParaProgramas = (user?.area && !isAdmin) ? user.area : areaSolicitante.trim();
+              const opcionesPrograma = getProgramasParaArea(areaParaProgramas);
+              if (opcionesPrograma.length > 0) {
+                return (
+                  <SearchableSelect
+                    label="Programa (opcional)"
+                    placeholder="Buscar o seleccionar programa…"
+                    searchPlaceholder="Buscar programa…"
+                    options={[{ value: "", label: "— Sin programa —" }, ...opcionesPrograma]}
+                    value={programa}
+                    onChange={(v) => setPrograma(v)}
+                    emptyMessage="Ningún programa coincide con la búsqueda"
+                  />
+                );
+              }
+              return (
+                <Input
+                  label="Programa (opcional)"
+                  value={programa}
+                  onChange={(e) => setPrograma(e.target.value)}
+                  placeholder="No hay programas definidos para esta área. Escribí el nombre si corresponde."
+                />
+              );
+            })()}
+            <SearchableSelect
+              label="Funcionario(s) (opcional)"
+              placeholder="Buscar funcionario…"
+              searchPlaceholder="Buscar por nombre o apellido…"
+              options={[{ value: "Otro", label: "Otro" }, { value: "", label: "— Sin funcionario —" }, ...FUNCIONARIOS_OPTIONS]}
+              value={funcionario}
+              onChange={(v) => setFuncionario(v)}
+              emptyMessage="Ningún funcionario coincide con la búsqueda"
             />
-            <TextArea
-              label="Imagen buscada sugerida (opcional)"
-              value={imagenBuscadaSugerida}
-              onChange={(e) => setImagenBuscadaSugerida(e.target.value)}
-              rows={2}
-              placeholder="Descripción de la imagen o toma sugerida para el evento"
-            />
+            <div className="border border-slate-200 rounded-lg p-4 bg-slate-50/50">
+              <h3 className="text-sm font-semibold text-slate-800 mb-2">Acreditación</h3>
+              <Select
+                label="¿Se necesita acreditación?"
+                options={[
+                  { value: "", label: "Seleccionar…" },
+                  { value: "true", label: "Sí" },
+                  { value: "false", label: "No" },
+                ]}
+                value={necesitaAcreditacion === "" ? "" : necesitaAcreditacion ? "true" : "false"}
+                onChange={(e) => setNecesitaAcreditacion(e.target.value === "" ? "" : e.target.value === "true")}
+              />
+              {necesitaAcreditacion === true && (
+                <Input
+                  label="Link a convocados para acreditar"
+                  value={linkAcreditacionConvocados}
+                  onChange={(e) => setLinkAcreditacionConvocados(e.target.value)}
+                  placeholder="URL del formulario o listado de convocados"
+                  className="mt-3"
+                />
+              )}
+            </div>
+            <div className="border border-slate-200 rounded-lg p-4 bg-slate-50/50">
+              <h3 className="text-sm font-semibold text-slate-800 mb-2">Catering</h3>
+              <p className="text-xs text-slate-500 mb-3">¿Se requiere catering? Si es sí, completá los datos.</p>
+              <div className="space-y-3">
+                {cateringFields.filter((f) => f.key === "catering").map((field) => (
+                  <Select
+                    key={field.key}
+                    label={field.label}
+                    options={field.options ?? []}
+                    value={datosProduccion[field.key] ?? ""}
+                    onChange={(e) => setDatosProduccion((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                  />
+                ))}
+                {datosProduccion.catering === "si" &&
+                  cateringFields.filter((f) => f.key !== "catering").map((field) => (
+                    <div key={field.key}>
+                      {field.type === "textarea" ? (
+                        <TextArea
+                          label={field.label}
+                          placeholder={field.placeholder}
+                          value={datosProduccion[field.key] ?? ""}
+                          onChange={(e) => setDatosProduccion((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                          rows={2}
+                        />
+                      ) : field.type === "select" && field.options?.length ? (
+                        <Select
+                          label={field.label}
+                          options={field.options}
+                          value={datosProduccion[field.key] ?? ""}
+                          onChange={(e) => setDatosProduccion((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                        />
+                      ) : (
+                        <Input
+                          label={field.label}
+                          placeholder={field.placeholder}
+                          value={datosProduccion[field.key] ?? ""}
+                          onChange={(e) => setDatosProduccion((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                          type={field.type === "number" ? "number" : "text"}
+                        />
+                      )}
+                    </div>
+                  ))}
+              </div>
+            </div>
+            <div className="border border-slate-200 rounded-lg p-4 bg-slate-50/50">
+              <h3 className="text-sm font-semibold text-slate-800 mb-2">Pedido de piezas de comunicación</h3>
+              <p className="text-xs text-slate-500 mb-3">Datos para el brief de piezas (afiches, gacetillas, etc.).</p>
+              <div className="space-y-3">
+                {comunicacionPiezasFields.map((field) => (
+                  <Input
+                    key={field.key}
+                    label={field.label}
+                    placeholder={field.placeholder}
+                    value={datosProduccion[field.key] ?? ""}
+                    onChange={(e) => setDatosProduccion((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="border border-slate-200 rounded-lg p-4 bg-slate-50/50">
+              <h3 className="text-sm font-semibold text-slate-800 mb-2">Producción (opcional)</h3>
+              <p className="text-xs text-slate-500 mb-3">Técnica y materiales. Se usan en el brief si no hay propuesta de Producción aprobada.</p>
+              <div className="space-y-3">
+                {categoryExtraFields.PRODUCCION.map((field) => (
+                  <div key={field.key}>
+                    {field.type === "textarea" ? (
+                      <TextArea
+                        label={field.label}
+                        placeholder={field.placeholder}
+                        value={datosProduccion[field.key] ?? ""}
+                        onChange={(e) => setDatosProduccion((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                        rows={2}
+                      />
+                    ) : field.type === "select" && field.options?.length ? (
+                      <Select
+                        label={field.label}
+                        options={field.options}
+                        value={datosProduccion[field.key] ?? ""}
+                        onChange={(e) => setDatosProduccion((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                      />
+                    ) : (
+                      <Input
+                        label={field.label}
+                        placeholder={field.placeholder}
+                        value={datosProduccion[field.key] ?? ""}
+                        onChange={(e) => setDatosProduccion((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                        type={field.type === "number" ? "number" : field.type === "date" ? "date" : "text"}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+            {estado === "CANCELADO" && (
+              <div className="border border-red-200 rounded-lg p-4 bg-red-50/50">
+                <h3 className="text-sm font-semibold text-red-800 mb-2">Motivo de cancelación (obligatorio)</h3>
+                <TextArea
+                  label="Razón o motivo"
+                  value={motivoCancelacion}
+                  onChange={(e) => setMotivoCancelacion(e.target.value)}
+                  rows={2}
+                  placeholder="Indicá por qué se cancela el evento"
+                  required
+                />
+              </div>
+            )}
+            {estado === "REALIZADO" && (
+              <div className="border border-blue-200 rounded-lg p-4 bg-blue-50/50">
+                <h3 className="text-sm font-semibold text-blue-800 mb-2">Datos del evento realizado</h3>
+                <Input
+                  label="Cantidad de asistentes"
+                  type="number"
+                  min={0}
+                  value={realizacionAsistentes}
+                  onChange={(e) => setRealizacionAsistentes(e.target.value)}
+                  placeholder="Ej: 120"
+                />
+                <TextArea
+                  label="Impacto / comentarios"
+                  value={realizacionImpacto}
+                  onChange={(e) => setRealizacionImpacto(e.target.value)}
+                  rows={2}
+                  placeholder="Breve descripción del impacto o resultado"
+                  className="mt-3"
+                />
+              </div>
+            )}
             {estadoOptions.length > 0 && (
               <div className="grid gap-4 sm:grid-cols-2">
                 <Select

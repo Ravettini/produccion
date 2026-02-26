@@ -59,7 +59,8 @@ export function normalizeInput(input: BriefInput): BriefInput {
       usuarioSolicitante: trimOrNull(input.event.usuarioSolicitante),
       lugar: trimOrNull((input.event as { lugar?: string | null }).lugar),
       programa: trimOrNull((input.event as { programa?: string | null }).programa),
-      imagenBuscadaSugerida: trimOrNull((input.event as { imagenBuscadaSugerida?: string | null }).imagenBuscadaSugerida),
+      funcionario: trimOrNull((input.event as { funcionario?: string | null }).funcionario),
+      datosProduccion: (input.event as { datosProduccion?: Record<string, unknown> | null }).datosProduccion ?? null,
     },
     proposals: input.proposals.map(normalizeProposal),
   };

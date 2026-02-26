@@ -32,7 +32,7 @@ authRouter.post("/login", async (req, res) => {
   );
   res.json({
     token,
-    user: { id: user.id, email: user.email, name: user.name, role: user.role },
+    user: { id: user.id, email: user.email, name: user.name, role: user.role, area: user.area ?? null },
   });
 });
 
@@ -41,7 +41,7 @@ authRouter.post("/login", async (req, res) => {
  * Solo ADMIN o seed. Body: { email, password, name, role }
  */
 authRouter.post("/register", authMiddleware, requireRoles("ADMIN"), async (req, res) => {
-  const { email, password, name, role } = req.body ?? {};
+  const { email, password, name, role, area } = req.body ?? {};
   if (!email || !password || !name || !role) {
     res.status(400).json({ error: "email, password, name y role requeridos" });
     return;
@@ -63,10 +63,11 @@ authRouter.post("/register", authMiddleware, requireRoles("ADMIN"), async (req, 
       password: hashed,
       name: String(name),
       role,
+      area: area !== undefined && String(area).trim() !== "" ? String(area).trim() : null,
     },
   });
   res.status(201).json({
-    user: { id: user.id, email: user.email, name: user.name, role: user.role },
+    user: { id: user.id, email: user.email, name: user.name, role: user.role, area: user.area },
   });
 });
 
@@ -76,7 +77,7 @@ authRouter.post("/register", authMiddleware, requireRoles("ADMIN"), async (req, 
 authRouter.get("/me", authMiddleware, async (req, res) => {
   const u = await prisma.user.findUnique({
     where: { id: req.user!.id },
-    select: { id: true, email: true, name: true, role: true },
+    select: { id: true, email: true, name: true, role: true, area: true },
   });
   if (!u) {
     res.status(404).json({ error: "Usuario no encontrado" });

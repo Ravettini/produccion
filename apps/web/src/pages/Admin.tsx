@@ -20,6 +20,7 @@ import {
   proposalStatusLabels,
   categoryLabels,
 } from "../utils/labels";
+import { AREAS_OPTIONS } from "../config/areas";
 import { formatDateShort } from "../utils/formatters";
 
 const roleOptions = (Object.entries(roleLabels) as [Role, string][]).map(([value, label]) => ({
@@ -37,8 +38,10 @@ export default function Admin() {
   const [createPassword, setCreatePassword] = useState("");
   const [createName, setCreateName] = useState("");
   const [createRole, setCreateRole] = useState<Role>("ORGANIZACION");
+  const [createArea, setCreateArea] = useState("");
   const [editName, setEditName] = useState("");
   const [editRole, setEditRole] = useState<Role>("ORGANIZACION");
+  const [editArea, setEditArea] = useState("");
   const [editPassword, setEditPassword] = useState("");
   const [showVaciarConfirm, setShowVaciarConfirm] = useState(false);
 
@@ -63,6 +66,7 @@ export default function Admin() {
         password: createPassword,
         name: createName,
         role: createRole,
+        area: createArea.trim() || undefined,
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "users"] });
@@ -71,15 +75,17 @@ export default function Admin() {
       setCreatePassword("");
       setCreateName("");
       setCreateRole("ORGANIZACION");
+      setCreateArea("");
     },
   });
 
   const update = useMutation({
     mutationFn: () => {
       if (!editingId) throw new Error("Sin usuario");
-      const data: { name?: string; role?: string; password?: string } = {
+      const data: { name?: string; role?: string; area?: string | null; password?: string } = {
         name: editName,
         role: editRole,
+        area: editArea.trim() || null,
       };
       if (editPassword.trim()) data.password = editPassword;
       return updateUser(editingId, data);
@@ -109,9 +115,10 @@ export default function Admin() {
     },
   });
 
-  const openEdit = (u: { id: string; name: string; role: string }) => {
+  const openEdit = (u: { id: string; name: string; role: string; area?: string | null }) => {
     setEditingId(u.id);
     setEditName(u.name);
+    setEditArea(u.area ?? "");
     setEditRole(u.role as Role);
     setEditPassword("");
   };
@@ -454,6 +461,7 @@ export default function Admin() {
                   <th className="text-left px-3 sm:px-4 py-3 font-medium">Email</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium">Nombre</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium">Rol</th>
+                  <th className="text-left px-3 sm:px-4 py-3 font-medium hidden lg:table-cell">Área</th>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium hidden md:table-cell">Alta</th>
                   <th className="text-right px-3 sm:px-4 py-3 font-medium">Acciones</th>
                 </tr>
@@ -478,6 +486,7 @@ export default function Admin() {
                         {roleLabels[u.role as Role]}
                       </Badge>
                     </td>
+                    <td className="px-3 sm:px-4 py-3 text-slate-600 text-sm hidden lg:table-cell">{u.area ?? "—"}</td>
                     <td className="px-3 sm:px-4 py-3 text-slate-600 text-xs hidden md:table-cell">
                       {u.createdAt ? formatDateShort(u.createdAt) : "—"}
                     </td>
@@ -543,6 +552,12 @@ export default function Admin() {
             value={createRole}
             onChange={(e) => setCreateRole(e.target.value as Role)}
           />
+          <Select
+            label="Área (opcional)"
+            options={[{ value: "", label: "— Sin área —" }, ...AREAS_OPTIONS]}
+            value={createArea}
+            onChange={(e) => setCreateArea(e.target.value)}
+          />
           {create.error && (
             <p className="text-red-600 text-sm">{create.error.message}</p>
           )}
@@ -577,6 +592,12 @@ export default function Admin() {
               options={roleOptions}
               value={editRole}
               onChange={(e) => setEditRole(e.target.value as Role)}
+            />
+            <Select
+              label="Área (opcional)"
+              options={[{ value: "", label: "— Sin área —" }, ...AREAS_OPTIONS]}
+              value={editArea}
+              onChange={(e) => setEditArea(e.target.value)}
             />
             <Input
               label="Nueva contraseña (opcional)"

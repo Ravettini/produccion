@@ -20,11 +20,13 @@ import {
   buildCronogramaRows,
   matchTecnicaItem,
   getMicrofonosCount,
+  getTecnicaStructured,
   matchCateringTipo,
   getCateringRestricciones,
   getCateringCantidad,
   hasEvidenciaMateriales,
   hasEvidenciaPedidosEspeciales,
+  getComunicacionPiezas,
   CATEGORY_LABELS,
   type ApprovedProposal,
   type CategoryKey,
@@ -166,11 +168,26 @@ function buildCronogramaTable(rows: Array<{ horario: string; dinamica: string; o
 }
 
 function buildBriefProduccionTable(approved: ApprovedProposal[]): Table {
-  const tecnicaPantalla = matchTecnicaItem(approved, "pantallaLED");
-  const tecnicaProyector = matchTecnicaItem(approved, "proyector");
-  const tecnicaSonido = matchTecnicaItem(approved, "sonido");
-  const tecnicaMicro = matchTecnicaItem(approved, "microfonos");
+  const pantallaStructured = getTecnicaStructured(approved, "pantallaLED");
+  const pantallaRetractilStructured = getTecnicaStructured(approved, "pantallaRetractil");
+  const proyectorStructured = getTecnicaStructured(approved, "proyector");
+  const sonidoStructured = getTecnicaStructured(approved, "sonido");
+  const microfonosStructured = getTecnicaStructured(approved, "microfonos");
+
+  const tecnicaPantalla = pantallaStructured.found
+    ? { found: true, detail: pantallaStructured.text }
+    : matchTecnicaItem(approved, "pantallaLED");
+  const tecnicaProyector = proyectorStructured.found
+    ? { found: true, detail: proyectorStructured.text }
+    : matchTecnicaItem(approved, "proyector");
+  const tecnicaSonido = sonidoStructured.found
+    ? { found: true, detail: sonidoStructured.text }
+    : matchTecnicaItem(approved, "sonido");
   const microCount = getMicrofonosCount(approved);
+  const tecnicaMicro = microfonosStructured.found
+    ? { found: true, detail: microfonosStructured.text }
+    : matchTecnicaItem(approved, "microfonos");
+
   const cateringTipos = matchCateringTipo(approved);
   const cateringRest = getCateringRestricciones(approved);
   const cateringCant = getCateringCantidad(approved);
@@ -214,6 +231,29 @@ function buildBriefProduccionTable(approved: ApprovedProposal[]): Table {
               children: [
                 new TextRun({
                   text: tecnicaPantalla.found ? `Sí. ${tecnicaPantalla.detail}` : NO_DEFINIDO,
+                  color: COLOR_PRINCIPAL,
+                }),
+              ],
+            }),
+          ],
+        }),
+      ],
+    }),
+    new TableRow({
+      children: [
+        new TableCell({
+          children: [
+            new Paragraph({
+              children: [new TextRun({ text: "Técnica - Pantalla retráctil", color: COLOR_PRINCIPAL })],
+            }),
+          ],
+        }),
+        new TableCell({
+          children: [
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: pantallaRetractilStructured.found ? pantallaRetractilStructured.text : NO_DEFINIDO,
                   color: COLOR_PRINCIPAL,
                 }),
               ],
@@ -282,7 +322,7 @@ function buildBriefProduccionTable(approved: ApprovedProposal[]): Table {
             new Paragraph({
               children: [
                 new TextRun({
-                  text: tecnicaMicro.found ? `Sí. Cantidad: ${microCount}` : NO_DEFINIDO,
+                  text: microfonosStructured.found ? tecnicaMicro.detail : (tecnicaMicro.found ? `Sí. Cantidad: ${microCount}` : NO_DEFINIDO),
                   color: COLOR_PRINCIPAL,
                 }),
               ],
@@ -439,10 +479,23 @@ function buildBriefProduccionTable(approved: ApprovedProposal[]): Table {
 
 export function buildBriefDocument(input: BriefInput): Document {
   const normalized = normalizeInput(input);
-  const approved = filterApproved(normalized.proposals);
-  const byCategory = groupByCategory(approved);
-
+  let approved = filterApproved(normalized.proposals);
   const event = normalized.event;
+  const eventProduccion = event.datosProduccion && typeof event.datosProduccion === "object" && Object.keys(event.datosProduccion).length > 0
+    ? event.datosProduccion as Record<string, unknown>
+    : null;
+  if (eventProduccion) {
+    const synthetic: ApprovedProposal = {
+      categoria: "PRODUCCION",
+      status: "APPROVED",
+      titulo: "",
+      descripcion: "",
+      impacto: "MEDIO",
+      datosExtra: eventProduccion,
+    };
+    approved = [synthetic, ...approved];
+  }
+  const byCategory = groupByCategory(approved);
   const titulo = resolveValue(event.titulo, "Sin título");
   const fecha = formatFechaEsAR(event.fechaTentativa);
   const publico = formatPublico(event.publico);
@@ -507,6 +560,7 @@ export function buildBriefDocument(input: BriefInput): Document {
     sectionHeading("🧑‍💼", "Funcionarios clave"),
     labelValue("Referente operativo", referente),
     labelValue("Programa", resolveValue((event as { programa?: string | null }).programa)),
+    labelValue("Funcionario(s)", resolveValue((event as { funcionario?: string | null }).funcionario)),
     new Paragraph({ text: "", spacing: { after: 200 } }),
 
     sectionHeading("🧍‍♂️", "Participación del público"),
@@ -514,18 +568,6 @@ export function buildBriefDocument(input: BriefInput): Document {
       children: [
         new TextRun({
           text: `Público: ${publico}. ${POR_CONFIRMAR}`,
-          color: COLOR_PRINCIPAL,
-        }),
-      ],
-    }),
-    new Paragraph({ text: "", spacing: { after: 200 } }),
-
-    sectionHeading("📸", "Imagen buscada sugerida"),
-    new Paragraph({
-      children: [
-        new TextRun({
-          text: resolveValue((event as { imagenBuscadaSugerida?: string | null }).imagenBuscadaSugerida),
-          italics: true,
           color: COLOR_PRINCIPAL,
         }),
       ],
@@ -560,6 +602,17 @@ export function buildBriefDocument(input: BriefInput): Document {
         }),
       ],
       spacing: { before: 400, after: 200 },
+    }),
+    new Paragraph({
+      children: [
+        new TextRun({
+          text: "Producción incluye: Técnica, Catering, listado de materiales, artes gráficas y pedidos especiales.",
+          italics: true,
+          color: COLOR_PRINCIPAL,
+          size: 20,
+        }),
+      ],
+      spacing: { after: 120 },
     }),
     buildBriefProduccionTable(approved),
     new Paragraph({ text: "", spacing: { after: 200 } }),
@@ -597,46 +650,51 @@ export function buildBriefDocument(input: BriefInput): Document {
       ],
       spacing: { before: 400, after: 200 },
     }),
-    new Paragraph({
-      children: [
-        new TextRun({
-          text: "1. ¿Qué pieza se necesita? Por confirmar.",
-          color: COLOR_PRINCIPAL,
+    (() => {
+      const com = getComunicacionPiezas(approved);
+      return [
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: `1. ¿Qué pieza se necesita? ${com.pieza}.`,
+              color: COLOR_PRINCIPAL,
+            }),
+          ],
         }),
-      ],
-    }),
-    new Paragraph({
-      children: [
-        new TextRun({
-          text: "2. ¿Para qué medio? Por confirmar.",
-          color: COLOR_PRINCIPAL,
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: `2. ¿Para qué medio? ${com.medio}.`,
+              color: COLOR_PRINCIPAL,
+            }),
+          ],
         }),
-      ],
-    }),
-    new Paragraph({
-      children: [
-        new TextRun({
-          text: "3. ¿Cuál es el mensaje clave? Por confirmar.",
-          color: COLOR_PRINCIPAL,
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: `3. ¿Cuál es el mensaje clave? ${com.mensajeClave}.`,
+              color: COLOR_PRINCIPAL,
+            }),
+          ],
         }),
-      ],
-    }),
-    new Paragraph({
-      children: [
-        new TextRun({
-          text: "4. ¿Hay restricciones de diseño? Por confirmar.",
-          color: COLOR_PRINCIPAL,
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: `4. ¿Hay restricciones de diseño? ${com.restriccionesDiseno}.`,
+              color: COLOR_PRINCIPAL,
+            }),
+          ],
         }),
-      ],
-    }),
-    new Paragraph({
-      children: [
-        new TextRun({
-          text: "5. ¿Plazo de entrega? Por confirmar.",
-          color: COLOR_PRINCIPAL,
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: `5. ¿Plazo de entrega? ${com.plazoEntrega}.`,
+              color: COLOR_PRINCIPAL,
+            }),
+          ],
         }),
-      ],
-    }),
+      ];
+    })(),
   ];
 
   return new Document({

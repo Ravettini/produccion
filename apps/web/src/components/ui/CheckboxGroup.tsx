@@ -3,6 +3,8 @@ import { cn } from "../../utils/cn";
 export interface CheckboxOption {
   value: string;
   label: string;
+  /** Tooltip al pasar el mouse (opcional) */
+  title?: string;
 }
 
 interface CheckboxGroupProps {
@@ -49,7 +51,7 @@ export function CheckboxGroup({
               onChange={() => toggle(opt.value)}
               className="w-4 h-4 rounded border-slate-300 text-gov-600 focus:ring-gov-500 cursor-pointer"
             />
-            <span className="text-slate-700 group-hover:text-slate-900">{opt.label}</span>
+            <span className="text-slate-700 group-hover:text-slate-900" title={(opt as { title?: string }).title}>{opt.label}</span>
           </label>
         ))}
       </div>

@@ -48,6 +48,8 @@ export default function Calendar() {
   }));
   const [filterEstado, setFilterEstado] = useState<EventStatus | "">("");
   const [filterTipo, setFilterTipo] = useState("");
+  const [filterArea, setFilterArea] = useState("");
+  const [filterCatering, setFilterCatering] = useState<"" | "si" | "no">("");
   const [filterBusqueda, setFilterBusqueda] = useState("");
 
   const { data: events = [], isLoading } = useQuery({
@@ -55,22 +57,38 @@ export default function Calendar() {
     queryFn: listEvents,
   });
 
+  const areasUnicas = useMemo(() => {
+    const set = new Set<string>();
+    events.forEach((e) => {
+      if (e.areaSolicitante?.trim()) set.add(e.areaSolicitante.trim());
+    });
+    return Array.from(set).sort();
+  }, [events]);
+
   const filteredEvents = useMemo(() => {
     return events.filter((e) => {
       if (filterEstado && e.estado !== filterEstado) return false;
       if (filterTipo && !e.tipoEvento.toLowerCase().includes(filterTipo.toLowerCase())) return false;
+      if (filterArea && e.areaSolicitante?.trim() !== filterArea) return false;
+      if (filterCatering) {
+        const dp = (e as { datosProduccion?: string | Record<string, unknown> | null }).datosProduccion;
+        const obj = typeof dp === "string" ? (() => { try { return JSON.parse(dp); } catch { return {}; } })() : (dp ?? {});
+        const catering = (obj as Record<string, string>).catering ?? "";
+        if (filterCatering === "si" && catering !== "si") return false;
+        if (filterCatering === "no" && catering === "si") return false;
+      }
       if (filterBusqueda) {
         const q = filterBusqueda.toLowerCase();
         if (
           !e.titulo.toLowerCase().includes(q) &&
-          !e.areaSolicitante.toLowerCase().includes(q) &&
+          !e.areaSolicitante?.toLowerCase().includes(q) &&
           !e.tipoEvento.toLowerCase().includes(q)
         )
           return false;
       }
       return true;
     });
-  }, [events, filterEstado, filterTipo, filterBusqueda]);
+  }, [events, filterEstado, filterTipo, filterArea, filterCatering, filterBusqueda]);
 
   const eventsByDate = useMemo(() => {
     const map: Record<string, Event[]> = {};
@@ -129,10 +147,29 @@ export default function Calendar() {
           onChange={(e) => setFilterEstado((e.target.value || "") as EventStatus)}
           className="w-[160px]"
         />
+        <Select
+          options={[
+            { value: "", label: "Todas las áreas" },
+            ...areasUnicas.map((a) => ({ value: a, label: a })),
+          ]}
+          value={filterArea}
+          onChange={(e) => setFilterArea(e.target.value)}
+          className="w-[180px]"
+        />
         <Input
           placeholder="Filtrar por tipo"
           value={filterTipo}
           onChange={(e) => setFilterTipo(e.target.value)}
+          className="w-[140px]"
+        />
+        <Select
+          options={[
+            { value: "", label: "Catering: todos" },
+            { value: "si", label: "Con catering" },
+            { value: "no", label: "Sin catering" },
+          ]}
+          value={filterCatering}
+          onChange={(e) => setFilterCatering((e.target.value || "") as "" | "si" | "no")}
           className="w-[140px]"
         />
       </div>

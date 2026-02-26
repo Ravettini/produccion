@@ -44,7 +44,10 @@ eventsAIRouter.get("/:id/exportar-brief-docx", authMiddleware, async (req, res) 
       estado: event.estado,
       lugar: event.lugar ?? undefined,
       programa: event.programa ?? undefined,
-      imagenBuscadaSugerida: event.imagenBuscadaSugerida ?? undefined,
+      funcionario: event.funcionario ?? undefined,
+      datosProduccion: event.datosProduccion
+        ? (typeof event.datosProduccion === "string" ? (() => { try { return JSON.parse(event.datosProduccion as string); } catch { return undefined; } })() : event.datosProduccion)
+        : undefined,
     },
     proposals: event.proposals.map((p) => ({
       status: "APPROVED" as const,
