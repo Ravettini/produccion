@@ -1,16 +1,17 @@
 FROM node:20-alpine
-ENV NODE_ENV=production
 WORKDIR /app
 COPY apps/brief-generator ./apps/brief-generator
 COPY apps/api ./apps/api
 
+# Build con devDependencies (TypeScript, etc.); Coolify puede inyectar NODE_ENV=production
 WORKDIR /app/apps/brief-generator
-RUN npm ci && npx tsc
+RUN NODE_ENV=development npm ci && npx tsc
 
 WORKDIR /app/apps/api
-RUN npm ci && npx prisma generate && npx tsc && npm prune --omit=dev
+RUN NODE_ENV=development npm ci && npx prisma generate && npx tsc && npm prune --omit=dev
 
 WORKDIR /app/apps/api
 RUN mkdir -p uploads/events
+ENV NODE_ENV=production
 EXPOSE 4000
 CMD ["node", "dist/index.js"]
