@@ -650,7 +650,7 @@ export function buildBriefDocument(input: BriefInput): Document {
       ],
       spacing: { before: 400, after: 200 },
     }),
-    (() => {
+    ...(() => {
       const com = getComunicacionPiezas(approved);
       return [
         new Paragraph({
