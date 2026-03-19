@@ -1,5 +1,6 @@
 FROM node:20-alpine
 WORKDIR /app
+RUN apk add --no-cache openssl
 COPY apps/brief-generator ./apps/brief-generator
 COPY apps/api ./apps/api
 
