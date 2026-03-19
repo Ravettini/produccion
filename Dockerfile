@@ -8,7 +8,7 @@ WORKDIR /app/apps/brief-generator
 RUN NODE_ENV=development npm ci && npx tsc
 
 WORKDIR /app/apps/api
-RUN NODE_ENV=development npm ci && npx prisma generate && npx tsc && npm prune --omit=dev
+RUN NODE_ENV=development npm install && npx prisma generate && npx tsc && npm prune --omit=dev
 
 WORKDIR /app/apps/api
 RUN mkdir -p uploads/events
