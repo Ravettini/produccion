@@ -1,19 +1,22 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { Plus, Search } from "lucide-react";
 import { listEvents } from "../api/events";
 import type { Event, EventStatus } from "../types";
 import { Button } from "../components/ui/Button";
-import { Badge } from "../components/ui/Badge";
 import { Input } from "../components/ui/Input";
 import { Select } from "../components/ui/Select";
 import {
   EmptyState,
   ErrorState,
   EventListSkeleton,
+  StatCard,
 } from "../components/ui";
-import { eventStatusLabels, eventStatusColors } from "../utils/labels";
-import { formatDate } from "../utils/formatters";
+import { PageHeader } from "../components/layout/PageHeader";
+import { EventCard } from "../components/domain/EventCard";
+import { eventStatusLabels } from "../utils/labels";
+import { CheckCircle2, FileStack, Clock } from "lucide-react";
 
 const statusOptions = [
   { value: "", label: "Todos los estados" },
@@ -32,6 +35,15 @@ export default function EventList() {
     queryKey: ["events"],
     queryFn: listEvents,
   });
+
+  const stats = useMemo(() => {
+    return {
+      total: events.length,
+      enAnalisis: events.filter((e) => e.estado === "EN_ANALISIS").length,
+      confirmados: events.filter((e) => e.estado === "CONFIRMADO").length,
+      pendientes: events.filter((e) => e.estado === "PENDIENTE" || e.estado === "BORRADOR").length,
+    };
+  }, [events]);
 
   const filtered = useMemo(() => {
     let list = [...events];
@@ -58,8 +70,8 @@ export default function EventList() {
 
   if (isLoading) {
     return (
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-800 mb-6">Eventos</h1>
+      <div className="page-container">
+        <PageHeader title="Eventos" subtitle="Gestioná eventos, propuestas y briefs institucionales" />
         <EventListSkeleton />
       </div>
     );
@@ -67,8 +79,8 @@ export default function EventList() {
 
   if (error) {
     return (
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-800 mb-6">Eventos</h1>
+      <div className="page-container">
+        <PageHeader title="Eventos" />
         <ErrorState
           message={error instanceof Error ? error.message : "Error al cargar eventos"}
           onRetry={() => refetch()}
@@ -78,78 +90,75 @@ export default function EventList() {
   }
 
   return (
-    <div>
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-4 sm:mb-6">
-        <h1 className="text-xl sm:text-2xl font-semibold text-slate-800">Eventos</h1>
-        <Link to="/events/new">
-          <Button size="sm">Nuevo evento</Button>
-        </Link>
+    <div className="page-container">
+      <PageHeader
+        title="Eventos"
+        subtitle="Gestioná eventos, propuestas y briefs institucionales"
+        actions={
+          <Link to="/events/new">
+            <Button>
+              <Plus className="w-4 h-4" aria-hidden />
+              Nuevo evento
+            </Button>
+          </Link>
+        }
+      />
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-8">
+        <StatCard label="Total de eventos" value={stats.total} icon={FileStack} accent="blue" />
+        <StatCard label="En análisis" value={stats.enAnalisis} icon={Clock} accent="amber" subtitle="Requieren revisión" />
+        <StatCard label="Confirmados" value={stats.confirmados} icon={CheckCircle2} accent="green" subtitle="Listos para producción" />
+        <StatCard label="Pendientes" value={stats.pendientes} icon={Clock} accent="slate" subtitle="Aguardando gestión" />
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 mb-6">
-        <Input
-          placeholder="Buscar por título, área o tipo..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 min-w-[200px] sm:min-w-[280px]"
-        />
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <Select
-            options={statusOptions}
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-[140px] sm:w-40"
-          />
-          <Select
-            options={[
-              { value: "date", label: "Ordenar por fecha" },
-              { value: "title", label: "Ordenar por título" },
-            ]}
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as "date" | "title")}
-            className="w-[160px] sm:w-44"
+      <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 mb-6 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" aria-hidden />
+          <Input
+            placeholder="Buscar por título, área o tipo…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10"
           />
         </div>
+        <Select
+          options={statusOptions}
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="w-full sm:w-44"
+        />
+        <Select
+          options={[
+            { value: "date", label: "Ordenar por fecha" },
+            { value: "title", label: "Ordenar por título" },
+          ]}
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value as "date" | "title")}
+          className="w-full sm:w-48"
+        />
       </div>
 
       {filtered.length === 0 ? (
         <EmptyState
-          title={events.length === 0 ? "No hay eventos" : "No hay resultados"}
+          title={events.length === 0 ? "No hay eventos todavía" : "Sin resultados"}
           description={
             events.length === 0
-              ? "Creá uno desde «Nuevo evento»."
-              : "Probá con otros filtros o búsqueda."
+              ? "Creá el primer evento para comenzar a gestionar propuestas."
+              : "Probá con otros filtros o términos de búsqueda."
           }
           action={
             <Link to="/events/new">
-              <Button>Nuevo evento</Button>
+              <Button>
+                <Plus className="w-4 h-4" aria-hidden />
+                Nuevo evento
+              </Button>
             </Link>
           }
         />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {filtered.map((e: Event) => (
-            <Link
-              key={e.id}
-              to={`/events/${e.id}`}
-              className="block p-4 bg-white rounded-xl border border-slate-200 shadow-sm hover:border-gov-400 hover:shadow-md transition"
-            >
-              <h2 className="font-semibold text-slate-800 truncate">{e.titulo}</h2>
-              <p className="text-sm text-slate-600 mt-1">
-                {e.tipoEvento} · {e.areaSolicitante}
-              </p>
-              <p className="text-sm text-slate-500 mt-1">{formatDate(e.fechaTentativa)}</p>
-              <div className="mt-3 flex items-center justify-between gap-2">
-                <Badge className={eventStatusColors[e.estado as EventStatus]}>
-                  {eventStatusLabels[e.estado as EventStatus]}
-                </Badge>
-                {e._count && (
-                  <span className="text-slate-500 text-sm">
-                    {e._count.proposals} propuestas
-                  </span>
-                )}
-              </div>
-            </Link>
+            <EventCard key={e.id} event={e} />
           ))}
         </div>
       )}

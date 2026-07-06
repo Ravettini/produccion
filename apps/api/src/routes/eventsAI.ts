@@ -1,6 +1,6 @@
 /**
  * POST /events/:id/generar-brief-ia - Genera un brief redactado con IA (Google/Gemma)
- * GET  /events/:id/exportar-brief-docx - Exporta brief como DOCX (formato BRIEF ESTRATÉGICO)
+ * GET  /events/:id/exportar-brief-docx - Exporta brief DOCX (modelo audiovisual)
  */
 import { Router } from "express";
 import { GoogleGenerativeAI } from "@google/generative-ai";
@@ -11,7 +11,7 @@ import { getAIConfig } from "../lib/config.js";
 
 export const eventsAIRouter = Router();
 
-/** GET /events/:id/exportar-brief-docx - Devuelve DOCX con formato BRIEF ESTRATÉGICO */
+/** GET /events/:id/exportar-brief-docx - Devuelve DOCX según modelo BRIEF AUDIOVISUAL */
 eventsAIRouter.get("/:id/exportar-brief-docx", authMiddleware, async (req, res) => {
   const { id } = req.params;
   const event = await prisma.event.findUnique({

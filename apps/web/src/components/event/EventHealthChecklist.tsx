@@ -27,8 +27,8 @@ function categoriesWithApproved(proposals: Proposal[]) {
 }
 
 export function EventHealthChecklist({
-  eventId,
-  eventTitle,
+  eventId: _eventId,
+  eventTitle: _eventTitle,
   proposals,
   loading,
   onGoToTab,
@@ -62,11 +62,11 @@ export function EventHealthChecklist({
   }
 
   const hasPending = draft > 0 || submitted > 0;
-  const hasRejected = rejected > 0;
+  void rejected;
 
   return (
     <section
-      className="rounded-card border border-slate-200 bg-white p-4 sm:p-5 shadow-card"
+      className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
       aria-labelledby="event-health-heading"
     >
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
@@ -82,7 +82,7 @@ export function EventHealthChecklist({
       <div className="mb-4" role="progressbar" aria-valuenow={progressPercent} aria-valuemin={0} aria-valuemax={100}>
         <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
           <div
-            className="h-full rounded-full bg-gov-500 transition-all duration-300"
+            className="h-full rounded-full bg-brand-600 transition-all duration-300"
             style={{ width: `${progressPercent}%` }}
           />
         </div>

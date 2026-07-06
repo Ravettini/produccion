@@ -109,7 +109,57 @@ export const cateringFields: CategoryFieldConfig[] = [
   { key: "restriccionesAlimentarias", label: "Restricciones alimentarias", type: "textarea", placeholder: "Vegano, sin TACC, etc." },
 ];
 
-/** Campos de pedido de piezas de comunicación (fuera de Producción; se usan en formulario de evento y en brief) */
+/** Campos del brief audiovisual (modelo: piezas de comunicación y/o cobertura) */
+export const coberturaBriefFields: CategoryFieldConfig[] = [
+  {
+    key: "comunicacionPlazoEntrega",
+    label: "Fecha estimada de entrega",
+    type: "text",
+    placeholder: "A coordinar con el equipo audiovisual",
+  },
+  {
+    key: "coberturaObjetivo",
+    label: "¿Qué querés comunicar?",
+    type: "textarea",
+    placeholder: "Objetivo principal del contenido",
+  },
+  {
+    key: "comunicacionMedio",
+    label: "¿Por qué canal va a salir?",
+    type: "text",
+    placeholder: "Instagram, LinkedIn, mailing, etc.",
+  },
+  {
+    key: "coberturaDuracion",
+    label: "Duración aproximada",
+    type: "text",
+    placeholder: "Ej: 3 minutos, 1 h 30 min",
+  },
+  {
+    key: "coberturaFormato",
+    label: "Formato",
+    type: "text",
+    placeholder: "historia, reel, carrusel, video, etc.",
+  },
+  {
+    key: "coberturaOrientacion",
+    label: "Orientación",
+    type: "select",
+    options: [
+      { value: "", label: "—" },
+      { value: "horizontal", label: "Horizontal" },
+      { value: "vertical", label: "Vertical" },
+    ],
+  },
+  {
+    key: "referenteLugarContacto",
+    label: "Contacto del referente del lugar",
+    type: "text",
+    placeholder: "Nombre, teléfono o email",
+  },
+];
+
+/** @deprecated Usar coberturaBriefFields */
 export const comunicacionPiezasFields: CategoryFieldConfig[] = [
   { key: "comunicacionPieza", label: "¿Qué pieza se necesita?", type: "text", placeholder: "Ej: afiche, gacetilla, banner" },
   { key: "comunicacionMedio", label: "¿Para qué medio?", type: "text", placeholder: "Ej: redes, prensa, impreso" },

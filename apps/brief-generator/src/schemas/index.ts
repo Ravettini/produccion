@@ -24,6 +24,15 @@ const datosExtraProducion = z.object({
   comunicacionMensajeClave: z.string().optional().nullable(),
   comunicacionRestriccionesDiseno: z.string().optional().nullable(),
   comunicacionPlazoEntrega: z.string().optional().nullable(),
+  coberturaObjetivo: z.string().optional().nullable(),
+  coberturaDuracion: z.string().optional().nullable(),
+  coberturaFormato: z.string().optional().nullable(),
+  coberturaOrientacion: z.string().optional().nullable(),
+  referenteLugarContacto: z.string().optional().nullable(),
+  coberturaContactoDg: z.string().optional().nullable(),
+  horarioConvocatoria: z.string().optional().nullable(),
+  horarioComienzo: z.string().optional().nullable(),
+  horarioFinalizacion: z.string().optional().nullable(),
 }).passthrough();
 
 const datosExtraAgenda = z.object({

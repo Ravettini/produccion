@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
+import { ArrowLeft, Sparkles, FileDown } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getEvent, updateEvent, deleteEvent } from "../api/events";
 import { listProposals, createProposal } from "../api/proposals";
@@ -13,10 +14,9 @@ import {
 } from "../api/attachments";
 import type { EventStatus, Proposal, ProposalCategory, ProposalStatus } from "../types";
 import { useAuth } from "../hooks/useAuth";
-import { canCreateProposal, canConfirmEvent, canDeleteEvent } from "../hooks/usePermissions";
+import { canCreateProposal, canConfirmEvent, canDeleteEvent, canEditEvent } from "../hooks/usePermissions";
 import {
   Button,
-  Badge,
   Card,
   CardHeader,
   CardBody,
@@ -27,12 +27,14 @@ import {
   Input,
   DetailSkeleton,
   EmptyState,
+  StatusBadge,
+  StatCard,
 } from "../components/ui";
+import { PageHeader } from "../components/layout/PageHeader";
+import { ProposalCard } from "../components/domain/ProposalCard";
 import {
   eventStatusLabels,
-  eventStatusColors,
   proposalStatusLabels,
-  proposalStatusColors,
   categoryLabels,
 } from "../utils/labels";
 import { categoryExtraFields } from "../config/proposalCategoryFields";
@@ -146,40 +148,26 @@ export default function EventDetail() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto">
-      {/* Breadcrumb */}
-      <nav className="mb-3" aria-label="Navegación">
-        <Link
-          to="/"
-          className="text-sm text-slate-600 hover:text-slate-800 focus:outline-none focus:ring-2 focus:ring-gov-500 focus:ring-offset-2 rounded"
-        >
-          ← Eventos
-        </Link>
-      </nav>
-
-      {/* Header del evento */}
-      <header className="mb-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0 flex-1">
-            <h1 className="text-xl sm:text-2xl font-semibold text-slate-800 break-words">
-              {event.titulo}
-            </h1>
-            {subtitleParts.length > 0 && (
-              <p className="mt-1 text-sm text-slate-500">
-                {subtitleParts.join(" · ")}
-                {event._count && ` · ${event._count.proposals} propuestas`}
-              </p>
-            )}
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <Badge className={eventStatusColors[event.estado as EventStatus]}>
-                {eventStatusLabels[event.estado as EventStatus]}
-              </Badge>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2 flex-shrink-0">
+    <div className="page-container max-w-6xl">
+      <PageHeader
+        breadcrumb={
+          <Link
+            to="/"
+            className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-brand-600 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" aria-hidden />
+            Eventos
+          </Link>
+        }
+        title={event.titulo}
+        subtitle={subtitleParts.join(" · ")}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            {canEditEvent(user, event) && (
             <Link to={`/events/${id}/edit`}>
               <Button variant="secondary" size="sm">Editar evento</Button>
             </Link>
+            )}
             {canConfirmEvent(user) && event.estado !== "CONFIRMADO" && event.estado !== "CANCELADO" && event.estado !== "REALIZADO" && (
               <Button size="sm" onClick={() => setConfirmEstado("CONFIRMADO")}>
                 Confirmar evento
@@ -206,8 +194,28 @@ export default function EventDetail() {
               </Button>
             )}
           </div>
-        </div>
-      </header>
+        }
+      />
+
+      <div className="flex flex-wrap items-center gap-3 mb-6">
+        <StatusBadge kind="event" value={event.estado as EventStatus} />
+        {event._count && (
+          <span className="text-sm text-slate-500">{event._count.proposals} propuestas</span>
+        )}
+      </div>
+
+      {/* Stats row */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+        <StatCard label="Aprobadas" value={aprobadas.length} accent="green" subtitle="Listas para brief" />
+        <StatCard label="Pendientes" value={pendientes.length} accent="amber" subtitle="Requieren validación" />
+        <StatCard label="Rechazadas" value={rechazadas.length} accent="red" subtitle="Con motivo registrado" />
+        <StatCard
+          label="Completitud"
+          value={`${proposals.length ? Math.round((aprobadas.length / proposals.length) * 100) : 0}%`}
+          accent="blue"
+          subtitle="Propuestas aprobadas"
+        />
+      </div>
 
       {/* Event Health / Checklist */}
       <div className="mb-6">
@@ -220,10 +228,12 @@ export default function EventDetail() {
         />
       </div>
 
-      <Tabs tabs={tabs} active={tab} onChange={(id) => setTab(id as typeof tab)} />
+      <div className="mb-6">
+        <Tabs tabs={tabs} active={tab} onChange={(id) => setTab(id as typeof tab)} />
+      </div>
 
       {tab === "brief" && (
-        <div className="mt-6 space-y-6">
+        <div className="space-y-6">
           <Card>
             <CardHeader
               action={
@@ -457,101 +467,55 @@ export default function EventDetail() {
             <div className="py-8 text-center text-slate-600">Cargando propuestas…</div>
           ) : (
             <>
-              <Card>
-                <CardHeader>
-                  <span className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                    Información aprobada ({aprobadas.length})
-                  </span>
-                </CardHeader>
-                <CardBody>
-                  {aprobadas.length === 0 ? (
-                    <p className="text-slate-500 text-sm">Ninguna propuesta aprobada aún.</p>
-                  ) : (
-                    <ul className="space-y-3">
-                      {aprobadas.map((p: Proposal) => (
-                        <li key={p.id} className="border-l-4 border-emerald-500 pl-4 py-2">
-                          <Link
-                            to={`/proposals/${p.id}`}
-                            className="font-medium text-slate-800 hover:text-gov-600"
-                          >
-                            {p.titulo}
-                          </Link>
-                          <p className="text-sm text-slate-600 mt-0.5">{p.descripcion}</p>
-                          <p className="text-xs text-slate-500 mt-1">
-                            {categoryLabels[p.categoria]} · Impacto {p.impacto}
-                            {p.validatedBy && ` · Aprobado por ${p.validatedBy.name}`}
-                          </p>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </CardBody>
-              </Card>
+            <div className="grid gap-4 lg:grid-cols-3">
+              <div className="kanban-column border-emerald-200/60">
+                <h3 className="flex items-center gap-2 text-sm font-semibold text-emerald-800 mb-3">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  Información aprobada ({aprobadas.length})
+                </h3>
+                {aprobadas.length === 0 ? (
+                  <p className="text-slate-500 text-sm italic">Ninguna propuesta aprobada aún.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {aprobadas.map((p: Proposal) => (
+                      <ProposalCard key={p.id} proposal={p} variant="kanban" accent="green" />
+                    ))}
+                  </div>
+                )}
+              </div>
 
-              <Card>
-                <CardHeader>
-                  <span className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-amber-500" />
-                    Pendiente de validación ({pendientes.length})
-                  </span>
-                </CardHeader>
-                <CardBody>
-                  {pendientes.length === 0 ? (
-                    <p className="text-slate-500 text-sm">Nada pendiente.</p>
-                  ) : (
-                    <ul className="space-y-3">
-                      {pendientes.map((p: Proposal) => (
-                        <li key={p.id} className="border-l-4 border-amber-400 pl-4 py-2">
-                          <Link
-                            to={`/proposals/${p.id}`}
-                            className="font-medium text-slate-800 hover:text-gov-600"
-                          >
-                            {p.titulo}
-                          </Link>
-                          <p className="text-sm text-slate-600 mt-0.5 line-clamp-2">{p.descripcion}</p>
-                          <p className="text-xs text-slate-500 mt-1">
-                            {categoryLabels[p.categoria]} · {proposalStatusLabels[p.estado]}
-                          </p>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </CardBody>
-              </Card>
+              <div className="kanban-column border-amber-200/60">
+                <h3 className="flex items-center gap-2 text-sm font-semibold text-amber-800 mb-3">
+                  <span className="w-2 h-2 rounded-full bg-amber-500" />
+                  Pendiente de validación ({pendientes.length})
+                </h3>
+                {pendientes.length === 0 ? (
+                  <p className="text-slate-500 text-sm italic">Nada pendiente.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {pendientes.map((p: Proposal) => (
+                      <ProposalCard key={p.id} proposal={p} variant="kanban" accent="amber" />
+                    ))}
+                  </div>
+                )}
+              </div>
 
-              <Card>
-                <CardHeader>
-                  <span className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-red-500" />
-                    Rechazado ({rechazadas.length})
-                  </span>
-                </CardHeader>
-                <CardBody>
-                  {rechazadas.length === 0 ? (
-                    <p className="text-slate-500 text-sm">Ninguna propuesta rechazada.</p>
-                  ) : (
-                    <ul className="space-y-3">
-                      {rechazadas.map((p: Proposal) => (
-                        <li key={p.id} className="border-l-4 border-red-500 pl-4 py-2">
-                          <Link
-                            to={`/proposals/${p.id}`}
-                            className="font-medium text-slate-800 hover:text-gov-600"
-                          >
-                            {p.titulo}
-                          </Link>
-                          <p className="text-sm text-slate-600 mt-0.5 line-clamp-2">{p.descripcion}</p>
-                          {p.decisionReason && (
-                            <p className="text-sm text-red-700 mt-2 italic">
-                              Motivo: {p.decisionReason}
-                            </p>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </CardBody>
-              </Card>
+              <div className="kanban-column border-red-200/60">
+                <h3 className="flex items-center gap-2 text-sm font-semibold text-red-800 mb-3">
+                  <span className="w-2 h-2 rounded-full bg-red-500" />
+                  Rechazado ({rechazadas.length})
+                </h3>
+                {rechazadas.length === 0 ? (
+                  <p className="text-slate-500 text-sm italic">Ninguna propuesta rechazada.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {rechazadas.map((p: Proposal) => (
+                      <ProposalCard key={p.id} proposal={p} variant="kanban" accent="red" />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
             </>
           )}
         </div>
@@ -606,26 +570,7 @@ export default function EventDetail() {
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {filtered.map((p: Proposal) => (
-                        <Link
-                            key={p.id}
-                            to={`/proposals/${p.id}`}
-                            className="block p-4 bg-white rounded-xl border border-slate-200 shadow-sm hover:border-gov-400 hover:shadow transition"
-                          >
-                          <h3 className="font-medium text-slate-800 truncate">{p.titulo}</h3>
-                          {p.nombreProyecto && (
-                            <p className="text-xs text-slate-500 mt-0.5 truncate">Proyecto: {p.nombreProyecto}</p>
-                          )}
-                  <p className="text-sm text-slate-600 mt-1 line-clamp-2">{p.descripcion}</p>
-                  <div className="mt-3 flex flex-wrap gap-1 items-center">
-                    <Badge className={proposalStatusColors[p.estado]}>
-                      {proposalStatusLabels[p.estado]}
-                    </Badge>
-                    <span className="text-slate-500 text-xs">{categoryLabels[p.categoria]}</span>
-                  </div>
-                  {p.createdBy && (
-                    <p className="text-xs text-slate-500 mt-2">Por {p.createdBy.name}</p>
-                  )}
-                </Link>
+                <ProposalCard key={p.id} proposal={p} />
               ))}
             </div>
           )}
@@ -657,32 +602,32 @@ export default function EventDetail() {
 
       <Modal
         title="Brief generado con IA"
+        subtitle="Generado a partir del evento y propuestas aprobadas"
         open={showBriefModal}
         onClose={() => setShowBriefModal(false)}
         size="xl"
       >
         <div className="flex flex-col max-h-[70vh]">
-          <div className="flex-1 overflow-y-auto mb-4 rounded-lg border border-slate-200 bg-slate-50/50">
+          <div className="flex-1 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50">
             <div className="p-6 space-y-4">
-              <div className="bg-[#153244] text-white px-4 py-3 rounded-t-lg -mt-6 -mx-6 mb-4">
-                <p className="font-semibold text-lg">
-                  Brief de Evento: {event.titulo}
-                </p>
+              <div className="bg-sidebar text-white px-5 py-4 rounded-xl flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-cyan-400 flex-shrink-0" aria-hidden />
+                <p className="font-semibold">Brief de evento: {event.titulo}</p>
               </div>
               {briefGenerado
                 .split(/\n\n+/)
                 .filter(Boolean)
                 .map((paragraph, i) => (
-                  <p
-                    key={i}
-                    className="text-slate-800 text-[15px] leading-relaxed"
-                  >
+                  <p key={i} className="text-slate-700 text-[15px] leading-relaxed">
                     {paragraph}
                   </p>
                 ))}
             </div>
           </div>
-          <div className="flex gap-2 justify-end flex-wrap border-t border-slate-200 pt-4">
+          <div className="flex gap-2 justify-end flex-wrap pt-4 mt-4 border-t border-slate-100">
+            <Button variant="secondary" onClick={() => setShowBriefModal(false)}>
+              Cerrar
+            </Button>
             <Button
               variant="secondary"
               disabled={exportandoDocx}
@@ -698,10 +643,8 @@ export default function EventDetail() {
                 }
               }}
             >
+              <FileDown className="w-4 h-4" aria-hidden />
               {exportandoDocx ? "Exportando…" : "Exportar como documento de Word"}
-            </Button>
-            <Button variant="secondary" onClick={() => setShowBriefModal(false)}>
-              Cerrar
             </Button>
             <Button
               onClick={() => {

@@ -4,8 +4,8 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // SQLite no soporta enums nativos; usamos String. Valores: ADMIN, ORGANIZACION, PRODUCCION, AGENDA, VALIDADOR
@@ -37,7 +37,8 @@ model Event {
   tipoEvento             String
   areaSolicitante       String
   fechaTentativa         DateTime
-  estado                 String    @default("BORRADOR") // BORRADOR | EN_ANALISIS | CONFIRMADO | CANCELADO | REALIZADO
+  estado                 String    @default("PENDIENTE")
+  createdById            String?
   resumen                String?   // Resumen de lo aprobado: lugar, producción, etc.
   usuarioSolicitante     String?   // Referente / usuario que solicita (nombre)
   publico                String?   // EXTERNO, INTERNO, MIXTO

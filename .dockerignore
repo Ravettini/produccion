@@ -1,9 +1,13 @@
 node_modules
 **/node_modules
-**/dist
 .git
+.gitignore
+.cursor
+*.log
 .env
 .env.*
-*.md
-*.log
-apps/web
+**/.env
+**/.env.*
+apps/api/prisma/dev.db
+tmp-brief-modelo
+**/tsconfig.tsbuildinfo

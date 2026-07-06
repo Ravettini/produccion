@@ -1,4 +1,8 @@
 export { Badge } from "./Badge";
+export { StatusBadge } from "./StatusBadge";
+export { RoleBadge } from "./RoleBadge";
+export { StatCard } from "./StatCard";
+export { SectionHeader } from "./SectionHeader";
 export { CheckboxGroup } from "./CheckboxGroup";
 export { Button } from "./Button";
 export { Card, CardHeader, CardBody, CardFooter } from "./Card";

@@ -1,25 +1,11 @@
--- CreateEnum
-CREATE TYPE "Role" AS ENUM ('ADMIN', 'ORGANIZACION', 'PRODUCCION', 'AGENDA', 'VALIDADOR');
-
--- CreateEnum
-CREATE TYPE "EventStatus" AS ENUM ('BORRADOR', 'EN_ANALISIS', 'CONFIRMADO', 'CANCELADO');
-
--- CreateEnum
-CREATE TYPE "ProposalCategory" AS ENUM ('LOGISTICA', 'CATERING', 'TECNICA', 'AGENDA', 'OTRO');
-
--- CreateEnum
-CREATE TYPE "ProposalImpact" AS ENUM ('ALTO', 'MEDIO', 'BAJO');
-
--- CreateEnum
-CREATE TYPE "ProposalStatus" AS ENUM ('DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED', 'CANCELLED');
-
 -- CreateTable
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "password" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "role" "Role" NOT NULL,
+    "role" TEXT NOT NULL,
+    "area" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -34,7 +20,21 @@ CREATE TABLE "Event" (
     "tipoEvento" TEXT NOT NULL,
     "areaSolicitante" TEXT NOT NULL,
     "fechaTentativa" TIMESTAMP(3) NOT NULL,
-    "estado" "EventStatus" NOT NULL DEFAULT 'BORRADOR',
+    "estado" TEXT NOT NULL DEFAULT 'PENDIENTE',
+    "createdById" TEXT,
+    "resumen" TEXT,
+    "usuarioSolicitante" TEXT,
+    "publico" TEXT,
+    "lugar" TEXT,
+    "programa" TEXT,
+    "funcionario" TEXT,
+    "necesitaAcreditacion" BOOLEAN,
+    "linkAcreditacionConvocados" TEXT,
+    "motivoCancelacion" TEXT,
+    "realizacionAsistentes" INTEGER,
+    "realizacionImpacto" TEXT,
+    "realizacionLinkImpacto" TEXT,
+    "datosProduccion" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -42,17 +42,42 @@ CREATE TABLE "Event" (
 );
 
 -- CreateTable
+CREATE TABLE "EventAttachment" (
+    "id" TEXT NOT NULL,
+    "eventId" TEXT NOT NULL,
+    "originalName" TEXT NOT NULL,
+    "storedPath" TEXT NOT NULL,
+    "mimeType" TEXT NOT NULL DEFAULT 'application/pdf',
+    "size" INTEGER,
+    "tipo" TEXT DEFAULT 'documento',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "EventAttachment_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Config" (
+    "id" TEXT NOT NULL,
+    "key" TEXT NOT NULL,
+    "value" TEXT NOT NULL,
+
+    CONSTRAINT "Config_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "Proposal" (
     "id" TEXT NOT NULL,
     "eventId" TEXT NOT NULL,
     "titulo" TEXT NOT NULL,
+    "nombreProyecto" TEXT,
     "descripcion" TEXT NOT NULL,
-    "categoria" "ProposalCategory" NOT NULL,
-    "impacto" "ProposalImpact" NOT NULL,
-    "estado" "ProposalStatus" NOT NULL DEFAULT 'DRAFT',
+    "categoria" TEXT NOT NULL,
+    "impacto" TEXT NOT NULL,
+    "estado" TEXT NOT NULL DEFAULT 'DRAFT',
     "createdById" TEXT NOT NULL,
     "validatedById" TEXT,
     "decisionReason" TEXT,
+    "datosExtra" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -88,6 +113,12 @@ CREATE TABLE "ProposalAudit" (
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- CreateIndex
+CREATE INDEX "EventAttachment_eventId_idx" ON "EventAttachment"("eventId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Config_key_key" ON "Config"("key");
+
+-- CreateIndex
 CREATE INDEX "Proposal_eventId_idx" ON "Proposal"("eventId");
 
 -- CreateIndex
@@ -98,6 +129,9 @@ CREATE INDEX "ProposalComment_proposalId_idx" ON "ProposalComment"("proposalId")
 
 -- CreateIndex
 CREATE INDEX "ProposalAudit_proposalId_idx" ON "ProposalAudit"("proposalId");
+
+-- AddForeignKey
+ALTER TABLE "EventAttachment" ADD CONSTRAINT "EventAttachment_eventId_fkey" FOREIGN KEY ("eventId") REFERENCES "Event"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Proposal" ADD CONSTRAINT "Proposal_eventId_fkey" FOREIGN KEY ("eventId") REFERENCES "Event"("id") ON DELETE CASCADE ON UPDATE CASCADE;

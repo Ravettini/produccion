@@ -9,7 +9,38 @@ function extractDocxText(buffer: Buffer): string {
   return entry.getData().toString("utf-8");
 }
 
-describe("Solo propuestas APPROVED", () => {
+describe("Estructura brief audiovisual", () => {
+  it("incluye encabezado del modelo institucional", async () => {
+    const input = {
+      event: {
+        titulo: "Evento Test",
+        descripcion: "Sinopsis de prueba",
+        requiere: ["Cobertura"],
+        areaSolicitante: "Comunicación Interna",
+        usuarioSolicitante: "María García",
+        publico: "INTERNO",
+        fechaTentativa: "2026-06-22",
+        estado: "PENDIENTE",
+        lugar: "Palacio Lezama",
+        datosProduccion: {
+          horarioComienzo: "16:00",
+          coberturaObjetivo: "Difundir la jornada",
+          comunicacionMedio: "Instagram",
+        },
+      },
+      proposals: [],
+    };
+    const buffer = await generateBriefDocx(input);
+    const xml = extractDocxText(buffer);
+    expect(xml).toContain("BRIEF");
+    expect(xml).toContain("PEDIDO DE PIEZAS DE COMUNICACIÓN");
+    expect(xml).toContain("Y/O COBERTURA DE EVENTO");
+    expect(xml).toContain("Sinopsis de prueba");
+    expect(xml).toContain("Palacio Lezama");
+    expect(xml).toContain("22/6/2026");
+    expect(xml).toContain("16.00hs");
+  });
+
   it("no debe incluir información de propuestas REJECTED", async () => {
     const input = {
       event: {
@@ -33,11 +64,11 @@ describe("Solo propuestas APPROVED", () => {
         },
         {
           status: "APPROVED",
-          categoria: "TECNICA",
-          titulo: "Proyector aprobado",
-          descripcion: "Proyector estándar",
+          categoria: "PRODUCCION",
+          titulo: "Cobertura aprobada",
+          descripcion: "Registro del evento",
           impacto: "MEDIO",
-          datosExtra: {},
+          datosExtra: { coberturaFormato: "Reel vertical" },
         },
       ],
     };
@@ -45,7 +76,7 @@ describe("Solo propuestas APPROVED", () => {
     const xml = extractDocxText(buffer);
     expect(xml).not.toContain("Streaming 4K rechazado");
     expect(xml).not.toContain("Este dato NO debe aparecer");
-    expect(xml).toContain("Proyector");
+    expect(xml).toContain("Reel vertical");
   });
 
   it("no debe incluir propuestas PENDING", async () => {

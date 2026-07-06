@@ -1,6 +1,11 @@
 import { api, getAuthToken } from "./client";
 
-const BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:4000";
+const BASE =
+  import.meta.env.VITE_API_BASE !== undefined
+    ? import.meta.env.VITE_API_BASE
+    : import.meta.env.DEV
+      ? "http://localhost:4000"
+      : "";
 
 /** Genera un brief con IA a partir del evento y propuestas aprobadas. La API key y el modelo se configuran en apps/api/.env */
 export async function generarBriefIA(eventId: string): Promise<{ brief: string }> {
@@ -9,7 +14,7 @@ export async function generarBriefIA(eventId: string): Promise<{ brief: string }
   });
 }
 
-/** Descarga el brief como DOCX (formato BRIEF ESTRATÉGICO con colores y estructura) */
+/** Descarga el brief como DOCX (modelo audiovisual: cobertura y piezas de comunicación) */
 export async function exportarBriefDocx(eventId: string, filename: string): Promise<void> {
   const token = getAuthToken();
   const headers: Record<string, string> = {};

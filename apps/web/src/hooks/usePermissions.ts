@@ -14,6 +14,13 @@ export function canConfirmEvent(user: User | null): boolean {
   return user?.role === "ADMIN";
 }
 
+export function canEditEvent(user: User | null, event: { createdById?: string | null }): boolean {
+  if (!user) return false;
+  if (user.role === "ADMIN") return true;
+  if (!event.createdById) return true;
+  return event.createdById === user.id;
+}
+
 export function canDeleteEvent(user: User | null): boolean {
   return user?.role === "ADMIN";
 }

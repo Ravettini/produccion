@@ -12,6 +12,8 @@ import { eventsAIRouter } from "./routes/eventsAI.js";
 import { proposalsRouter } from "./routes/proposals.js";
 import { proposalByIdRouter } from "./routes/proposalById.js";
 import { eventAttachmentsRouter } from "./routes/eventAttachments.js";
+import { isMockMode } from "./lib/prisma.js";
+import { mountWebApp } from "./staticWeb.js";
 
 const app = express();
 const PORT = process.env.PORT ?? 4000;
@@ -38,8 +40,10 @@ app.use("/events", proposalsRouter);
 app.use("/proposals", proposalByIdRouter);
 
 app.get("/health", (_req, res) => {
-  res.json({ ok: true });
+  res.json({ ok: true, mockMode: isMockMode });
 });
+
+mountWebApp(app);
 
 app.listen(PORT, () => {
   console.log(`API escuchando en http://localhost:${PORT}`);

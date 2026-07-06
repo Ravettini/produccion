@@ -12,12 +12,17 @@ import { Select } from "../components/ui/Select";
 import { CheckboxGroup } from "../components/ui/CheckboxGroup";
 import { Modal } from "../components/ui/Modal";
 import { Card, CardBody } from "../components/ui/Card";
+import { PageHeader } from "../components/layout/PageHeader";
 import { SearchableSelect } from "../components/ui/SearchableSelect";
 import { eventStatusLabels } from "../utils/labels";
-import { categoryExtraFields, cateringFields, comunicacionPiezasFields } from "../config/proposalCategoryFields";
-import { AREAS_OPTIONS } from "../config/areas";
+import { categoryExtraFields, cateringFields, coberturaBriefFields } from "../config/proposalCategoryFields";
+import { DIRECCIONES_GENERALES_OPTIONS } from "../config/direccionesGenerales";
+import { getLugaresParaCantidad } from "../config/lugaresPorCapacidad";
+import { canEditEvent } from "../hooks/usePermissions";
 import { getProgramasParaArea } from "../config/programasPorArea";
 import { FUNCIONARIOS_OPTIONS } from "../config/funcionarios";
+
+const PRODUCCION_FORM_EXCLUDE = new Set(["horarioCitacion", "cantidadPersonas", "lugar"]);
 
 const statusOptions = (Object.entries(eventStatusLabels) as [EventStatus, string][]).map(
   ([value, label]) => ({ value, label })
@@ -43,7 +48,7 @@ export default function EventForm() {
   const [tipoOtro, setTipoOtro] = useState("");
   const [areaSolicitante, setAreaSolicitante] = useState("");
   const [fechaTentativa, setFechaTentativa] = useState("");
-  const [estado, setEstado] = useState<EventStatus>("BORRADOR");
+  const [estado, setEstado] = useState<EventStatus>("PENDIENTE");
   const [resumen, setResumen] = useState("");
   const [publico, setPublico] = useState<"EXTERNO" | "INTERNO" | "MIXTO" | "">("");
   const [usuarioSolicitante, setUsuarioSolicitante] = useState("");
@@ -175,7 +180,7 @@ export default function EventForm() {
       return;
     }
     if (isAdmin && !areaSolicitante.trim()) {
-      setTipoError("Seleccioná un área solicitante.");
+      setTipoError("Seleccioná una dirección general solicitante.");
       return;
     }
     if (isNew) {
@@ -185,7 +190,7 @@ export default function EventForm() {
         tipoEvento: tipoEventoValue,
         areaSolicitante,
         fechaTentativa: fechaTentativa || new Date().toISOString().slice(0, 10),
-        estado: isDirectorGeneral ? "EN_ANALISIS" : isAdmin ? estado : "BORRADOR",
+        estado: isAdmin ? estado : "PENDIENTE",
         resumen: resumen.trim() || undefined,
         publico: publico || undefined,
         usuarioSolicitante: usuarioSolicitante.trim() || undefined,
@@ -194,7 +199,6 @@ export default function EventForm() {
         funcionario: funcionario.trim() || undefined,
         necesitaAcreditacion: necesitaAcreditacion === true || necesitaAcreditacion === false ? necesitaAcreditacion : undefined,
         linkAcreditacionConvocados: linkAcreditacionConvocados.trim() || undefined,
-        areaSolicitante: (user?.area && !isAdmin) ? user.area : areaSolicitante.trim(),
         datosProduccion: Object.keys(datosProduccion).length > 0 ? datosProduccion : undefined,
         files: archivosPdf,
       });
@@ -216,7 +220,6 @@ export default function EventForm() {
           funcionario: funcionario.trim() || null,
           necesitaAcreditacion: necesitaAcreditacion === true || necesitaAcreditacion === false ? necesitaAcreditacion : null,
           linkAcreditacionConvocados: linkAcreditacionConvocados.trim() || null,
-          areaSolicitante: (user?.area && !isAdmin) ? user.area : areaSolicitante.trim(),
           datosProduccion: Object.keys(datosProduccion).length > 0 ? datosProduccion : null,
           realizacionAsistentes: estado === "REALIZADO" && realizacionAsistentes.trim() ? parseInt(realizacionAsistentes, 10) : undefined,
           realizacionImpacto: estado === "REALIZADO" && realizacionImpacto.trim() ? realizacionImpacto.trim() : undefined,
@@ -241,24 +244,136 @@ export default function EventForm() {
   const err = create.error || update.error;
   const isPending = create.isPending || update.isPending;
 
+  if (!isNew && existing && !canEditEvent(user, existing)) {
+    return (
+      <div className="page-container max-w-3xl">
+        <p className="text-slate-600">No tenés permiso para editar este evento.</p>
+        <Button variant="secondary" className="mt-4" onClick={() => navigate(`/events/${id}`)}>
+          Volver al evento
+        </Button>
+      </div>
+    );
+  }
+
+  const cantidadPersonas = parseInt(datosProduccion.cantidadPersonas ?? "", 10);
+  const lugaresOpciones = getLugaresParaCantidad(
+    !Number.isNaN(cantidadPersonas) ? cantidadPersonas : 0
+  );
+
   const estadoOptions = isAdmin
     ? statusOptions
     : statusOptions.filter((o) => o.value !== "CONFIRMADO");
 
   return (
-    <div className="max-w-2xl">
-      <h1 className="text-2xl font-semibold text-slate-800 mb-6">
-        {isNew ? "Nuevo evento" : "Editar evento"}
-      </h1>
+    <div className="page-container max-w-3xl">
+      <PageHeader
+        title={isNew ? "Nuevo evento" : "Editar evento"}
+        subtitle={isNew ? "Completá la información del brief institucional" : "Actualizá los datos del evento"}
+        breadcrumb={
+          <button
+            type="button"
+            onClick={() => navigate(isNew ? "/" : `/events/${id}`)}
+            className="text-sm text-slate-500 hover:text-brand-600 transition-colors"
+          >
+            ← Volver
+          </button>
+        }
+      />
       <Card>
-        <CardBody>
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <CardBody className="p-6 sm:p-8">
+          <form onSubmit={handleSubmit} className="space-y-6">
             <Input
-              label="Título"
+              label="Título / Nombre del evento"
               value={titulo}
               onChange={(e) => setTitulo(e.target.value)}
               required
               placeholder="Nombre del evento"
+            />
+            <Input
+              label="Cantidad de personas (estimada)"
+              type="number"
+              min={1}
+              value={datosProduccion.cantidadPersonas ?? ""}
+              onChange={(e) =>
+                setDatosProduccion((prev) => ({ ...prev, cantidadPersonas: e.target.value }))
+              }
+              placeholder="Ej: 80"
+              hint="Define qué lugares están disponibles"
+            />
+            <div className="grid gap-4 sm:grid-cols-2">
+              {user?.area && !isAdmin ? (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">DG solicitante</label>
+                  <p className="text-slate-800 py-2.5 px-3.5 bg-slate-100 rounded-xl border border-slate-200">{user.area}</p>
+                  <input type="hidden" name="areaSolicitante" value={user.area} />
+                </div>
+              ) : !user?.area && !isAdmin ? (
+                <Select
+                  label="DG solicitante"
+                  options={[{ value: "", label: "Seleccionar DG…" }, ...DIRECCIONES_GENERALES_OPTIONS]}
+                  value={areaSolicitante}
+                  onChange={(e) => setAreaSolicitante(e.target.value)}
+                  required
+                />
+              ) : (
+                <Select
+                  label="DG solicitante"
+                  options={[
+                    { value: "", label: "Seleccionar DG…" },
+                    ...DIRECCIONES_GENERALES_OPTIONS,
+                  ]}
+                  value={areaSolicitante}
+                  onChange={(e) => setAreaSolicitante(e.target.value)}
+                />
+              )}
+              <Input
+                label="Fecha"
+                type="date"
+                value={fechaTentativa}
+                onChange={(e) => setFechaTentativa(e.target.value)}
+                required
+              />
+            </div>
+            <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
+              <h3 className="text-sm font-semibold text-slate-800 mb-3">Horarios</h3>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <Input
+                  label="Convocatoria"
+                  type="time"
+                  value={datosProduccion.horarioConvocatoria ?? ""}
+                  onChange={(e) =>
+                    setDatosProduccion((prev) => ({ ...prev, horarioConvocatoria: e.target.value }))
+                  }
+                />
+                <Input
+                  label="Comienzo"
+                  type="time"
+                  value={datosProduccion.horarioComienzo ?? ""}
+                  onChange={(e) =>
+                    setDatosProduccion((prev) => ({ ...prev, horarioComienzo: e.target.value }))
+                  }
+                />
+                <Input
+                  label="Finalización"
+                  type="time"
+                  value={datosProduccion.horarioFinalizacion ?? ""}
+                  onChange={(e) =>
+                    setDatosProduccion((prev) => ({ ...prev, horarioFinalizacion: e.target.value }))
+                  }
+                />
+              </div>
+            </div>
+            <Select
+              label="Lugar"
+              options={[
+                { value: "", label: "Seleccionar lugar…" },
+                ...lugaresOpciones.map((l) => ({ value: l.value, label: l.label })),
+                ...(lugar && !lugaresOpciones.some((l) => l.value === lugar)
+                  ? [{ value: lugar, label: lugar }]
+                  : []),
+              ]}
+              value={lugar}
+              onChange={(e) => setLugar(e.target.value)}
             />
             <div>
               <CheckboxGroup
@@ -285,38 +400,6 @@ export default function EventForm() {
               required
               rows={4}
             />
-            <div className="grid gap-4 sm:grid-cols-2">
-              {user?.area && !isAdmin ? (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Área solicitante</label>
-                  <p className="text-slate-800 py-2 px-3 bg-slate-100 rounded-lg border border-slate-200">{user.area}</p>
-                  <input type="hidden" name="areaSolicitante" value={user.area} />
-                </div>
-              ) : !user?.area && !isAdmin ? (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Área solicitante</label>
-                  <p className="text-amber-700 text-sm">No tenés un área asignada. Contactá al administrador.</p>
-                  <Input value={areaSolicitante} onChange={(e) => setAreaSolicitante(e.target.value)} placeholder="Área" required />
-                </div>
-              ) : (
-                <Select
-                  label="Área solicitante"
-                  options={[
-                    { value: "", label: "Seleccionar área…" },
-                    ...AREAS_OPTIONS,
-                  ]}
-                  value={areaSolicitante}
-                  onChange={(e) => setAreaSolicitante(e.target.value)}
-                />
-              )}
-              <Input
-                label="Fecha tentativa"
-                type="date"
-                value={fechaTentativa}
-                onChange={(e) => setFechaTentativa(e.target.value)}
-                required
-              />
-            </div>
             <Select
               label="Público"
               options={[
@@ -333,12 +416,6 @@ export default function EventForm() {
               value={usuarioSolicitante}
               onChange={(e) => setUsuarioSolicitante(e.target.value)}
               placeholder="Nombre de quien solicita o referente operativo"
-            />
-            <Input
-              label="Lugar o dirección (opcional)"
-              value={lugar}
-              onChange={(e) => setLugar(e.target.value)}
-              placeholder="Ej: Auditorio Lezama, Av. Pedro Goyena 1054"
             />
             {(() => {
               const areaParaProgramas = (user?.area && !isAdmin) ? user.area : areaSolicitante.trim();
@@ -440,26 +517,54 @@ export default function EventForm() {
                   ))}
               </div>
             </div>
-            <div className="border border-slate-200 rounded-lg p-4 bg-slate-50/50">
-              <h3 className="text-sm font-semibold text-slate-800 mb-2">Pedido de piezas de comunicación</h3>
-              <p className="text-xs text-slate-500 mb-3">Datos para el brief de piezas (afiches, gacetillas, etc.).</p>
-              <div className="space-y-3">
-                {comunicacionPiezasFields.map((field) => (
-                  <Input
-                    key={field.key}
-                    label={field.label}
-                    placeholder={field.placeholder}
-                    value={datosProduccion[field.key] ?? ""}
-                    onChange={(e) => setDatosProduccion((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                  />
-                ))}
+            {tipoSeleccionados.includes("Cobertura") && (
+              <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
+                <h3 className="text-sm font-semibold text-slate-800 mb-2">Cobertura / Audiovisual</h3>
+                <p className="text-xs text-slate-500 mb-3">
+                  Datos para el brief de piezas de comunicación y/o cobertura del evento.
+                </p>
+                <div className="space-y-3">
+                  {coberturaBriefFields.map((field) => (
+                    <div key={field.key}>
+                      {field.type === "textarea" ? (
+                        <TextArea
+                          label={field.label}
+                          placeholder={field.placeholder}
+                          value={datosProduccion[field.key] ?? ""}
+                          onChange={(e) =>
+                            setDatosProduccion((prev) => ({ ...prev, [field.key]: e.target.value }))
+                          }
+                          rows={3}
+                        />
+                      ) : field.type === "select" && field.options?.length ? (
+                        <Select
+                          label={field.label}
+                          options={field.options}
+                          value={datosProduccion[field.key] ?? ""}
+                          onChange={(e) =>
+                            setDatosProduccion((prev) => ({ ...prev, [field.key]: e.target.value }))
+                          }
+                        />
+                      ) : (
+                        <Input
+                          label={field.label}
+                          placeholder={field.placeholder}
+                          value={datosProduccion[field.key] ?? ""}
+                          onChange={(e) =>
+                            setDatosProduccion((prev) => ({ ...prev, [field.key]: e.target.value }))
+                          }
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-            <div className="border border-slate-200 rounded-lg p-4 bg-slate-50/50">
+            )}
+            <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
               <h3 className="text-sm font-semibold text-slate-800 mb-2">Producción (opcional)</h3>
               <p className="text-xs text-slate-500 mb-3">Técnica y materiales. Se usan en el brief si no hay propuesta de Producción aprobada.</p>
               <div className="space-y-3">
-                {categoryExtraFields.PRODUCCION.map((field) => (
+                {categoryExtraFields.PRODUCCION.filter((f) => !PRODUCCION_FORM_EXCLUDE.has(f.key)).map((field) => (
                   <div key={field.key}>
                     {field.type === "textarea" ? (
                       <TextArea

@@ -4,11 +4,12 @@ import { buildBriefDocument } from "./render/index.js";
 
 export type { BriefInput } from "./schemas/index.js";
 export { briefInputSchema } from "./schemas/index.js";
+export { buildAudiovisualBriefData, buildAudiovisualBriefText } from "./rules/audiovisual.js";
 
 /**
- * Genera un DOCX de Brief Estratégico a partir del input validado.
+ * Genera un DOCX de Brief audiovisual (modelo: piezas de comunicación y/o cobertura).
  * Solo usa información de propuestas con status APPROVED.
- * Datos faltantes se reemplazan por "Por confirmar" o "No definido".
+ * Datos faltantes se reemplazan por "Por confirmar".
  */
 export async function generateBriefDocx(input: BriefInput): Promise<Buffer> {
   const validated = briefInputSchema.parse(input);

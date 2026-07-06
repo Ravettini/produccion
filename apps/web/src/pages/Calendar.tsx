@@ -1,12 +1,21 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { listEvents } from "../api/events";
 import type { Event, EventStatus } from "../types";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { Select } from "../components/ui/Select";
+import { PageHeader } from "../components/layout/PageHeader";
 import { eventStatusLabels, eventStatusColors } from "../utils/labels";
+import { getEventHorario, eventMatchesTipoFilter } from "../utils/eventHelpers";
+
+const FILTROS_TIPO = [
+  { id: "produccion", label: "Producción" },
+  { id: "institucionales", label: "Institucionales" },
+  { id: "cobertura", label: "Cobertura" },
+] as const;
 
 const MESES = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -46,10 +55,9 @@ export default function Calendar() {
     year: today.getFullYear(),
     month: today.getMonth(),
   }));
+  const [filterTipos, setFilterTipos] = useState<string[]>([]);
   const [filterEstado, setFilterEstado] = useState<EventStatus | "">("");
-  const [filterTipo, setFilterTipo] = useState("");
   const [filterArea, setFilterArea] = useState("");
-  const [filterCatering, setFilterCatering] = useState<"" | "si" | "no">("");
   const [filterBusqueda, setFilterBusqueda] = useState("");
 
   const { data: events = [], isLoading } = useQuery({
@@ -68,15 +76,10 @@ export default function Calendar() {
   const filteredEvents = useMemo(() => {
     return events.filter((e) => {
       if (filterEstado && e.estado !== filterEstado) return false;
-      if (filterTipo && !e.tipoEvento.toLowerCase().includes(filterTipo.toLowerCase())) return false;
-      if (filterArea && e.areaSolicitante?.trim() !== filterArea) return false;
-      if (filterCatering) {
-        const dp = (e as { datosProduccion?: string | Record<string, unknown> | null }).datosProduccion;
-        const obj = typeof dp === "string" ? (() => { try { return JSON.parse(dp); } catch { return {}; } })() : (dp ?? {});
-        const catering = (obj as Record<string, string>).catering ?? "";
-        if (filterCatering === "si" && catering !== "si") return false;
-        if (filterCatering === "no" && catering === "si") return false;
+      if (filterTipos.length > 0 && !filterTipos.some((f) => eventMatchesTipoFilter(e.tipoEvento, f))) {
+        return false;
       }
+      if (filterArea && e.areaSolicitante?.trim() !== filterArea) return false;
       if (filterBusqueda) {
         const q = filterBusqueda.toLowerCase();
         if (
@@ -88,7 +91,7 @@ export default function Calendar() {
       }
       return true;
     });
-  }, [events, filterEstado, filterTipo, filterArea, filterCatering, filterBusqueda]);
+  }, [events, filterEstado, filterTipos, filterArea, filterBusqueda]);
 
   const eventsByDate = useMemo(() => {
     const map: Record<string, Event[]> = {};
@@ -120,15 +123,21 @@ export default function Calendar() {
   };
 
   return (
-    <div>
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-        <h1 className="text-2xl font-semibold text-slate-800">Calendario de eventos</h1>
-        <Link to="/events/new">
-          <Button size="sm">Nuevo evento</Button>
-        </Link>
-      </div>
+    <div className="page-container">
+      <PageHeader
+        title="Calendario"
+        subtitle="Vista mensual de eventos institucionales"
+        actions={
+          <Link to="/events/new">
+            <Button size="sm">
+              <Plus className="w-4 h-4" aria-hidden />
+              Nuevo evento
+            </Button>
+          </Link>
+        }
+      />
 
-      <div className="flex flex-wrap items-center gap-3 mb-6">
+      <div className="flex flex-wrap items-center gap-3 mb-6 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
         <Input
           placeholder="Buscar por título, área o tipo..."
           value={filterBusqueda}
@@ -149,52 +158,60 @@ export default function Calendar() {
         />
         <Select
           options={[
-            { value: "", label: "Todas las áreas" },
+            { value: "", label: "Todas las DG" },
             ...areasUnicas.map((a) => ({ value: a, label: a })),
           ]}
           value={filterArea}
           onChange={(e) => setFilterArea(e.target.value)}
-          className="w-[180px]"
+          className="w-full sm:w-52"
         />
-        <Input
-          placeholder="Filtrar por tipo"
-          value={filterTipo}
-          onChange={(e) => setFilterTipo(e.target.value)}
-          className="w-[140px]"
-        />
-        <Select
-          options={[
-            { value: "", label: "Catering: todos" },
-            { value: "si", label: "Con catering" },
-            { value: "no", label: "Sin catering" },
-          ]}
-          value={filterCatering}
-          onChange={(e) => setFilterCatering((e.target.value || "") as "" | "si" | "no")}
-          className="w-[140px]"
-        />
+        <div className="flex flex-wrap gap-2 items-center">
+          <span className="text-sm text-slate-500 mr-1">Tipo:</span>
+          {FILTROS_TIPO.map(({ id, label }) => {
+            const active = filterTipos.includes(id);
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() =>
+                  setFilterTipos((prev) =>
+                    active ? prev.filter((x) => x !== id) : [...prev, id]
+                  )
+                }
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                  active
+                    ? "bg-brand-600 text-white border-brand-600"
+                    : "bg-white text-slate-600 border-slate-200 hover:border-brand-300"
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-2 p-3 sm:p-4 border-b border-slate-200 bg-slate-50/50">
-          <div className="flex items-center gap-2">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-2 p-4 border-b border-slate-100 bg-slate-50/60">
+          <div className="flex items-center gap-1">
             <button
               type="button"
               onClick={goPrev}
-              className="p-2 rounded-lg hover:bg-slate-200 text-slate-700 font-medium"
+              className="p-2.5 rounded-xl hover:bg-white border border-transparent hover:border-slate-200 text-slate-700 transition-colors"
               aria-label="Mes anterior"
             >
-              ←
+              <ChevronLeft className="w-5 h-5" />
             </button>
-            <h2 className="text-base sm:text-lg font-semibold text-slate-800 min-w-[160px] sm:min-w-[200px] text-center">
+            <h2 className="text-lg font-bold text-slate-900 min-w-[180px] text-center px-2">
               {MESES[current.month]} {current.year}
             </h2>
             <button
               type="button"
               onClick={goNext}
-              className="p-2 rounded-lg hover:bg-slate-200 text-slate-700 font-medium"
+              className="p-2.5 rounded-xl hover:bg-white border border-transparent hover:border-slate-200 text-slate-700 transition-colors"
               aria-label="Mes siguiente"
             >
-              →
+              <ChevronRight className="w-5 h-5" />
             </button>
           </div>
           <Button variant="secondary" size="sm" onClick={goToday}>
@@ -236,14 +253,14 @@ export default function Calendar() {
                 return (
                   <div
                     key={key}
-                    className={`min-h-[70px] sm:min-h-[100px] lg:min-h-[120px] border-r border-b border-slate-100 p-1 sm:p-1.5 flex flex-col last:border-r-0 ${
-                      isToday ? "bg-gov-50 ring-1 ring-gov-300" : ""
+                    className={`min-h-[70px] sm:min-h-[100px] lg:min-h-[120px] border-r border-b border-slate-100 p-1.5 flex flex-col last:border-r-0 ${
+                      isToday ? "bg-brand-50/80 ring-1 ring-inset ring-brand-200" : "bg-white"
                     }`}
                   >
                     <span
-                      className={`text-sm font-medium shrink-0 ${
+                      className={`text-sm font-semibold shrink-0 ${
                         isToday
-                          ? "text-gov-800 bg-gov-200 rounded-full w-7 h-7 flex items-center justify-center"
+                          ? "text-white bg-brand-600 rounded-lg w-7 h-7 flex items-center justify-center shadow-sm"
                           : "text-slate-600"
                       }`}
                     >
@@ -254,14 +271,17 @@ export default function Calendar() {
                         <Link
                           key={ev.id}
                           to={`/events/${ev.id}`}
-                          className="block text-[10px] sm:text-xs p-1 sm:p-1.5 rounded bg-slate-100 hover:bg-gov-100 border-l-2 border-gov-500 truncate"
-                          title={`${ev.titulo} — ${ev.tipoEvento} · ${ev.areaSolicitante}`}
+                          className="block text-[10px] sm:text-xs p-1.5 rounded-lg bg-slate-50 hover:bg-brand-50 border border-slate-200 hover:border-brand-300 transition-colors truncate"
+                          title={`${ev.titulo} — ${ev.areaSolicitante} — ${getEventHorario(ev)}`}
                         >
                           <span className="font-medium text-slate-800 block truncate">
                             {ev.titulo}
                           </span>
-                          <span className="text-slate-600 truncate block">
-                            {ev.tipoEvento} · {ev.areaSolicitante}
+                          <span className="text-slate-500 truncate block">
+                            {ev.areaSolicitante}
+                          </span>
+                          <span className="text-slate-500 truncate block">
+                            {getEventHorario(ev)}
                           </span>
                           <span
                             className={`inline-block mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium ${eventStatusColors[ev.estado as EventStatus]}`}

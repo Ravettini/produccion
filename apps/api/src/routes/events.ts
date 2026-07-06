@@ -1,10 +1,31 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { authMiddleware, requireRoles } from "../middleware/auth.js";
+import { buildAutoBriefResumen } from "../lib/buildAutoBrief.js";
 
 export const eventsRouter = Router();
 
-const validStatuses = ["BORRADOR", "EN_ANALISIS", "CONFIRMADO", "CANCELADO", "REALIZADO"];
+const validStatuses = ["PENDIENTE", "BORRADOR", "EN_ANALISIS", "CONFIRMADO", "CANCELADO", "REALIZADO"];
+
+function dayBounds(fecha: Date) {
+  const start = new Date(fecha);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(fecha);
+  end.setHours(23, 59, 59, 999);
+  return { start, end };
+}
+
+async function countEventsSameDayDg(areaSolicitante: string, fecha: Date, excludeId?: string) {
+  const { start, end } = dayBounds(fecha);
+  return prisma.event.count({
+    where: {
+      areaSolicitante,
+      fechaTentativa: { gte: start, lte: end },
+      estado: { not: "CANCELADO" },
+      ...(excludeId ? { id: { not: excludeId } } : {}),
+    },
+  });
+}
 
 /**
  * GET /events - Listado de eventos (todos pueden ver).
@@ -65,19 +86,56 @@ eventsRouter.post("/", authMiddleware, async (req, res) => {
     });
     return;
   }
-  let status = estado && validStatuses.includes(String(estado)) ? String(estado) : "BORRADOR";
-  if (req.user?.role === "DIRECTOR_GENERAL") {
-    status = "EN_ANALISIS";
+  let status = estado && validStatuses.includes(String(estado)) ? String(estado) : "PENDIENTE";
+  if (req.user?.role !== "ADMIN") {
+    status = "PENDIENTE";
   } else if (status === "CONFIRMADO" && req.user?.role !== "ADMIN") {
-    status = "BORRADOR";
+    status = "PENDIENTE";
+  }
+  const fechaDate = new Date(fechaTentativa);
+  const area = String(areaSolicitante);
+  const sameDayCount = await countEventsSameDayDg(area, fechaDate);
+  if (sameDayCount >= 2) {
+    res.status(400).json({
+      error: "Cada dirección general puede cargar como máximo 2 eventos el mismo día.",
+    });
+    return;
   }
   const validPublico = ["EXTERNO", "INTERNO", "MIXTO"].includes(String(publico)) ? String(publico) : null;
   let usuarioSolicitante: string | null =
     bodyUsuario !== undefined && String(bodyUsuario).trim() !== "" ? String(bodyUsuario).trim() : null;
   if (usuarioSolicitante === null && req.user?.id) {
     const u = await prisma.user.findUnique({ where: { id: req.user.id }, select: { name: true } });
-    usuarioSolicitante = u?.name ?? null;
+    usuarioSolicitante = u?.name ? String(u.name) : null;
   }
+  const dpParsed =
+    datosProduccion != null && typeof datosProduccion === "object"
+      ? datosProduccion
+      : typeof datosProduccion === "string" && datosProduccion.trim() !== ""
+        ? (() => {
+            try {
+              return JSON.parse(datosProduccion);
+            } catch {
+              return undefined;
+            }
+          })()
+        : undefined;
+  const resumenFinal =
+    resumen !== undefined && resumen !== null && String(resumen).trim() !== ""
+      ? String(resumen)
+      : buildAutoBriefResumen({
+          titulo: String(titulo),
+          descripcion: String(descripcion),
+          tipoEvento: String(tipoEvento),
+          areaSolicitante: String(areaSolicitante),
+          fechaTentativa: fechaDate,
+          publico: validPublico,
+          lugar: lugar !== undefined && String(lugar).trim() !== "" ? String(lugar).trim() : null,
+          programa: programa !== undefined && String(programa).trim() !== "" ? String(programa).trim() : null,
+          funcionario: funcionario !== undefined && String(funcionario).trim() !== "" ? String(funcionario).trim() : null,
+          usuarioSolicitante,
+          datosProduccion: dpParsed,
+        });
   const event = await prisma.event.create({
     data: {
       titulo: String(titulo),
@@ -86,7 +144,8 @@ eventsRouter.post("/", authMiddleware, async (req, res) => {
       areaSolicitante: String(areaSolicitante),
       fechaTentativa: new Date(fechaTentativa),
       estado: status,
-      resumen: resumen !== undefined && resumen !== null ? String(resumen) : undefined,
+      createdById: req.user?.id ?? null,
+      resumen: resumenFinal,
       usuarioSolicitante,
       publico: validPublico,
       lugar: lugar !== undefined && String(lugar).trim() !== "" ? String(lugar).trim() : null,
@@ -111,6 +170,11 @@ eventsRouter.put("/:id", authMiddleware, async (req, res) => {
   const existing = await prisma.event.findUnique({ where: { id: req.params.id } });
   if (!existing) {
     res.status(404).json({ error: "Evento no encontrado" });
+    return;
+  }
+  const existingCreatedBy = (existing as { createdById?: string | null }).createdById;
+  if (req.user?.role !== "ADMIN" && existingCreatedBy && existingCreatedBy !== req.user?.id) {
+    res.status(403).json({ error: "Solo el creador o un admin puede editar este evento" });
     return;
   }
   const {
@@ -139,7 +203,25 @@ eventsRouter.put("/:id", authMiddleware, async (req, res) => {
   if (descripcion !== undefined) updates.descripcion = String(descripcion);
   if (tipoEvento !== undefined) updates.tipoEvento = String(tipoEvento);
   if (areaSolicitante !== undefined) updates.areaSolicitante = String(areaSolicitante);
-  if (fechaTentativa !== undefined) updates.fechaTentativa = new Date(fechaTentativa);
+  if (fechaTentativa !== undefined) {
+    updates.fechaTentativa = new Date(fechaTentativa);
+    const areaCheck = areaSolicitante !== undefined ? String(areaSolicitante) : existing.areaSolicitante;
+    const sameDayCount = await countEventsSameDayDg(areaCheck, new Date(fechaTentativa), req.params.id);
+    if (sameDayCount >= 2) {
+      res.status(400).json({
+        error: "Cada dirección general puede cargar como máximo 2 eventos el mismo día.",
+      });
+      return;
+    }
+  } else if (areaSolicitante !== undefined) {
+    const sameDayCount = await countEventsSameDayDg(String(areaSolicitante), existing.fechaTentativa, req.params.id);
+    if (sameDayCount >= 2) {
+      res.status(400).json({
+        error: "Cada dirección general puede cargar como máximo 2 eventos el mismo día.",
+      });
+      return;
+    }
+  }
   if (estado !== undefined && validStatuses.includes(String(estado))) {
     if (req.user?.role === "DIRECTOR_GENERAL") {
       res.status(403).json({ error: "El Director General no puede cambiar el estado del evento" });
@@ -200,6 +282,36 @@ eventsRouter.put("/:id", authMiddleware, async (req, res) => {
       : typeof datosProduccion === "object"
         ? JSON.stringify(datosProduccion)
         : String(datosProduccion);
+  }
+
+  const merged = { ...existing, ...updates };
+  const shouldRefreshBrief =
+    resumen === undefined ||
+    resumen === null ||
+    String(resumen).trim() === "";
+  if (shouldRefreshBrief) {
+    const dpRaw = merged.datosProduccion;
+    let dpParsed: Record<string, unknown> | undefined;
+    if (dpRaw != null) {
+      try {
+        dpParsed = typeof dpRaw === "string" ? JSON.parse(dpRaw) : (dpRaw as Record<string, unknown>);
+      } catch {
+        dpParsed = undefined;
+      }
+    }
+    updates.resumen = buildAutoBriefResumen({
+      titulo: String(merged.titulo),
+      descripcion: String(merged.descripcion),
+      tipoEvento: String(merged.tipoEvento),
+      areaSolicitante: String(merged.areaSolicitante),
+      fechaTentativa: merged.fechaTentativa as Date,
+      publico: (merged.publico as string | null) ?? null,
+      lugar: (merged.lugar as string | null) ?? null,
+      programa: (merged.programa as string | null) ?? null,
+      funcionario: (merged.funcionario as string | null) ?? null,
+      usuarioSolicitante: (merged.usuarioSolicitante as string | null) ?? null,
+      datosProduccion: dpParsed as Record<string, string> | string | null | undefined,
+    });
   }
 
   const event = await prisma.event.update({

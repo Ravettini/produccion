@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, CheckCircle2, Send, XCircle } from "lucide-react";
 import {
   getProposal,
   submitProposal,
@@ -18,27 +19,20 @@ import {
 import type { ProposalStatus, ProposalCategory } from "../types";
 import {
   Button,
-  Badge,
   Card,
   CardHeader,
   CardBody,
   Modal,
-  Input,
   TextArea,
   DetailSkeleton,
+  StatusBadge,
+  Badge,
 } from "../components/ui";
-import {
-  proposalStatusLabels,
-  proposalStatusColors,
-  categoryLabels,
-} from "../utils/labels";
+import { PageHeader } from "../components/layout/PageHeader";
+import { AuditTimeline } from "../components/domain/AuditTimeline";
+import { categoryLabels, categoryColors } from "../utils/labels";
 import { categoryExtraFields } from "../config/proposalCategoryFields";
-
-const impactLabels: Record<string, string> = {
-  ALTO: "Alto",
-  MEDIO: "Medio",
-  BAJO: "Bajo",
-};
+import { formatDateShort } from "../utils/formatters";
 
 export default function ProposalDetail() {
   const { id } = useParams<{ id: string }>();
@@ -103,66 +97,76 @@ export default function ProposalDetail() {
   const eventId = proposal.eventId || (proposal.event as { id: string })?.id;
   const eventTitulo = (proposal.event as { titulo?: string })?.titulo ?? "Evento";
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <Link
-          to={eventId ? `/events/${eventId}` : "/"}
-          className="text-slate-600 hover:text-slate-800 text-sm mb-2 inline-block"
-        >
-          ← {eventTitulo}
-        </Link>
-        <h1 className="text-2xl font-semibold text-slate-800">{proposal.titulo}</h1>
-        {proposal.nombreProyecto && (
-          <p className="text-slate-600 mt-1">Proyecto: {proposal.nombreProyecto}</p>
-        )}
-        <div className="mt-2 flex flex-wrap gap-2 items-center">
-          <Badge className={proposalStatusColors[proposal.estado as ProposalStatus]}>
-            {proposalStatusLabels[proposal.estado as ProposalStatus]}
-          </Badge>
-          <span className="text-slate-500 text-sm">{categoryLabels[proposal.categoria as ProposalCategory]}</span>
-          <span className="text-slate-500 text-sm">Impacto: {impactLabels[proposal.impacto] ?? proposal.impacto}</span>
-          {proposal.createdBy && (
-            <span className="text-slate-500 text-sm">Por {proposal.createdBy.name}</span>
-          )}
-          {proposal.validatedBy && (
-            <span className="text-slate-500 text-sm">· Aprobado por {proposal.validatedBy.name}</span>
-          )}
-        </div>
-      </div>
+  const initials = (name: string) =>
+    name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase();
 
-      <div className="flex flex-wrap gap-2 items-center">
-        {proposal.estado === "DRAFT" && canSubmitProposal(user, proposal) && (
-          <Button onClick={() => submit.mutate()} disabled={submit.isPending}>
-            Enviar a validación
-          </Button>
+  return (
+    <div className="page-container max-w-4xl">
+      <PageHeader
+        breadcrumb={
+          <Link
+            to={eventId ? `/events/${eventId}` : "/"}
+            className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-brand-600 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" aria-hidden />
+            {eventTitulo}
+          </Link>
+        }
+        title={proposal.titulo}
+        subtitle={proposal.nombreProyecto ? `Proyecto: ${proposal.nombreProyecto}` : undefined}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            {proposal.estado === "DRAFT" && canSubmitProposal(user, proposal) && (
+              <Button onClick={() => submit.mutate()} disabled={submit.isPending}>
+                <Send className="w-4 h-4" aria-hidden />
+                Enviar a validación
+              </Button>
+            )}
+            {proposal.estado === "SUBMITTED" && canApproveOrRejectProposal(user) && (
+              <>
+                <Button variant="success" onClick={() => approve.mutate()} disabled={approve.isPending}>
+                  <CheckCircle2 className="w-4 h-4" aria-hidden />
+                  Aprobar propuesta
+                </Button>
+                <Button variant="danger" onClick={() => setShowRejectModal(true)}>
+                  <XCircle className="w-4 h-4" aria-hidden />
+                  Rechazar propuesta
+                </Button>
+              </>
+            )}
+            {canCancelProposal(user, proposal) && (
+              <Button variant="secondary" onClick={() => setShowCancelModal(true)} disabled={cancel.isPending}>
+                Cancelar propuesta
+              </Button>
+            )}
+          </div>
+        }
+      />
+
+      <div className="flex flex-wrap gap-2 mb-6">
+        <StatusBadge kind="proposal" value={proposal.estado as ProposalStatus} />
+        <Badge className={categoryColors[proposal.categoria as ProposalCategory]}>
+          {categoryLabels[proposal.categoria as ProposalCategory]}
+        </Badge>
+        <StatusBadge kind="impact" value={proposal.impacto} />
+        {proposal.createdBy && (
+          <span className="text-sm text-slate-500 self-center">Por {proposal.createdBy.name}</span>
         )}
-        {proposal.estado === "SUBMITTED" && canApproveOrRejectProposal(user) && (
-          <>
-            <Button
-              onClick={() => approve.mutate()}
-              disabled={approve.isPending}
-              className="!bg-emerald-600 hover:!bg-emerald-700"
-            >
-              Aprobar
-            </Button>
-            <Button variant="danger" onClick={() => setShowRejectModal(true)}>
-              Rechazar
-            </Button>
-          </>
-        )}
-        {canCancelProposal(user, proposal) && (
-          <Button variant="secondary" onClick={() => setShowCancelModal(true)} disabled={cancel.isPending}>
-            Cancelar propuesta
-          </Button>
+        {proposal.validatedBy && (
+          <span className="text-sm text-slate-500 self-center">· Validado por {proposal.validatedBy.name}</span>
         )}
       </div>
 
       {proposal.estado === "REJECTED" && proposal.decisionReason && (
-        <Card className="border-red-200 bg-red-50/50">
+        <Card className="border-red-200 bg-red-50/50 mb-6">
           <CardHeader>Motivo del rechazo</CardHeader>
           <CardBody>
-            <p className="text-red-700">{proposal.decisionReason}</p>
+            <p className="text-red-800">{proposal.decisionReason}</p>
             {proposal.validatedBy && (
               <p className="text-red-600 text-xs mt-2">Por {proposal.validatedBy.name}</p>
             )}
@@ -170,10 +174,10 @@ export default function ProposalDetail() {
         </Card>
       )}
 
-      <Card>
+      <Card className="mb-6">
         <CardHeader>Descripción</CardHeader>
         <CardBody>
-          <p className="text-slate-800 whitespace-pre-wrap">{proposal.descripcion}</p>
+          <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">{proposal.descripcion}</p>
         </CardBody>
       </Card>
 
@@ -190,16 +194,18 @@ export default function ProposalDetail() {
         const entries = Object.entries(extra).filter(([, v]) => v != null && v !== "");
         if (entries.length === 0) return null;
         return (
-          <Card>
+          <Card className="mb-6">
             <CardHeader>Datos adicionales</CardHeader>
             <CardBody>
-              <dl className="space-y-2">
+              <dl className="grid gap-4 sm:grid-cols-2">
                 {entries.map(([key, value]) => {
                   const field = fields.find((f) => f.key === key);
                   return (
-                    <div key={key}>
-                      <dt className="text-sm font-medium text-slate-500">{field?.label ?? key}</dt>
-                      <dd className="text-slate-800 mt-0.5">{value}</dd>
+                    <div key={key} className="rounded-xl bg-slate-50 p-3 border border-slate-100">
+                      <dt className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                        {field?.label ?? key}
+                      </dt>
+                      <dd className="text-slate-800 mt-1">{value}</dd>
                     </div>
                   );
                 })}
@@ -209,36 +215,47 @@ export default function ProposalDetail() {
         );
       })()}
 
-      <Card>
-        <CardHeader>Comentarios</CardHeader>
+      <Card className="mb-6">
+        <CardHeader subtitle="Conversación sobre esta propuesta">Comentarios</CardHeader>
         <CardBody>
-          <div className="space-y-3 max-h-64 overflow-y-auto mb-4">
-            {(proposal.comments || []).map((c) => (
-              <div key={c.id} className="flex gap-2 text-sm">
-                <span className="font-medium text-slate-700 shrink-0">
-                  {(c as { user?: { name: string } }).user?.name ?? "—"}:
-                </span>
-                <span className="text-slate-600">{c.body}</span>
-                <span className="text-slate-400 text-xs shrink-0">
-                  {new Date(c.createdAt).toLocaleString("es-AR")}
-                </span>
-              </div>
-            ))}
+          <div className="space-y-4 max-h-80 overflow-y-auto mb-5">
+            {(proposal.comments || []).length === 0 ? (
+              <p className="text-sm text-slate-500 italic">Sin comentarios todavía.</p>
+            ) : (
+              (proposal.comments || []).map((c) => {
+                const name = (c as { user?: { name: string } }).user?.name ?? "Usuario";
+                return (
+                  <div key={c.id} className="flex gap-3">
+                    <div className="w-9 h-9 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                      {initials(name)}
+                    </div>
+                    <div className="flex-1 rounded-xl bg-slate-50 border border-slate-100 px-4 py-3">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <span className="font-medium text-slate-800 text-sm">{name}</span>
+                        <span className="text-slate-400 text-xs">{formatDateShort(c.createdAt)}</span>
+                      </div>
+                      <p className="text-slate-700 text-sm">{c.body}</p>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
           <form
             onSubmit={(e) => {
               e.preventDefault();
               if (commentText.trim()) postComment.mutate();
             }}
-            className="flex gap-2"
+            className="flex flex-col sm:flex-row gap-3"
           >
-            <Input
+            <TextArea
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
               placeholder="Escribir comentario…"
+              rows={2}
               className="flex-1"
             />
-            <Button type="submit" disabled={postComment.isPending || !commentText.trim()}>
+            <Button type="submit" disabled={postComment.isPending || !commentText.trim()} className="self-end">
               Comentar
             </Button>
           </form>
@@ -246,37 +263,15 @@ export default function ProposalDetail() {
       </Card>
 
       <Card>
-        <CardHeader>Historial</CardHeader>
+        <CardHeader subtitle="Registro de cambios de estado">Historial de auditoría</CardHeader>
         <CardBody>
-          <ul className="space-y-3">
-            {(proposal.audits || []).map((a) => (
-              <li key={a.id} className="flex gap-3 text-sm border-l-2 border-slate-200 pl-4 py-1">
-                <div className="shrink-0 text-slate-500 text-xs w-32">
-                  {new Date(a.createdAt).toLocaleString("es-AR")}
-                </div>
-                <div>
-                  <span className="font-medium text-slate-700">
-                    {(a as { user?: { name: string } }).user?.name ?? "—"}
-                  </span>
-                  <span className="text-slate-600"> — {a.action}</span>
-                  {a.fromStatus && a.toStatus && (
-                    <span className="text-slate-500">
-                      {" "}({a.fromStatus} → {a.toStatus})
-                    </span>
-                  )}
-                  {a.reason && <p className="text-slate-600 mt-1 italic">{a.reason}</p>}
-                </div>
-              </li>
-            ))}
-          </ul>
-          {!proposal.audits?.length && (
-            <p className="text-slate-500 text-sm">Sin registros aún.</p>
-          )}
+          <AuditTimeline audits={proposal.audits || []} />
         </CardBody>
       </Card>
 
       <Modal
         title="Rechazar propuesta"
+        subtitle="El motivo es obligatorio y quedará registrado"
         open={showRejectModal}
         onClose={() => setShowRejectModal(false)}
       >
@@ -285,8 +280,8 @@ export default function ProposalDetail() {
             label="Motivo del rechazo (obligatorio)"
             value={rejectReason}
             onChange={(e) => setRejectReason(e.target.value)}
-            placeholder="Indicá el motivo del rechazo..."
-            rows={3}
+            placeholder="Indicá el motivo del rechazo…"
+            rows={4}
             required
           />
           <div className="flex gap-2 justify-end">
@@ -304,11 +299,7 @@ export default function ProposalDetail() {
         </div>
       </Modal>
 
-      <Modal
-        title="Cancelar propuesta"
-        open={showCancelModal}
-        onClose={() => setShowCancelModal(false)}
-      >
+      <Modal title="Cancelar propuesta" open={showCancelModal} onClose={() => setShowCancelModal(false)}>
         <div className="space-y-4">
           <p className="text-slate-600">¿Estás seguro de que querés cancelar esta propuesta?</p>
           <div className="flex gap-2 justify-end">

@@ -4,16 +4,19 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
 import { listUsers, createUser, updateUser, deleteUser, getMetrics, vaciarApp } from "../api/users";
 import type { Role } from "../types";
+import { PageHeader } from "../components/layout/PageHeader";
 import {
   Button,
-  Badge,
   Card,
   CardBody,
   Modal,
   Input,
   Select,
   EmptyState,
+  Badge,
+  RoleBadge,
 } from "../components/ui";
+import { Settings, UserPlus } from "lucide-react";
 import {
   roleLabels,
   eventStatusLabels,
@@ -124,23 +127,31 @@ export default function Admin() {
   };
 
   return (
-    <div>
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <h1 className="text-2xl font-semibold text-slate-800">Administración</h1>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="ghost"
-            onClick={() => setShowVaciarConfirm(true)}
-            className="text-red-600 hover:text-red-800 hover:bg-red-50"
-          >
-            Vaciar app
-          </Button>
-          <Button onClick={() => setShowCreate(true)}>Nuevo usuario</Button>
-        </div>
-      </div>
+    <div className="page-container">
+      <PageHeader
+        title="Administración"
+        subtitle="Gestión de usuarios y configuración del sistema"
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="ghost"
+              onClick={() => setShowVaciarConfirm(true)}
+              className="text-red-600 hover:text-red-800 hover:bg-red-50"
+            >
+              Vaciar app
+            </Button>
+            <Button onClick={() => setShowCreate(true)}>
+              <UserPlus className="w-4 h-4" aria-hidden />
+              Nuevo usuario
+            </Button>
+          </div>
+        }
+      />
 
-      {/* Panel de métricas */}
-      <h2 className="text-lg font-semibold text-slate-800 mb-4">Métricas</h2>
+      <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+        <Settings className="w-5 h-5 text-slate-400" aria-hidden />
+        Métricas
+      </h2>
       {metricsLoading ? (
         <div className="mb-8 text-slate-600">Cargando métricas…</div>
       ) : metrics ? (
@@ -303,7 +314,7 @@ export default function Admin() {
           <div className="flex flex-wrap gap-2">
             {(Object.entries(metrics.eventosPorAreaSolicitante) as [string, number][]).map(
               ([area, count]) => (
-                <Badge key={area} variant="secondary">{area}: {count}</Badge>
+                <Badge key={area} className="bg-slate-100 text-slate-700 ring-1 ring-slate-200">{area}: {count}</Badge>
               )
             )}
           </div>
@@ -318,7 +329,7 @@ export default function Admin() {
           <div className="flex flex-wrap gap-2">
             {(Object.entries(metrics.eventosPorPublico) as [string, number][]).map(
               ([pub, count]) => (
-                <Badge key={pub} variant="secondary">{pub}: {count}</Badge>
+                <Badge key={pub} className="bg-slate-100 text-slate-700 ring-1 ring-slate-200">{pub}: {count}</Badge>
               )
             )}
           </div>
@@ -333,7 +344,7 @@ export default function Admin() {
           <div className="flex flex-wrap gap-2">
             {(Object.entries(metrics.eventosPorMes) as [string, number][]).map(
               ([mes, count]) => (
-                <Badge key={mes} variant="secondary">{mes}: {count}</Badge>
+                <Badge key={mes} className="bg-slate-100 text-slate-700 ring-1 ring-slate-200">{mes}: {count}</Badge>
               )
             )}
           </div>
@@ -348,7 +359,7 @@ export default function Admin() {
           <div className="flex flex-wrap gap-2">
             {(Object.entries(metrics.proposalsByCategory) as [string, number][]).map(
               ([cat, count]) => (
-                <Badge key={cat} variant="secondary">
+                <Badge key={cat} className="bg-slate-100 text-slate-700 ring-1 ring-slate-200">
                   {categoryLabels[cat as keyof typeof categoryLabels] ?? cat}: {count}
                 </Badge>
               )
@@ -365,7 +376,7 @@ export default function Admin() {
           <div className="flex flex-wrap gap-2">
             {(Object.entries(metrics.proposalsByImpact) as [string, number][]).map(
               ([imp, count]) => (
-                <Badge key={imp} variant="secondary">{imp}: {count}</Badge>
+                <Badge key={imp} className="bg-slate-100 text-slate-700 ring-1 ring-slate-200">{imp}: {count}</Badge>
               )
             )}
           </div>
@@ -380,7 +391,7 @@ export default function Admin() {
           <div className="flex flex-wrap gap-2">
             {(Object.entries(metrics.propuestasPorValidador) as [string, number][]).map(
               ([name, count]) => (
-                <Badge key={name} variant="secondary">{name}: {count}</Badge>
+                <Badge key={name} className="bg-slate-100 text-slate-700 ring-1 ring-slate-200">{name}: {count}</Badge>
               )
             )}
           </div>
@@ -397,8 +408,8 @@ export default function Admin() {
               <CardBody className="py-4">
                 <p className="text-xs font-medium text-slate-600 mb-3">Eventos creados</p>
                 <div className="flex items-end gap-1 h-24">
-                  {metrics.evolucionEventos.map(({ mes, cantidad }) => {
-                    const max = Math.max(...metrics.evolucionEventos!.map((e) => e.cantidad), 1);
+                  {(metrics?.evolucionEventos ?? []).map(({ mes, cantidad }) => {
+                    const max = Math.max(...(metrics?.evolucionEventos ?? []).map((e) => e.cantidad), 1);
                     const h = (cantidad / max) * 100;
                     return (
                       <div key={mes} className="flex-1 flex flex-col items-center gap-0.5">
@@ -417,8 +428,8 @@ export default function Admin() {
               <CardBody className="py-4">
                 <p className="text-xs font-medium text-slate-600 mb-3">Propuestas creadas</p>
                 <div className="flex items-end gap-1 h-24">
-                  {metrics.evolucionPropuestas?.map(({ mes, cantidad }) => {
-                    const max = Math.max(...(metrics.evolucionPropuestas ?? []).map((e) => e.cantidad), 1);
+                  {(metrics?.evolucionPropuestas ?? []).map(({ mes, cantidad }) => {
+                    const max = Math.max(...(metrics?.evolucionPropuestas ?? []).map((e) => e.cantidad), 1);
                     const h = (cantidad / max) * 100;
                     return (
                       <div key={mes} className="flex-1 flex flex-col items-center gap-0.5">
@@ -472,19 +483,7 @@ export default function Admin() {
                     <td className="px-3 sm:px-4 py-3 text-slate-800">{u.email}</td>
                     <td className="px-3 sm:px-4 py-3 text-slate-800">{u.name}</td>
                     <td className="px-3 sm:px-4 py-3">
-                      <Badge
-                        className={
-                          u.role === "ADMIN"
-                            ? "bg-gov-200 text-gov-800"
-                            : u.role === "DIRECTOR_GENERAL"
-                            ? "bg-indigo-100 text-indigo-800"
-                            : u.role === "VALIDADOR"
-                            ? "bg-amber-100 text-amber-800"
-                            : "bg-slate-200 text-slate-700"
-                        }
-                      >
-                        {roleLabels[u.role as Role]}
-                      </Badge>
+                      <RoleBadge role={u.role as Role} />
                     </td>
                     <td className="px-3 sm:px-4 py-3 text-slate-600 text-sm hidden lg:table-cell">{u.area ?? "—"}</td>
                     <td className="px-3 sm:px-4 py-3 text-slate-600 text-xs hidden md:table-cell">

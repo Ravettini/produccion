@@ -29,10 +29,10 @@ describe("No inventar datos", () => {
     expect(xml).toContain("Por confirmar");
   });
 
-  it("debe incluir 'No definido' en items técnicos sin evidencia", async () => {
+  it("muestra etiquetas del modelo cuando faltan datos de cobertura", async () => {
     const input = {
       event: {
-        titulo: "Evento Sin Técnica",
+        titulo: "Evento Sin Cobertura",
         descripcion: "Desc",
         requiere: [],
         areaSolicitante: "Área",
@@ -54,6 +54,7 @@ describe("No inventar datos", () => {
     };
     const buffer = await generateBriefDocx(input);
     const xml = extractDocxText(buffer);
-    expect(xml).toContain("No definido");
+    expect(xml).toContain("¿Qué querés comunicar?");
+    expect(xml).toContain("¿Por qué canal va a salir?");
   });
 });

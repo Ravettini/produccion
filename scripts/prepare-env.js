@@ -1,6 +1,5 @@
 /**
- * Antes de setup: si no existe apps/api/.env, lo crea desde .env.example
- * y sale con error para que el usuario edite DATABASE_URL y vuelva a ejecutar.
+ * Antes de setup: si no existe apps/api/.env, lo crea desde .env.example.
  */
 const fs = require("fs");
 const path = require("path");
@@ -12,11 +11,13 @@ const examplePath = path.join(root, "apps", "api", ".env.example");
 if (!fs.existsSync(envPath)) {
   if (fs.existsSync(examplePath)) {
     fs.copyFileSync(examplePath, envPath);
-    console.error("\n[prepare-env] Se creó apps/api/.env desde .env.example\n");
+    console.log("\n[prepare-env] Se creó apps/api/.env desde .env.example");
+  } else {
+    console.error("[prepare-env] Falta apps/api/.env.example");
+    process.exit(1);
   }
-  console.error("[prepare-env] Editá apps/api/.env si querés (JWT_SECRET, etc.).");
-  console.error("  Después ejecutá de nuevo: npm run start\n");
-  process.exit(1);
+  console.log("[prepare-env] Configurá DATABASE_URL (PostgreSQL) en apps/api/.env");
+  console.log("[prepare-env] Solo para pruebas sin DB: NO_DATABASE=true");
 }
 
 process.exit(0);

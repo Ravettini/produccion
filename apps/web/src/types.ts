@@ -1,5 +1,5 @@
 export type Role = "ADMIN" | "DIRECTOR_GENERAL" | "ORGANIZACION" | "PRODUCCION" | "AGENDA" | "VALIDADOR";
-export type EventStatus = "BORRADOR" | "EN_ANALISIS" | "CONFIRMADO" | "CANCELADO" | "REALIZADO";
+export type EventStatus = "PENDIENTE" | "BORRADOR" | "EN_ANALISIS" | "CONFIRMADO" | "CANCELADO" | "REALIZADO";
 export type ProposalCategory = "LOGISTICA" | "CATERING" | "TECNICA" | "AGENDA" | "PRODUCCION" | "OTRO";
 export type ProposalImpact = "ALTO" | "MEDIO" | "BAJO";
 export type ProposalStatus = "DRAFT" | "SUBMITTED" | "APPROVED" | "REJECTED" | "CANCELLED";
@@ -33,6 +33,7 @@ export interface Event {
   realizacionImpacto?: string | null;
   realizacionLinkImpacto?: string | null;
   datosProduccion?: Record<string, unknown> | null;
+  createdById?: string | null;
   createdAt: string;
   updatedAt: string;
   _count?: { proposals: number };

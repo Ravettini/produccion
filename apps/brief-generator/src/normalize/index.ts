@@ -21,6 +21,25 @@ export function formatFechaEsAR(dateStr: string | null | undefined): string {
   return `${parseInt(d, 10)} de ${mes} de ${y}`;
 }
 
+/** Formato del modelo audiovisual: 22/6/2026 */
+export function formatFechaBriefModelo(dateStr: string | null | undefined): string {
+  const s = trimOrNull(dateStr);
+  if (!s) return "Por confirmar";
+  const match = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return s;
+  const [, y, m, d] = match;
+  return `${parseInt(d, 10)}/${parseInt(m, 10)}/${y}`;
+}
+
+/** Formato del modelo audiovisual: 16.00hs */
+export function formatHoraBriefModelo(timeStr: string | null | undefined): string {
+  const s = trimOrNull(timeStr);
+  if (!s) return "Por confirmar";
+  const m = s.match(/^(\d{1,2}):(\d{2})/);
+  if (m) return `${m[1]}.${m[2]}hs`;
+  return s;
+}
+
 export function formatPublico(p: string | null | undefined): string {
   const s = trimOrNull(p);
   if (!s) return "Por confirmar";
