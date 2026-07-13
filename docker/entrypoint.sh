@@ -15,10 +15,13 @@ if [ "${SKIP_DB_MIGRATE:-0}" != "1" ] && [ -n "${DATABASE_URL:-}" ]; then
   case "$DATABASE_URL" in
     postgres:*|postgresql:*)
       echo "[entrypoint] Aplicando migraciones Prisma (PostgreSQL)..."
-      npx prisma migrate deploy
+      if ! npx prisma migrate deploy; then
+        echo "[entrypoint] ERROR: migraciones fallaron. Si ves error TLS, agregá ?sslmode=disable al DATABASE_URL."
+        exit 1
+      fi
       if [ "${SKIP_DB_SEED:-0}" != "1" ]; then
         echo "[entrypoint] Cargando usuarios iniciales (seed)..."
-        npm run db:seed
+        npm run db:seed || echo "[entrypoint] AVISO: seed falló; la API arrancará igual (usuarios ya existen o revisá DATABASE_URL)."
       fi
       ;;
     *)
