@@ -92,3 +92,7 @@ export function mountWebApp(app: Express): string | null {
   console.log(`[api] Frontend estático desde: ${webDist}`);
   return webDist;
 }
+
+export function getWebDistPath(): string | null {
+  return resolveWebDist();
+}

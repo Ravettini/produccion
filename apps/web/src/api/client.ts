@@ -1,9 +1,16 @@
-const BASE =
-  import.meta.env.VITE_API_BASE !== undefined
-    ? import.meta.env.VITE_API_BASE
-    : import.meta.env.DEV
-      ? "http://localhost:4000"
-      : "";
+/** Base de la API: vacío en producción = mismo dominio (proyecto.helio3.co). */
+export function getApiBase(): string {
+  const fromEnv = import.meta.env.VITE_API_BASE as string | undefined;
+  if (fromEnv !== undefined && fromEnv.trim() !== "") {
+    return fromEnv.replace(/\/$/, "");
+  }
+  if (import.meta.env.PROD) {
+    return "";
+  }
+  return "http://localhost:4000";
+}
+
+const BASE = getApiBase();
 
 let token: string | null = null;
 

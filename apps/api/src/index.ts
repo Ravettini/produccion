@@ -13,19 +13,23 @@ import { proposalsRouter } from "./routes/proposals.js";
 import { proposalByIdRouter } from "./routes/proposalById.js";
 import { eventAttachmentsRouter } from "./routes/eventAttachments.js";
 import { isMockMode } from "./lib/prisma.js";
-import { mountWebApp } from "./staticWeb.js";
+import { mountWebApp, getWebDistPath } from "./staticWeb.js";
 
 const app = express();
 const PORT = process.env.PORT ?? 4000;
 
-// En desarrollo permite cualquier localhost (5173, 5174, etc.). En producción usar CORS_ORIGIN.
+app.set("trust proxy", 1);
+
+// Producción: mismo dominio (Coolify/Cloudflare). Desarrollo: localhost.
 app.use(
   cors({
     origin:
       process.env.CORS_ORIGIN ||
       ((origin, cb) => {
-        if (!origin || /^https?:\/\/localhost(:\d+)?$/.test(origin)) cb(null, true);
-        else cb(null, false);
+        if (!origin) return cb(null, true);
+        if (/^https?:\/\/localhost(:\d+)?$/.test(origin)) return cb(null, true);
+        if (process.env.NODE_ENV === "production") return cb(null, true);
+        cb(null, false);
       }),
   })
 );
@@ -40,11 +44,20 @@ app.use("/events", proposalsRouter);
 app.use("/proposals", proposalByIdRouter);
 
 app.get("/health", (_req, res) => {
-  res.json({ ok: true, mockMode: isMockMode });
+  res.json({
+    ok: true,
+    mockMode: isMockMode,
+    frontend: getWebDistPath(),
+    nodeEnv: process.env.NODE_ENV ?? null,
+  });
 });
 
-mountWebApp(app);
+const webRoot = mountWebApp(app);
 
 app.listen(PORT, () => {
-  console.log(`API escuchando en http://localhost:${PORT}`);
+  const publicUrl = process.env.PUBLIC_URL || process.env.CLIENT_URL || `http://localhost:${PORT}`;
+  console.log(`API escuchando en puerto ${PORT}`);
+  if (webRoot) {
+    console.log(`[api] App web en ${publicUrl} (frontend: ${webRoot})`);
+  }
 });

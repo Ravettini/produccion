@@ -19,8 +19,9 @@ COPY . .
 RUN npm run db:generate
 
 # Misma URL que el navegador: API y SPA en el mismo origen/puerto
-ARG VITE_API_BASE=
-ENV VITE_API_BASE=$VITE_API_BASE
+ENV VITE_API_BASE=""
+ENV WEB_DIST_PATH=/app/apps/web/dist
+ENV NODE_ENV=production
 
 # Build brief-generator + frontend + API
 RUN npm run build \
@@ -32,7 +33,7 @@ RUN mkdir -p apps/api/uploads/events
 COPY --chmod=755 docker/entrypoint.sh /entrypoint.sh
 RUN sed -i 's/\r$//' /entrypoint.sh 2>/dev/null || sed -i '' 's/\r$//' /entrypoint.sh
 
-ENV NODE_ENV=production
+ENV WEB_DIST_PATH=/app/apps/web/dist
 
 EXPOSE 4000
 
