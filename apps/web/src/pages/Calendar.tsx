@@ -8,6 +8,7 @@ import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { Select } from "../components/ui/Select";
 import { PageHeader } from "../components/layout/PageHeader";
+import { CalendarAgendaList } from "../components/calendar/CalendarAgendaList";
 import { eventStatusLabels, eventStatusColors } from "../utils/labels";
 import { getEventHorario, eventMatchesTipoFilter } from "../utils/eventHelpers";
 
@@ -137,12 +138,12 @@ export default function Calendar() {
         }
       />
 
-      <div className="flex flex-wrap items-center gap-3 mb-6 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 mb-6 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
         <Input
           placeholder="Buscar por título, área o tipo..."
           value={filterBusqueda}
           onChange={(e) => setFilterBusqueda(e.target.value)}
-          className="flex-1 min-w-[200px] max-w-xs"
+          className="w-full sm:flex-1 sm:min-w-[200px]"
         />
         <Select
           options={[
@@ -154,7 +155,7 @@ export default function Calendar() {
           ]}
           value={filterEstado}
           onChange={(e) => setFilterEstado((e.target.value || "") as EventStatus)}
-          className="w-[160px]"
+          className="w-full sm:w-44"
         />
         <Select
           options={[
@@ -165,7 +166,7 @@ export default function Calendar() {
           onChange={(e) => setFilterArea(e.target.value)}
           className="w-full sm:w-52"
         />
-        <div className="flex flex-wrap gap-2 items-center">
+        <div className="flex flex-wrap gap-2 items-center w-full sm:w-auto">
           <span className="text-sm text-slate-500 mr-1">Tipo:</span>
           {FILTROS_TIPO.map(({ id, label }) => {
             const active = filterTipos.includes(id);
@@ -193,28 +194,28 @@ export default function Calendar() {
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-2 p-4 border-b border-slate-100 bg-slate-50/60">
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 flex-1 min-w-0">
             <button
               type="button"
               onClick={goPrev}
-              className="p-2.5 rounded-xl hover:bg-white border border-transparent hover:border-slate-200 text-slate-700 transition-colors"
+              className="p-2.5 rounded-xl hover:bg-white border border-transparent hover:border-slate-200 text-slate-700 transition-colors shrink-0"
               aria-label="Mes anterior"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <h2 className="text-lg font-bold text-slate-900 min-w-[180px] text-center px-2">
+            <h2 className="text-base sm:text-lg font-bold text-slate-900 flex-1 text-center px-2 truncate">
               {MESES[current.month]} {current.year}
             </h2>
             <button
               type="button"
               onClick={goNext}
-              className="p-2.5 rounded-xl hover:bg-white border border-transparent hover:border-slate-200 text-slate-700 transition-colors"
+              className="p-2.5 rounded-xl hover:bg-white border border-transparent hover:border-slate-200 text-slate-700 transition-colors shrink-0"
               aria-label="Mes siguiente"
             >
               <ChevronRight className="w-5 h-5" />
             </button>
           </div>
-          <Button variant="secondary" size="sm" onClick={goToday}>
+          <Button variant="secondary" size="sm" onClick={goToday} className="shrink-0">
             Hoy
           </Button>
         </div>
@@ -223,6 +224,18 @@ export default function Calendar() {
           <div className="p-8 text-center text-slate-600">Cargando eventos…</div>
         ) : (
           <>
+            {/* Vista agenda en móvil */}
+            <div className="md:hidden">
+              <CalendarAgendaList
+                year={current.year}
+                month={current.month}
+                eventsByDate={eventsByDate}
+                today={today}
+              />
+            </div>
+
+            {/* Grilla mensual en tablet+ */}
+            <div className="hidden md:block">
             <div className="grid grid-cols-7 border-b border-slate-200">
               {DIAS_SEMANA.map((d) => (
                 <div
@@ -294,6 +307,7 @@ export default function Calendar() {
                   </div>
                 );
               })}
+            </div>
             </div>
           </>
         )}

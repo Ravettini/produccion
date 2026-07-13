@@ -300,7 +300,7 @@ export default function EventForm() {
               placeholder="Ej: 80"
               hint="Define qué lugares están disponibles"
             />
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-2">
               {user?.area && !isAdmin ? (
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">DG solicitante</label>
@@ -336,7 +336,7 @@ export default function EventForm() {
             </div>
             <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
               <h3 className="text-sm font-semibold text-slate-800 mb-3">Horarios</h3>
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
                 <Input
                   label="Convocatoria"
                   type="time"
@@ -629,7 +629,7 @@ export default function EventForm() {
               </div>
             )}
             {estadoOptions.length > 0 && (
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-2">
                 <Select
                   label="Estado"
                   options={estadoOptions}
@@ -687,7 +687,7 @@ export default function EventForm() {
                 {err instanceof Error ? err.message : "Error"}
               </p>
             )}
-            <div className="flex gap-3 pt-2">
+            <div className="stack-actions pt-2 [&_button]:w-full [&_button]:sm:w-auto">
               <Button type="submit" disabled={isPending}>
                 {isPending ? "Guardando…" : "Guardar"}
               </Button>

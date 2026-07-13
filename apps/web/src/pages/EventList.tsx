@@ -112,7 +112,7 @@ export default function EventList() {
       </div>
 
       <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 mb-6 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
-        <div className="relative flex-1 min-w-[200px]">
+        <div className="relative flex-1 min-w-0 w-full sm:min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" aria-hidden />
           <Input
             placeholder="Buscar por título, área o tipo…"

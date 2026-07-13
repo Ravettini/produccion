@@ -7,12 +7,19 @@
 @layer base {
   body {
     @apply bg-surface text-slate-900 antialiased font-sans;
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }
 
 @layer components {
   .page-container {
-    @apply max-w-7xl mx-auto animate-fade-in;
+    @apply max-w-7xl mx-auto animate-fade-in min-w-0 w-full;
+  }
+
+  .stack-actions {
+    @apply flex flex-col-reverse gap-2 sm:flex-row sm:items-center;
   }
 
   .kanban-column {

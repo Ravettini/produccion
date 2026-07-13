@@ -403,11 +403,12 @@ export default function Admin() {
       {(metrics?.evolucionEventos?.length ?? 0) > 0 && (
         <div className="mb-8">
           <h3 className="text-sm font-medium text-slate-600 mb-3">Evolución últimos 12 meses</h3>
-          <div className="grid gap-6 sm:grid-cols-2">
+          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2">
             <Card>
               <CardBody className="py-4">
                 <p className="text-xs font-medium text-slate-600 mb-3">Eventos creados</p>
-                <div className="flex items-end gap-1 h-24">
+                <div className="overflow-x-auto -mx-1 px-1">
+                <div className="flex items-end gap-1 h-24 min-w-[280px]">
                   {(metrics?.evolucionEventos ?? []).map(({ mes, cantidad }) => {
                     const max = Math.max(...(metrics?.evolucionEventos ?? []).map((e) => e.cantidad), 1);
                     const h = (cantidad / max) * 100;
@@ -417,17 +418,19 @@ export default function Admin() {
                           className="w-full bg-[#153244]/80 rounded-t min-h-[4px]"
                           style={{ height: `${Math.max(h, 4)}%` }}
                         />
-                        <span className="text-[10px] text-slate-500 truncate max-w-full">{mes}</span>
+                        <span className="text-[10px] text-slate-500 truncate max-w-full text-center leading-tight">{mes}</span>
                       </div>
                     );
                   })}
+                </div>
                 </div>
               </CardBody>
             </Card>
             <Card>
               <CardBody className="py-4">
                 <p className="text-xs font-medium text-slate-600 mb-3">Propuestas creadas</p>
-                <div className="flex items-end gap-1 h-24">
+                <div className="overflow-x-auto -mx-1 px-1">
+                <div className="flex items-end gap-1 h-24 min-w-[280px]">
                   {(metrics?.evolucionPropuestas ?? []).map(({ mes, cantidad }) => {
                     const max = Math.max(...(metrics?.evolucionPropuestas ?? []).map((e) => e.cantidad), 1);
                     const h = (cantidad / max) * 100;
@@ -437,10 +440,11 @@ export default function Admin() {
                           className="w-full bg-emerald-600/80 rounded-t min-h-[4px]"
                           style={{ height: `${Math.max(h, 4)}%` }}
                         />
-                        <span className="text-[10px] text-slate-500 truncate max-w-full">{mes}</span>
+                        <span className="text-[10px] text-slate-500 truncate max-w-full text-center leading-tight">{mes}</span>
                       </div>
                     );
                   })}
+                </div>
                 </div>
               </CardBody>
             </Card>
@@ -465,8 +469,47 @@ export default function Admin() {
             />
           </CardBody>
         ) : (
-          <div className="overflow-x-auto -mx-4 sm:mx-0">
-            <table className="w-full text-sm min-w-[500px]">
+          <>
+            {/* Vista móvil: cards */}
+            <div className="md:hidden divide-y divide-slate-100">
+              {users.map((u) => (
+                <div key={u.id} className="p-4 space-y-3">
+                  <div className="min-w-0">
+                    <p className="font-medium text-slate-900 break-words">{u.name}</p>
+                    <p className="text-sm text-slate-600 break-all">{u.email}</p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <RoleBadge role={u.role as Role} />
+                    {u.area && (
+                      <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full truncate max-w-full">
+                        {u.area}
+                      </span>
+                    )}
+                  </div>
+                  {u.createdAt && (
+                    <p className="text-xs text-slate-500">Alta: {formatDateShort(u.createdAt)}</p>
+                  )}
+                  <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                    <Button variant="ghost" size="sm" onClick={() => openEdit(u)} className="w-full sm:w-auto">
+                      Editar
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDeleteId(u.id)}
+                      disabled={u.id === user?.id}
+                      className="w-full sm:w-auto text-red-600 hover:text-red-800 hover:bg-red-50"
+                    >
+                      Eliminar
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Vista desktop: tabla */}
+            <div className="hidden md:block overflow-x-auto">
+            <table className="w-full text-sm">
               <thead className="bg-slate-100 text-slate-700">
                 <tr>
                   <th className="text-left px-3 sm:px-4 py-3 font-medium">Email</th>
@@ -512,7 +555,8 @@ export default function Admin() {
                 ))}
               </tbody>
             </table>
-          </div>
+            </div>
+          </>
         )}
       </Card>
 
@@ -560,7 +604,7 @@ export default function Admin() {
           {create.error && (
             <p className="text-red-600 text-sm">{create.error.message}</p>
           )}
-          <div className="flex gap-2 pt-2">
+          <div className="stack-actions pt-2 [&_button]:w-full [&_button]:sm:w-auto">
             <Button type="submit" disabled={create.isPending}>
               {create.isPending ? "Creando…" : "Crear"}
             </Button>
@@ -608,7 +652,7 @@ export default function Admin() {
             {update.error && (
               <p className="text-red-600 text-sm">{update.error.message}</p>
             )}
-            <div className="flex gap-2 pt-2">
+            <div className="stack-actions pt-2 [&_button]:w-full [&_button]:sm:w-auto">
               <Button type="submit" disabled={update.isPending}>
                 {update.isPending ? "Guardando…" : "Guardar"}
               </Button>
@@ -631,7 +675,7 @@ export default function Admin() {
               ¿Estás seguro de que querés eliminar a{" "}
               {users.find((u) => u.id === deleteId)?.email}?
             </p>
-            <div className="flex gap-2 justify-end">
+            <div className="stack-actions sm:justify-end [&_button]:w-full [&_button]:sm:w-auto">
               <Button variant="secondary" onClick={() => setDeleteId(null)}>
                 Cancelar
               </Button>
@@ -656,7 +700,7 @@ export default function Admin() {
           <p className="text-slate-600">
             ¿Estás seguro? Se eliminarán todos los eventos, propuestas y adjuntos. Los usuarios se mantienen. Esta acción no se puede deshacer.
           </p>
-          <div className="flex gap-2 justify-end">
+          <div className="stack-actions sm:justify-end [&_button]:w-full [&_button]:sm:w-auto">
             <Button variant="secondary" onClick={() => setShowVaciarConfirm(false)}>
               Cancelar
             </Button>

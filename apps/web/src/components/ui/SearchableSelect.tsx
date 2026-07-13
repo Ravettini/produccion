@@ -75,7 +75,7 @@ export function SearchableSelect({
       </button>
 
       {open && (
-        <div className="absolute z-50 mt-1 w-full rounded-lg border border-slate-200 bg-white shadow-lg py-1 max-h-60 flex flex-col">
+        <div className="absolute z-50 mt-1 w-full max-w-[calc(100vw-2rem)] rounded-lg border border-slate-200 bg-white shadow-lg py-1 max-h-60 flex flex-col">
           <div className="p-2 border-b border-slate-100">
             <input
               type="text"

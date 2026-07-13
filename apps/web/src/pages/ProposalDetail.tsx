@@ -197,7 +197,7 @@ export default function ProposalDetail() {
           <Card className="mb-6">
             <CardHeader>Datos adicionales</CardHeader>
             <CardBody>
-              <dl className="grid gap-4 sm:grid-cols-2">
+              <dl className="grid gap-4 grid-cols-1 md:grid-cols-2">
                 {entries.map(([key, value]) => {
                   const field = fields.find((f) => f.key === key);
                   return (
@@ -284,7 +284,7 @@ export default function ProposalDetail() {
             rows={4}
             required
           />
-          <div className="flex gap-2 justify-end">
+          <div className="stack-actions sm:justify-end [&_button]:w-full [&_button]:sm:w-auto">
             <Button variant="secondary" onClick={() => setShowRejectModal(false)}>
               Cancelar
             </Button>
@@ -302,7 +302,7 @@ export default function ProposalDetail() {
       <Modal title="Cancelar propuesta" open={showCancelModal} onClose={() => setShowCancelModal(false)}>
         <div className="space-y-4">
           <p className="text-slate-600">¿Estás seguro de que querés cancelar esta propuesta?</p>
-          <div className="flex gap-2 justify-end">
+          <div className="stack-actions sm:justify-end [&_button]:w-full [&_button]:sm:w-auto">
             <Button variant="secondary" onClick={() => setShowCancelModal(false)}>
               No
             </Button>

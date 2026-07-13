@@ -47,7 +47,7 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
@@ -56,16 +56,17 @@ export function Modal({
       <div
         className={cn(
           "w-full bg-white rounded-2xl shadow-2xl flex flex-col max-h-[92vh] my-auto animate-fade-in",
+          "rounded-b-none sm:rounded-b-2xl",
           sizeClasses[size]
         )}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between px-6 py-4 border-b border-slate-100">
-          <div>
-            <h2 id="modal-title" className="font-semibold text-lg text-slate-900">
+        <div className="flex items-start justify-between px-4 sm:px-6 py-4 border-b border-slate-100">
+          <div className="min-w-0 pr-2">
+            <h2 id="modal-title" className="font-semibold text-base sm:text-lg text-slate-900 break-words">
               {title}
             </h2>
-            {subtitle && <p className="text-sm text-slate-500 mt-0.5">{subtitle}</p>}
+            {subtitle && <p className="text-sm text-slate-500 mt-0.5 break-words">{subtitle}</p>}
           </div>
           <button
             type="button"
@@ -76,9 +77,9 @@ export function Modal({
             <X className="w-5 h-5" />
           </button>
         </div>
-        <div className="flex-1 flex flex-col min-h-0 overflow-y-auto px-6 py-5">{children}</div>
+        <div className="flex-1 flex flex-col min-h-0 overflow-y-auto px-4 sm:px-6 py-4 sm:py-5">{children}</div>
         {footer && (
-          <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex gap-2 justify-end flex-wrap">
+          <div className="px-4 sm:px-6 py-4 border-t border-slate-100 bg-slate-50/50 stack-actions sm:justify-end [&_button]:w-full [&_button]:sm:w-auto">
             {footer}
           </div>
         )}

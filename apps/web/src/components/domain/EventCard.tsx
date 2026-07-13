@@ -18,7 +18,7 @@ export function EventCard({ event, className }: EventCardProps) {
     <Link
       to={`/events/${event.id}`}
       className={cn(
-        "group block bg-white rounded-2xl border border-slate-200 p-5 shadow-sm",
+        "group block bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-sm",
         "hover:border-brand-300 hover:shadow-md transition-all duration-200",
         className
       )}
@@ -30,7 +30,7 @@ export function EventCard({ event, className }: EventCardProps) {
         <StatusBadge kind="event" value={event.estado as EventStatus} />
       </div>
 
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm mb-4">
+      <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm mb-4">
         <div>
           <dt className="text-xs font-medium text-slate-400 uppercase tracking-wide">Fecha</dt>
           <dd className="text-slate-700 flex items-center gap-1 mt-0.5">
@@ -45,7 +45,7 @@ export function EventCard({ event, className }: EventCardProps) {
             {horario}
           </dd>
         </div>
-        <div className="col-span-2">
+        <div className="sm:col-span-2">
           <dt className="text-xs font-medium text-slate-400 uppercase tracking-wide">DG solicitante</dt>
           <dd className="text-slate-700 mt-0.5 truncate" title={event.areaSolicitante}>
             {event.areaSolicitante}

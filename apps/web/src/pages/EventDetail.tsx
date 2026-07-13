@@ -467,7 +467,7 @@ export default function EventDetail() {
             <div className="py-8 text-center text-slate-600">Cargando propuestas…</div>
           ) : (
             <>
-            <div className="grid gap-4 lg:grid-cols-3">
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
               <div className="kanban-column border-emerald-200/60">
                 <h3 className="flex items-center gap-2 text-sm font-semibold text-emerald-800 mb-3">
                   <span className="w-2 h-2 rounded-full bg-emerald-500" />
@@ -536,7 +536,7 @@ export default function EventDetail() {
               </Button>
             )}
           </div>
-          <div className="flex flex-wrap gap-2 mb-4">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-2 mb-4">
             <Select
               options={[
                 { value: "", label: "Todos los estados" },
@@ -546,7 +546,7 @@ export default function EventDetail() {
               ]}
               value={filterEstado}
               onChange={(e) => setFilterEstado((e.target.value || "") as ProposalStatus)}
-              className="w-40"
+              className="w-full sm:w-44"
             />
             <Select
               options={[
@@ -557,7 +557,7 @@ export default function EventDetail() {
               ]}
               value={filterCategoria}
               onChange={(e) => setFilterCategoria((e.target.value || "") as ProposalCategory)}
-              className="w-44"
+              className="w-full sm:w-44"
             />
           </div>
           {loadingProposals ? (
@@ -568,7 +568,7 @@ export default function EventDetail() {
               description="Creá una desde el formulario de abajo."
             />
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {filtered.map((p: Proposal) => (
                 <ProposalCard key={p.id} proposal={p} />
               ))}
@@ -624,7 +624,7 @@ export default function EventDetail() {
                 ))}
             </div>
           </div>
-          <div className="flex gap-2 justify-end flex-wrap pt-4 mt-4 border-t border-slate-100">
+          <div className="stack-actions sm:justify-end pt-4 mt-4 border-t border-slate-100 [&_button]:w-full [&_button]:sm:w-auto">
             <Button variant="secondary" onClick={() => setShowBriefModal(false)}>
               Cerrar
             </Button>
@@ -735,7 +735,7 @@ export default function EventDetail() {
                 ¿Marcar este evento como {eventStatusLabels[confirmEstado].toLowerCase()}?
               </p>
             )}
-            <div className="flex gap-2 justify-end">
+            <div className="stack-actions sm:justify-end [&_button]:w-full [&_button]:sm:w-auto">
               <Button variant="secondary" onClick={() => { setConfirmEstado(null); setMotivoCancelacion(""); setRealizacionAsistentes(""); setRealizacionImpacto(""); setRealizacionLinkImpacto(""); setRealizacionPdfFile(null); }}>
                 Cancelar
               </Button>
@@ -796,7 +796,7 @@ export default function EventDetail() {
           <p className="text-slate-600">
             ¿Estás seguro de que querés eliminar este evento? Se eliminarán también todas las propuestas y adjuntos asociados. Esta acción no se puede deshacer.
           </p>
-          <div className="flex gap-2 justify-end">
+          <div className="stack-actions sm:justify-end [&_button]:w-full [&_button]:sm:w-auto">
             <Button variant="secondary" onClick={() => setShowDeleteConfirm(false)}>
               Cancelar
             </Button>
@@ -1011,12 +1011,12 @@ function NewProposalForm({ eventId }: { eventId: string }) {
             required
             rows={2}
           />
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-2">
             <Select
               options={categoryOptions}
               value={categoria}
               onChange={(e) => handleCategoriaChange(e.target.value as ProposalCategory)}
-              className="flex-1 min-w-[120px]"
+              className="w-full sm:flex-1"
             />
             <Select
               options={[
@@ -1026,7 +1026,7 @@ function NewProposalForm({ eventId }: { eventId: string }) {
               ]}
               value={impacto}
               onChange={(e) => setImpacto(e.target.value as "ALTO" | "MEDIO" | "BAJO")}
-              className="flex-1 min-w-[100px]"
+              className="w-full sm:flex-1 sm:max-w-[140px]"
             />
           </div>
           {extraFields.length > 0 && (
