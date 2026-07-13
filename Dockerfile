@@ -24,6 +24,8 @@ ENV WEB_DIST_PATH=/app/apps/web/dist
 ENV NODE_ENV=production
 
 # Build brief-generator + frontend + API
+ARG APP_BUILD_ID=dev
+ENV APP_BUILD_ID=$APP_BUILD_ID
 RUN npm run build \
   && test -f apps/web/dist/index.html \
   && test -f apps/api/dist/index.js

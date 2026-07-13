@@ -18,6 +18,7 @@ interface WizardShellProps {
   nextLabel?: string;
   finishLabel?: string;
   error?: string;
+  eyebrow?: string;
 }
 
 export function WizardShell({
@@ -36,30 +37,36 @@ export function WizardShell({
   nextLabel = "Siguiente",
   finishLabel = "Guardar evento",
   error,
+  eyebrow = "Nuevo evento",
 }: WizardShellProps) {
   const progress = totalSteps > 0 ? ((stepIndex + 1) / totalSteps) * 100 : 0;
 
   return (
-    <div className="min-h-[calc(100vh-8rem)] flex flex-col max-w-2xl mx-auto w-full">
-      <div className="mb-8">
-        <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
+    <div className="min-h-full flex flex-col w-full">
+      <div className="mb-6 sm:mb-8">
+        <div className="flex items-center justify-between text-sm font-medium text-slate-600 mb-3">
           <span>
             Paso {stepIndex + 1} de {totalSteps}
-            {stepLabel ? ` · ${stepLabel}` : ""}
+            {stepLabel ? (
+              <span className="text-slate-400 font-normal"> · {stepLabel}</span>
+            ) : null}
           </span>
-          <span>{Math.round(progress)}%</span>
+          <span className="tabular-nums text-brand-700">{Math.round(progress)}%</span>
         </div>
-        <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+        <div className="h-2.5 bg-slate-200 rounded-full overflow-hidden shadow-inner">
           <div
-            className="h-full bg-brand-600 transition-all duration-300 ease-out rounded-full"
+            className="h-full bg-gradient-to-r from-brand-500 to-brand-600 transition-all duration-300 ease-out rounded-full"
             style={{ width: `${progress}%` }}
           />
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col justify-center py-4 sm:py-8">
-        <div className="text-center mb-8 sm:mb-10">
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight text-balance">
+      <div className="flex-1 flex flex-col justify-center py-6 sm:py-10">
+        <div className="text-center mb-8 sm:mb-12">
+          <p className="text-xs font-semibold uppercase tracking-wider text-brand-600 mb-3">
+            {eyebrow}
+          </p>
+          <h1 className="text-2xl sm:text-4xl font-bold text-slate-900 tracking-tight text-balance leading-tight">
             {title}
           </h1>
           {subtitle && (

@@ -54,6 +54,7 @@ app.get("/health", (_req, res) => {
     mockMode: isMockMode,
     frontend: getWebDistPath(),
     nodeEnv: process.env.NODE_ENV ?? null,
+    build: process.env.APP_BUILD_ID ?? null,
   });
 });
 

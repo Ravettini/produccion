@@ -363,18 +363,17 @@ export default function EventForm() {
   const canAdvance = validateStep(currentStep.id) === null;
 
   return (
-    <div className="page-container max-w-3xl">
-      <div className="mb-4">
+    <div className="fixed inset-0 z-20 lg:left-64 bg-surface overflow-y-auto">
+      <div className="min-h-full flex flex-col px-4 sm:px-8 py-6 sm:py-10 max-w-3xl mx-auto w-full">
         <button
           type="button"
           onClick={() => navigate(isNew ? "/" : `/events/${id}`)}
-          className="text-sm text-slate-500 hover:text-brand-600 transition-colors"
+          className="text-sm text-slate-500 hover:text-brand-600 transition-colors mb-6 self-start"
         >
           ← {isNew ? "Volver al inicio" : "Volver al evento"}
         </button>
-      </div>
 
-      <WizardShell
+        <WizardShell
         title={currentStep.title}
         subtitle={currentStep.subtitle}
         stepIndex={stepIndex}
@@ -387,6 +386,7 @@ export default function EventForm() {
         isLast={isLastStep}
         isPending={isPending}
         finishLabel={isNew ? "Crear evento" : "Guardar cambios"}
+        eyebrow={isNew ? "Nuevo evento" : "Editar evento"}
         error={displayError || undefined}
       >
         <EventFormWizardContent
@@ -441,6 +441,7 @@ export default function EventForm() {
           showEstadoSelect={showEstadoSelect}
         />
       </WizardShell>
+      </div>
 
       <Modal
         title={confirmModal?.action === "CONFIRMADO" ? "Confirmar evento" : "Cancelar evento"}
