@@ -16,6 +16,10 @@ if [ "${SKIP_DB_MIGRATE:-0}" != "1" ] && [ -n "${DATABASE_URL:-}" ]; then
     postgres:*|postgresql:*)
       echo "[entrypoint] Aplicando migraciones Prisma (PostgreSQL)..."
       npx prisma migrate deploy
+      if [ "${SKIP_DB_SEED:-0}" != "1" ]; then
+        echo "[entrypoint] Cargando usuarios iniciales (seed)..."
+        npm run db:seed
+      fi
       ;;
     *)
       echo "[entrypoint] DATABASE_URL no es PostgreSQL; se omiten migraciones."
