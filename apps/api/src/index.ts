@@ -13,12 +13,17 @@ import { proposalsRouter } from "./routes/proposals.js";
 import { proposalByIdRouter } from "./routes/proposalById.js";
 import { eventAttachmentsRouter } from "./routes/eventAttachments.js";
 import { isMockMode } from "./lib/prisma.js";
-import { mountWebApp, getWebDistPath } from "./staticWeb.js";
+import { mountWebApp, getWebDistPath, spaDocumentNavMiddleware } from "./staticWeb.js";
 
 const app = express();
 const PORT = process.env.PORT ?? 4000;
 
 app.set("trust proxy", 1);
+
+const webDist = getWebDistPath();
+if (webDist) {
+  app.use(spaDocumentNavMiddleware(webDist));
+}
 
 // Producción: mismo dominio (Coolify/Cloudflare). Desarrollo: localhost.
 app.use(
@@ -52,7 +57,7 @@ app.get("/health", (_req, res) => {
   });
 });
 
-const webRoot = mountWebApp(app);
+const webRoot = mountWebApp(app) ?? webDist;
 
 app.listen(PORT, () => {
   const publicUrl = process.env.PUBLIC_URL || process.env.CLIENT_URL || `http://localhost:${PORT}`;

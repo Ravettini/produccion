@@ -12,6 +12,30 @@ function isApiPath(reqPath: string): boolean {
   return API_PREFIXES.some((p) => reqPath === p || reqPath.startsWith(`${p}/`));
 }
 
+/** Recarga del navegador (F5) en rutas del SPA que comparten prefijo con la API. */
+export function isDocumentNavigation(req: Request): boolean {
+  const dest = req.get("Sec-Fetch-Dest");
+  if (dest === "document" || dest === "iframe") return true;
+  const accept = req.get("Accept") ?? "";
+  return accept.includes("text/html");
+}
+
+/**
+ * Antes de los routers de la API: si el navegador pide HTML en /events/new, etc.,
+ * devolver index.html en lugar de JSON con "Token requerido".
+ */
+export function spaDocumentNavMiddleware(webDist: string) {
+  const indexHtml = path.join(webDist, "index.html");
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (req.method !== "GET" && req.method !== "HEAD") return next();
+    if (!isDocumentNavigation(req)) return next();
+    if (!isApiPath(req.path)) return next();
+    res.sendFile(indexHtml, (err) => {
+      if (err) next(err);
+    });
+  };
+}
+
 function resolveWebDist(): string | null {
   const fromEnv = process.env.WEB_DIST_PATH?.trim();
   const candidates = [
@@ -41,7 +65,7 @@ function mountDevRedirect(app: Express): void {
 
   app.get("*", (req: Request, res: Response, next: NextFunction) => {
     if (req.method !== "GET" && req.method !== "HEAD") return next();
-    if (isApiPath(req.path)) return next();
+    if (isApiPath(req.path) && !isDocumentNavigation(req)) return next();
     const target = `${clientUrl}${req.path === "/" ? "" : req.path}`;
     res.redirect(302, target);
   });
