@@ -41,7 +41,7 @@ export default function EventList() {
       total: events.length,
       enAnalisis: events.filter((e) => e.estado === "EN_ANALISIS").length,
       confirmados: events.filter((e) => e.estado === "CONFIRMADO").length,
-      pendientes: events.filter((e) => e.estado === "PENDIENTE" || e.estado === "BORRADOR").length,
+      pendientes: events.filter((e) => e.estado === "PENDIENTE").length,
     };
   }, [events]);
 
@@ -71,7 +71,7 @@ export default function EventList() {
   if (isLoading) {
     return (
       <div className="page-container">
-        <PageHeader title="Eventos" subtitle="Gestioná eventos, propuestas y briefs institucionales" />
+        <PageHeader title="Eventos" subtitle="Gestioná eventos, requerimientos y briefs institucionales" />
         <EventListSkeleton />
       </div>
     );
@@ -93,7 +93,7 @@ export default function EventList() {
     <div className="page-container">
       <PageHeader
         title="Eventos"
-        subtitle="Gestioná eventos, propuestas y briefs institucionales"
+        subtitle="Gestioná eventos, requerimientos y briefs institucionales"
         actions={
           <Link to="/events/new">
             <Button>
@@ -104,11 +104,40 @@ export default function EventList() {
         }
       />
 
+      <div className="mb-2">
+        <p className="text-sm text-slate-500">
+          Resumen del listado según el estado actual de cada evento.
+        </p>
+      </div>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-8">
-        <StatCard label="Total de eventos" value={stats.total} icon={FileStack} accent="blue" />
-        <StatCard label="En análisis" value={stats.enAnalisis} icon={Clock} accent="amber" subtitle="Requieren revisión" />
-        <StatCard label="Confirmados" value={stats.confirmados} icon={CheckCircle2} accent="green" subtitle="Listos para producción" />
-        <StatCard label="Pendientes" value={stats.pendientes} icon={Clock} accent="slate" subtitle="Aguardando gestión" />
+        <StatCard
+          label="Total de eventos"
+          value={stats.total}
+          icon={FileStack}
+          accent="blue"
+          subtitle="Todos los eventos cargados en el sistema"
+        />
+        <StatCard
+          label="En análisis"
+          value={stats.enAnalisis}
+          icon={Clock}
+          accent="amber"
+          subtitle="Eventos en revisión antes de confirmarse"
+        />
+        <StatCard
+          label="Confirmados"
+          value={stats.confirmados}
+          icon={CheckCircle2}
+          accent="green"
+          subtitle="Eventos aprobados y listos para realizarse"
+        />
+        <StatCard
+          label="Pendientes"
+          value={stats.pendientes}
+          icon={Clock}
+          accent="slate"
+          subtitle="Solicitudes nuevas aguardando gestión"
+        />
       </div>
 
       <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 mb-6 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
@@ -143,7 +172,7 @@ export default function EventList() {
           title={events.length === 0 ? "No hay eventos todavía" : "Sin resultados"}
           description={
             events.length === 0
-              ? "Creá el primer evento para comenzar a gestionar propuestas."
+              ? "Creá el primer evento para comenzar a gestionar requerimientos."
               : "Probá con otros filtros o términos de búsqueda."
           }
           action={

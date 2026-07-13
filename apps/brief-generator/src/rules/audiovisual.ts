@@ -113,7 +113,7 @@ export function buildAudiovisualBriefData(
 
   return {
     nombreProyecto,
-    fechaEntrega: resolveValue(pickField(sources, "comunicacionPlazoEntrega")),
+    fechaEntrega: POR_CONFIRMAR,
     sinopsis: resolveValue(trimOrNull(event.descripcion)),
     objetivoComunicacion: resolveValue(
       pickField(sources, "coberturaObjetivo") ?? pickField(sources, "comunicacionMensajeClave")
@@ -135,7 +135,6 @@ export function buildAudiovisualBriefText(data: AudiovisualBriefData): string {
     "BRIEF — PEDIDO DE PIEZAS DE COMUNICACIÓN Y/O COBERTURA DE EVENTO",
     "",
     `Nombre del proyecto: ${data.nombreProyecto}`,
-    `Fecha estimada de entrega: ${data.fechaEntrega}`,
     `Sinopsis del proyecto: ${data.sinopsis}`,
     `¿Qué querés comunicar?: ${data.objetivoComunicacion}`,
     `¿Por qué canal va a salir?: ${data.canal}`,

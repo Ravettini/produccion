@@ -3,6 +3,7 @@ import { Input } from "../components/ui/Input";
 import { TextArea } from "../components/ui/TextArea";
 import { Select } from "../components/ui/Select";
 import { SearchableSelect } from "../components/ui/SearchableSelect";
+import { MultiSearchableSelect } from "../components/ui/MultiSearchableSelect";
 import { Button } from "../components/ui/Button";
 import { ChoiceCards } from "../components/wizard/ChoiceCards";
 import { LocacionesSugeridasPanel } from "../components/domain/LocacionesSugeridasPanel";
@@ -57,8 +58,8 @@ export interface EventFormWizardContentProps {
   setUsuarioSolicitante: (v: string) => void;
   programa: string;
   setPrograma: (v: string) => void;
-  funcionario: string;
-  setFuncionario: (v: string) => void;
+  funcionario: string[];
+  setFuncionario: (v: string[]) => void;
   necesitaAcreditacion: boolean | "";
   setNecesitaAcreditacion: (v: boolean | "") => void;
   linkAcreditacionConvocados: string;
@@ -349,16 +350,17 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
               onChange={(e) => setPrograma(e.target.value)}
             />
           )}
-          <SearchableSelect
-            label="Funcionario (opcional)"
-            placeholder="Buscar funcionario…"
+          <MultiSearchableSelect
+            label="Funcionario(s) (opcional)"
+            placeholder="Buscar y seleccionar funcionarios…"
+            searchPlaceholder="Buscar por nombre…"
             options={[
-              { value: "", label: "— Sin funcionario —" },
               { value: "Otro", label: "Otro" },
               ...FUNCIONARIOS_OPTIONS,
             ]}
             value={funcionario}
             onChange={setFuncionario}
+            emptyMessage="Ningún funcionario coincide"
           />
           <Select
             label="¿Se necesita acreditación?"

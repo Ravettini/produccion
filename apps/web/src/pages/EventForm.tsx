@@ -46,7 +46,7 @@ export default function EventForm() {
   const [usuarioSolicitante, setUsuarioSolicitante] = useState("");
   const [lugar, setLugar] = useState("");
   const [programa, setPrograma] = useState("");
-  const [funcionario, setFuncionario] = useState("");
+  const [funcionario, setFuncionario] = useState<string[]>([]);
   const [necesitaAcreditacion, setNecesitaAcreditacion] = useState<boolean | "">("");
   const [linkAcreditacionConvocados, setLinkAcreditacionConvocados] = useState("");
   const [datosProduccion, setDatosProduccion] = useState<Record<string, string>>({});
@@ -88,7 +88,12 @@ export default function EventForm() {
       setUsuarioSolicitante(existing.usuarioSolicitante ?? "");
       setLugar(existing.lugar ?? "");
       setPrograma(existing.programa ?? "");
-      setFuncionario((existing as { funcionario?: string | null }).funcionario ?? "");
+      setFuncionario(
+        ((existing as { funcionario?: string | null }).funcionario ?? "")
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      );
       setNecesitaAcreditacion((existing as { necesitaAcreditacion?: boolean | null }).necesitaAcreditacion ?? "");
       setLinkAcreditacionConvocados((existing as { linkAcreditacionConvocados?: string | null }).linkAcreditacionConvocados ?? "");
       const dp = existing.datosProduccion;
@@ -294,7 +299,7 @@ export default function EventForm() {
         usuarioSolicitante: usuarioSolicitante.trim() || undefined,
         lugar: lugar.trim() || undefined,
         programa: programa.trim() || undefined,
-        funcionario: funcionario.trim() || undefined,
+        funcionario: funcionario.length > 0 ? funcionario.join(", ") : undefined,
         necesitaAcreditacion: necesitaAcreditacion === true || necesitaAcreditacion === false ? necesitaAcreditacion : undefined,
         linkAcreditacionConvocados: linkAcreditacionConvocados.trim() || undefined,
         datosProduccion: Object.keys(datosProduccion).length > 0 ? datosProduccion : undefined,
@@ -315,7 +320,7 @@ export default function EventForm() {
           usuarioSolicitante: usuarioSolicitante.trim() || null,
           lugar: lugar.trim() || null,
           programa: programa.trim() || null,
-          funcionario: funcionario.trim() || null,
+          funcionario: funcionario.length > 0 ? funcionario.join(", ") : null,
           necesitaAcreditacion: necesitaAcreditacion === true || necesitaAcreditacion === false ? necesitaAcreditacion : null,
           linkAcreditacionConvocados: linkAcreditacionConvocados.trim() || null,
           datosProduccion: Object.keys(datosProduccion).length > 0 ? datosProduccion : null,

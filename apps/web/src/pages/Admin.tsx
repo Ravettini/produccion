@@ -162,38 +162,44 @@ export default function Admin() {
               <p className="text-2xl font-bold text-emerald-600">
                 {metrics.eventsByStatus?.CONFIRMADO ?? 0}
               </p>
+              <p className="text-xs text-slate-500 mt-1">Cantidad de eventos ya confirmados</p>
             </CardBody>
           </Card>
           <Card>
             <CardBody className="py-4">
               <p className="text-sm text-slate-600">Total eventos</p>
               <p className="text-2xl font-bold text-slate-800">{metrics.totalEvents ?? 0}</p>
+              <p className="text-xs text-slate-500 mt-1">Todos los eventos del sistema</p>
             </CardBody>
           </Card>
           <Card>
             <CardBody className="py-4">
-              <p className="text-sm text-slate-600">Propuestas aprobadas</p>
+              <p className="text-sm text-slate-600">Requerimientos aprobados</p>
               <p className="text-2xl font-bold text-emerald-600">
                 {metrics.proposalsByStatus?.APPROVED ?? 0}
               </p>
+              <p className="text-xs text-slate-500 mt-1">Requerimientos validados por tipo</p>
             </CardBody>
           </Card>
           <Card>
             <CardBody className="py-4">
-              <p className="text-sm text-slate-600">Total propuestas</p>
+              <p className="text-sm text-slate-600">Total requerimientos</p>
               <p className="text-2xl font-bold text-slate-800">{metrics.totalProposals ?? 0}</p>
+              <p className="text-xs text-slate-500 mt-1">Todos los requerimientos cargados</p>
             </CardBody>
           </Card>
           <Card>
             <CardBody className="py-4">
               <p className="text-sm text-slate-600">Tasa conversión</p>
               <p className="text-2xl font-bold text-slate-800">{metrics.tasaConversion ?? 0}%</p>
+              <p className="text-xs text-slate-500 mt-1">Confirmados sobre confirmados + cancelados</p>
             </CardBody>
           </Card>
           <Card>
             <CardBody className="py-4">
-              <p className="text-sm text-slate-600">Tasa rechazo propuestas</p>
+              <p className="text-sm text-slate-600">Tasa rechazo requerimientos</p>
               <p className="text-2xl font-bold text-slate-800">{metrics.tasaRechazo ?? 0}%</p>
+              <p className="text-xs text-slate-500 mt-1">Rechazados sobre aprobados + rechazados</p>
             </CardBody>
           </Card>
         </div>
@@ -221,7 +227,7 @@ export default function Admin() {
       </div>
 
       <div className="mb-8">
-        <h3 className="text-sm font-medium text-slate-600 mb-2">Propuestas por estado</h3>
+        <h3 className="text-sm font-medium text-slate-600 mb-2">Requerimientos por estado</h3>
         {metrics ? (
           <div className="flex flex-wrap gap-2">
             {(Object.entries(metrics.proposalsByStatus ?? {}) as [string, number][]).map(
@@ -267,7 +273,7 @@ export default function Admin() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
         <Card>
           <CardBody className="py-3">
-            <p className="text-xs text-slate-600">Eventos sin propuestas aprobadas</p>
+            <p className="text-xs text-slate-600">Eventos sin requerimientos aprobados</p>
             <p className="text-xl font-bold text-amber-600">{metrics?.eventosSinPropuestasAprobadas ?? 0}</p>
           </CardBody>
         </Card>
@@ -279,7 +285,7 @@ export default function Admin() {
         </Card>
         <Card>
           <CardBody className="py-3">
-            <p className="text-xs text-slate-600">Propuestas pendientes validación</p>
+            <p className="text-xs text-slate-600">Requerimientos pendientes validación</p>
             <p className="text-xl font-bold text-amber-600">{metrics?.propuestasPendientes ?? 0}</p>
           </CardBody>
         </Card>
@@ -354,7 +360,7 @@ export default function Admin() {
       </div>
 
       <div className="mb-6">
-        <h3 className="text-sm font-medium text-slate-600 mb-2">Propuestas por categoría</h3>
+        <h3 className="text-sm font-medium text-slate-600 mb-2">Requerimientos por categoría</h3>
         {metrics?.proposalsByCategory && Object.keys(metrics.proposalsByCategory).length > 0 ? (
           <div className="flex flex-wrap gap-2">
             {(Object.entries(metrics.proposalsByCategory) as [string, number][]).map(
@@ -371,7 +377,7 @@ export default function Admin() {
       </div>
 
       <div className="mb-6">
-        <h3 className="text-sm font-medium text-slate-600 mb-2">Propuestas por impacto</h3>
+        <h3 className="text-sm font-medium text-slate-600 mb-2">Requerimientos por impacto</h3>
         {metrics?.proposalsByImpact && Object.keys(metrics.proposalsByImpact).length > 0 ? (
           <div className="flex flex-wrap gap-2">
             {(Object.entries(metrics.proposalsByImpact) as [string, number][]).map(
@@ -386,7 +392,7 @@ export default function Admin() {
       </div>
 
       <div className="mb-6">
-        <h3 className="text-sm font-medium text-slate-600 mb-2">Propuestas aprobadas por validador</h3>
+        <h3 className="text-sm font-medium text-slate-600 mb-2">Requerimientos aprobados por validador</h3>
         {metrics?.propuestasPorValidador && Object.keys(metrics.propuestasPorValidador).length > 0 ? (
           <div className="flex flex-wrap gap-2">
             {(Object.entries(metrics.propuestasPorValidador) as [string, number][]).map(
@@ -428,7 +434,7 @@ export default function Admin() {
             </Card>
             <Card>
               <CardBody className="py-4">
-                <p className="text-xs font-medium text-slate-600 mb-3">Propuestas creadas</p>
+                <p className="text-xs font-medium text-slate-600 mb-3">Requerimientos creados</p>
                 <div className="overflow-x-auto -mx-1 px-1">
                 <div className="flex items-end gap-1 h-24 min-w-[280px]">
                   {(metrics?.evolucionPropuestas ?? []).map(({ mes, cantidad }) => {
@@ -698,7 +704,7 @@ export default function Admin() {
       >
         <div className="space-y-4">
           <p className="text-slate-600">
-            ¿Estás seguro? Se eliminarán todos los eventos, propuestas y adjuntos. Los usuarios se mantienen. Esta acción no se puede deshacer.
+            ¿Estás seguro? Se eliminarán todos los eventos, requerimientos y adjuntos. Los usuarios se mantienen. Esta acción no se puede deshacer.
           </p>
           <div className="stack-actions sm:justify-end [&_button]:w-full [&_button]:sm:w-auto">
             <Button variant="secondary" onClick={() => setShowVaciarConfirm(false)}>

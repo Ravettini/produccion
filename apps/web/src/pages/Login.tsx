@@ -1,6 +1,6 @@
 import { useState } from "react";
+import { Building2 } from "lucide-react";
 import { useNavigate, Navigate } from "react-router-dom";
-import { Building2, Lock, Mail } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { login } from "../api/auth";
 import { Button } from "../components/ui/Button";
@@ -35,7 +35,7 @@ export default function Login() {
   return (
     <div className="min-h-screen flex">
       {/* Panel izquierdo — branding */}
-      <div className="hidden lg:flex lg:w-1/2 relative bg-red-700 p-12 flex-col justify-between overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 relative bg-gradient-to-br from-sidebar via-slate-900 to-brand-900 p-12 flex-col justify-between overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-20 left-20 w-72 h-72 rounded-full bg-brand-500 blur-3xl" />
           <div className="absolute bottom-20 right-10 w-96 h-96 rounded-full bg-cyan-500 blur-3xl" />
@@ -47,7 +47,7 @@ export default function Login() {
             </div>
             <div>
               <p className="text-white font-semibold text-lg">Eventos Institucionales</p>
-              <p className="text-slate-400 text-sm">Gestión y propuestas</p>
+              <p className="text-slate-400 text-sm">Gestión y requerimientos</p>
             </div>
           </div>
         </div>
@@ -56,7 +56,7 @@ export default function Login() {
             Plataforma de gestión de eventos y briefs institucionales
           </h2>
           <p className="text-slate-300 text-lg max-w-md">
-            Centralizá propuestas, validaciones y generación de briefs con trazabilidad completa.
+            Centralizá requerimientos, validaciones y generación de briefs con trazabilidad completa.
           </p>
         </div>
         <p className="relative text-slate-500 text-sm flex items-center gap-2">
@@ -66,7 +66,7 @@ export default function Login() {
       </div>
 
       {/* Panel derecho — formulario */}
-      <div className="flex-1 flex items-center justify-center bg-red-600 px-4 py-8 sm:px-8">
+      <div className="flex-1 flex items-center justify-center bg-surface px-4 py-8 sm:px-8">
         <div className="w-full max-w-md">
           <div className="lg:hidden flex items-center gap-3 mb-8">
             <div className="w-10 h-10 rounded-xl bg-brand-600 flex items-center justify-center">
@@ -74,7 +74,7 @@ export default function Login() {
             </div>
             <div>
               <p className="font-semibold text-slate-900">Eventos Institucionales</p>
-              <p className="text-slate-500 text-sm">Gestión y propuestas</p>
+              <p className="text-slate-500 text-sm">Gestión y requerimientos</p>
             </div>
           </div>
 
@@ -114,22 +114,6 @@ export default function Login() {
                   {loading ? "Ingresando…" : "Ingresar"}
                 </Button>
               </form>
-
-              <div className="mt-6 pt-6 border-t border-slate-100 rounded-xl bg-slate-50/80 p-4">
-                <p className="text-slate-500 text-xs font-semibold uppercase tracking-wide mb-2">
-                  Credenciales demo
-                </p>
-                <div className="space-y-1.5 text-sm text-slate-600">
-                  <p className="flex items-center gap-2">
-                    <Mail className="w-3.5 h-3.5 text-slate-400" aria-hidden />
-                    admin@gobierno.gob / admin123
-                  </p>
-                  <p className="flex items-center gap-2">
-                    <Lock className="w-3.5 h-3.5 text-slate-400" aria-hidden />
-                    organizacion@gobierno.gob / admin123
-                  </p>
-                </div>
-              </div>
             </CardBody>
           </Card>
         </div>

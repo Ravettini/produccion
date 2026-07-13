@@ -112,12 +112,6 @@ export const cateringFields: CategoryFieldConfig[] = [
 /** Campos del brief audiovisual (modelo: piezas de comunicación y/o cobertura) */
 export const coberturaBriefFields: CategoryFieldConfig[] = [
   {
-    key: "comunicacionPlazoEntrega",
-    label: "Fecha estimada de entrega",
-    type: "text",
-    placeholder: "A coordinar con el equipo audiovisual",
-  },
-  {
     key: "coberturaObjetivo",
     label: "¿Qué querés comunicar?",
     type: "textarea",
@@ -126,20 +120,46 @@ export const coberturaBriefFields: CategoryFieldConfig[] = [
   {
     key: "comunicacionMedio",
     label: "¿Por qué canal va a salir?",
-    type: "text",
-    placeholder: "Instagram, LinkedIn, mailing, etc.",
+    type: "select",
+    options: [
+      { value: "", label: "Seleccionar…" },
+      { value: "Instagram", label: "Instagram" },
+      { value: "LinkedIn", label: "LinkedIn" },
+      { value: "YouTube", label: "YouTube" },
+      { value: "Mailing", label: "Mailing" },
+      { value: "Prensa", label: "Prensa" },
+      { value: "Web institucional", label: "Web institucional" },
+      { value: "Varios canales", label: "Varios canales" },
+      { value: "Otro", label: "Otro" },
+    ],
   },
   {
     key: "coberturaDuracion",
     label: "Duración aproximada",
-    type: "text",
-    placeholder: "Ej: 3 minutos, 1 h 30 min",
+    type: "select",
+    options: [
+      { value: "", label: "Seleccionar…" },
+      { value: "Menos de 1 minuto", label: "Menos de 1 minuto" },
+      { value: "1 a 3 minutos", label: "1 a 3 minutos" },
+      { value: "3 a 10 minutos", label: "3 a 10 minutos" },
+      { value: "Más de 10 minutos", label: "Más de 10 minutos" },
+      { value: "Evento completo", label: "Evento completo" },
+    ],
   },
   {
     key: "coberturaFormato",
     label: "Formato",
-    type: "text",
-    placeholder: "historia, reel, carrusel, video, etc.",
+    type: "select",
+    options: [
+      { value: "", label: "Seleccionar…" },
+      { value: "Historia", label: "Historia" },
+      { value: "Reel", label: "Reel" },
+      { value: "Carrusel", label: "Carrusel" },
+      { value: "Video", label: "Video" },
+      { value: "Foto", label: "Foto" },
+      { value: "Streaming", label: "Streaming" },
+      { value: "Otro", label: "Otro" },
+    ],
   },
   {
     key: "coberturaOrientacion",

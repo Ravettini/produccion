@@ -200,10 +200,11 @@ adminRouter.get("/metrics", async (_req, res) => {
     totalEvents,
     totalProposals,
     eventsByStatus: {
-      BORRADOR: eventsByStatus.BORRADOR ?? 0,
+      PENDIENTE: eventsByStatus.PENDIENTE ?? 0,
       EN_ANALISIS: eventsByStatus.EN_ANALISIS ?? 0,
       CONFIRMADO: eventsByStatus.CONFIRMADO ?? 0,
       CANCELADO: eventsByStatus.CANCELADO ?? 0,
+      REALIZADO: eventsByStatus.REALIZADO ?? 0,
     },
     proposalsByStatus: {
       DRAFT: proposalsByStatus.DRAFT ?? 0,

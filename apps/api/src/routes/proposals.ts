@@ -53,6 +53,16 @@ router.post("/:eventId/proposals", authMiddleware, canCreateProposal, async (req
     res.status(404).json({ error: "Evento no encontrado" });
     return;
   }
+  const cat = asProposalCategory(categoria);
+  const existingSameCategory = await prisma.proposal.findFirst({
+    where: { eventId, categoria: cat },
+  });
+  if (existingSameCategory) {
+    res.status(409).json({
+      error: "Ya existe un requerimiento de este tipo para el evento. Editá el existente.",
+    });
+    return;
+  }
   const datosExtraStr =
     datosExtra && typeof datosExtra === "object" && Object.keys(datosExtra).length > 0
       ? JSON.stringify(datosExtra)
@@ -63,7 +73,7 @@ router.post("/:eventId/proposals", authMiddleware, canCreateProposal, async (req
       titulo: String(titulo),
       nombreProyecto: nombreProyecto != null && String(nombreProyecto).trim() !== "" ? String(nombreProyecto).trim() : null,
       descripcion: String(descripcion),
-      categoria: asProposalCategory(categoria),
+      categoria: cat,
       impacto: asProposalImpact(impacto),
       datosExtra: datosExtraStr,
       estado: "DRAFT",

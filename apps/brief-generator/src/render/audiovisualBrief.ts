@@ -94,15 +94,6 @@ export function buildAudiovisualBriefDocument(input: BriefInput): Document {
       { alignment: "both", spacing: { before: 200, after: 200 } }
     ),
     fieldLine("Nombre del proyecto:", data.nombreProyecto),
-    data.fechaEntrega !== "Por confirmar"
-      ? fieldLine(
-          "Fecha estimada de entrega",
-          `${data.fechaEntrega} (a coordinar con el equipo audiovisual)`
-        )
-      : fieldLabelOnly(
-          "Fecha estimada de entrega",
-          "(a coordinar con el equipo audiovisual)"
-        ),
     fieldLine("Sinopsis del proyecto:", data.sinopsis),
     fieldWithFallback(
       "¿Qué querés comunicar?",

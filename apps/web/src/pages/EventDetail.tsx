@@ -45,7 +45,7 @@ export default function EventDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [tab, setTab] = useState<"brief" | "estado" | "propuestas" | "documentos">("brief");
+  const [tab, setTab] = useState<"brief" | "estado" | "requerimientos" | "documentos">("brief");
   const [filterEstado, setFilterEstado] = useState<ProposalStatus | "">("");
   const [filterCategoria, setFilterCategoria] = useState<ProposalCategory | "">("");
   const [editingResumen, setEditingResumen] = useState(false);
@@ -128,7 +128,7 @@ export default function EventDetail() {
   const tabs = [
     { id: "brief", label: "Brief" },
     { id: "estado", label: "Estado de la información" },
-    { id: "propuestas", label: "Propuestas" },
+    { id: "requerimientos", label: "Requerimientos" },
     { id: "documentos", label: "Documentos" },
   ];
 
@@ -142,7 +142,7 @@ export default function EventDetail() {
           : null;
   const subtitleParts = [event.areaSolicitante, publicoLabel, formatDate(event.fechaTentativa)].filter(Boolean);
 
-  const handleGoToTab = (targetTab: "estado" | "propuestas", filterEstado?: ProposalStatus) => {
+  const handleGoToTab = (targetTab: "estado" | "requerimientos", filterEstado?: ProposalStatus) => {
     setTab(targetTab);
     if (filterEstado !== undefined) setFilterEstado(filterEstado);
   };
@@ -173,7 +173,7 @@ export default function EventDetail() {
                 Confirmar evento
               </Button>
             )}
-            {canConfirmEvent(user) && (event.estado === "CONFIRMADO" || event.estado === "EN_ANALISIS" || event.estado === "BORRADOR") && (
+            {canConfirmEvent(user) && (event.estado === "CONFIRMADO" || event.estado === "EN_ANALISIS" || event.estado === "PENDIENTE") && (
               <>
                 <Button size="sm" variant="secondary" onClick={() => setConfirmEstado("REALIZADO")}>
                   Marcar como realizado
@@ -200,7 +200,7 @@ export default function EventDetail() {
       <div className="flex flex-wrap items-center gap-3 mb-6">
         <StatusBadge kind="event" value={event.estado as EventStatus} />
         {event._count && (
-          <span className="text-sm text-slate-500">{event._count.proposals} propuestas</span>
+          <span className="text-sm text-slate-500">{event._count.proposals} requerimientos</span>
         )}
       </div>
 
@@ -213,7 +213,7 @@ export default function EventDetail() {
           label="Completitud"
           value={`${proposals.length ? Math.round((aprobadas.length / proposals.length) * 100) : 0}%`}
           accent="blue"
-          subtitle="Propuestas aprobadas"
+          subtitle="Requerimientos aprobados"
         />
       </div>
 
@@ -464,7 +464,7 @@ export default function EventDetail() {
           </p>
 
           {loadingProposals ? (
-            <div className="py-8 text-center text-slate-600">Cargando propuestas…</div>
+            <div className="py-8 text-center text-slate-600">Cargando requerimientos…</div>
           ) : (
             <>
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
@@ -474,7 +474,7 @@ export default function EventDetail() {
                   Información aprobada ({aprobadas.length})
                 </h3>
                 {aprobadas.length === 0 ? (
-                  <p className="text-slate-500 text-sm italic">Ninguna propuesta aprobada aún.</p>
+                  <p className="text-slate-500 text-sm italic">Ningún requerimiento aprobado aún.</p>
                 ) : (
                   <div className="space-y-3">
                     {aprobadas.map((p: Proposal) => (
@@ -506,7 +506,7 @@ export default function EventDetail() {
                   Rechazado ({rechazadas.length})
                 </h3>
                 {rechazadas.length === 0 ? (
-                  <p className="text-slate-500 text-sm italic">Ninguna propuesta rechazada.</p>
+                  <p className="text-slate-500 text-sm italic">Ningún requerimiento rechazado.</p>
                 ) : (
                   <div className="space-y-3">
                     {rechazadas.map((p: Proposal) => (
@@ -521,10 +521,15 @@ export default function EventDetail() {
         </div>
       )}
 
-      {tab === "propuestas" && (
+      {tab === "requerimientos" && (
         <div className="mt-6">
           <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-            <h2 className="text-lg font-semibold text-slate-800">Propuestas</h2>
+            <div>
+              <h2 className="text-lg font-semibold text-slate-800">Requerimientos</h2>
+              <p className="text-sm text-slate-500 mt-0.5">
+                Una tarjeta por tipo. Si ya existe, editá el requerimiento en lugar de crear otro.
+              </p>
+            </div>
             {canCreateProposal(user) && (
               <Button
                 size="sm"
@@ -532,7 +537,7 @@ export default function EventDetail() {
                   document.getElementById("new-proposal-form")?.scrollIntoView({ behavior: "smooth" })
                 }
               >
-                Nueva propuesta
+                Nuevo requerimiento
               </Button>
             )}
           </div>
@@ -564,8 +569,8 @@ export default function EventDetail() {
             <div className="py-8 text-center text-slate-600">Cargando…</div>
           ) : filtered.length === 0 ? (
             <EmptyState
-              title="No hay propuestas"
-              description="Creá una desde el formulario de abajo."
+              title="No hay requerimientos"
+              description="Creá un requerimiento por tipo. Si ya existe ese tipo, editá la tarjeta correspondiente."
             />
           ) : (
             <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
@@ -574,7 +579,12 @@ export default function EventDetail() {
               ))}
             </div>
           )}
-          {canCreateProposal(user) && <NewProposalForm eventId={id!} />}
+          {canCreateProposal(user) && (
+            <NewProposalForm
+              eventId={id!}
+              occupiedCategories={proposals.map((p: Proposal) => p.categoria)}
+            />
+          )}
         </div>
       )}
 
@@ -602,7 +612,7 @@ export default function EventDetail() {
 
       <Modal
         title="Brief generado con IA"
-        subtitle="Generado a partir del evento y propuestas aprobadas"
+        subtitle="Generado a partir del evento y requerimientos aprobados"
         open={showBriefModal}
         onClose={() => setShowBriefModal(false)}
         size="xl"
@@ -794,7 +804,7 @@ export default function EventDetail() {
       >
         <div className="space-y-4">
           <p className="text-slate-600">
-            ¿Estás seguro de que querés eliminar este evento? Se eliminarán también todas las propuestas y adjuntos asociados. Esta acción no se puede deshacer.
+            ¿Estás seguro de que querés eliminar este evento? Se eliminarán también todos los requerimientos y adjuntos asociados. Esta acción no se puede deshacer.
           </p>
           <div className="stack-actions sm:justify-end [&_button]:w-full [&_button]:sm:w-auto">
             <Button variant="secondary" onClick={() => setShowDeleteConfirm(false)}>
@@ -933,11 +943,19 @@ function DocumentosSection({
   );
 }
 
-function NewProposalForm({ eventId }: { eventId: string }) {
-  const [nombreProyecto, setNombreProyecto] = useState("");
+function NewProposalForm({
+  eventId,
+  occupiedCategories,
+}: {
+  eventId: string;
+  occupiedCategories: ProposalCategory[];
+}) {
+  const categoriesDisponibles = (Object.keys(categoryLabels) as ProposalCategory[]).filter(
+    (c) => !occupiedCategories.includes(c)
+  );
   const [titulo, setTitulo] = useState("");
   const [descripcion, setDescripcion] = useState("");
-  const [categoria, setCategoria] = useState<ProposalCategory>("OTRO");
+  const [categoria, setCategoria] = useState<ProposalCategory>(categoriesDisponibles[0] ?? "OTRO");
   const [impacto, setImpacto] = useState<"ALTO" | "MEDIO" | "BAJO">("MEDIO");
   const [datosExtra, setDatosExtra] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
@@ -945,7 +963,6 @@ function NewProposalForm({ eventId }: { eventId: string }) {
   const create = useMutation({
     mutationFn: (data: {
       titulo: string;
-      nombreProyecto?: string;
       descripcion: string;
       categoria?: string;
       impacto?: string;
@@ -953,7 +970,6 @@ function NewProposalForm({ eventId }: { eventId: string }) {
     }) => createProposal(eventId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["proposals", eventId] });
-      setNombreProyecto("");
       setTitulo("");
       setDescripcion("");
       setDatosExtra({});
@@ -964,10 +980,13 @@ function NewProposalForm({ eventId }: { eventId: string }) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (occupiedCategories.includes(categoria)) {
+      setError("Ya existe un requerimiento de este tipo. Editá la tarjeta existente.");
+      return;
+    }
     const extra = Object.keys(datosExtra).length > 0 ? datosExtra : undefined;
     create.mutate({
-      titulo,
-      nombreProyecto: nombreProyecto.trim() || undefined,
+      titulo: titulo.trim() || categoryLabels[categoria],
       descripcion,
       categoria,
       impacto,
@@ -978,57 +997,67 @@ function NewProposalForm({ eventId }: { eventId: string }) {
   const handleCategoriaChange = (newCat: ProposalCategory) => {
     setCategoria(newCat);
     setDatosExtra({});
+    if (!titulo.trim() || Object.values(categoryLabels).includes(titulo)) {
+      setTitulo(categoryLabels[newCat]);
+    }
   };
 
-  const categoryOptions = (Object.entries(categoryLabels) as [ProposalCategory, string][]).map(
-    ([value, label]) => ({ value, label })
-  );
+  const categoryOptions = categoriesDisponibles.map((value) => ({
+    value,
+    label: categoryLabels[value],
+  }));
 
-  const extraFields = categoryExtraFields[categoria];
+  const extraFields = categoryExtraFields[categoria] ?? [];
+
+  if (categoriesDisponibles.length === 0) {
+    return (
+      <Card className="mt-8">
+        <CardBody className="py-6">
+          <p className="text-sm text-slate-600">
+            Ya hay un requerimiento por cada tipo. Para cambios, abrí la tarjeta correspondiente y editá el requerimiento existente.
+          </p>
+        </CardBody>
+      </Card>
+    );
+  }
 
   return (
     <div id="new-proposal-form">
     <Card className="mt-8">
-      <CardHeader>Nueva propuesta</CardHeader>
+      <CardHeader>Nuevo requerimiento</CardHeader>
       <CardBody>
         <form onSubmit={handleSubmit} className="space-y-3">
-          <Input
-            label="Nombre del proyecto"
-            placeholder="Nombre del proyecto"
-            value={nombreProyecto}
-            onChange={(e) => setNombreProyecto(e.target.value)}
+          <Select
+            label="Tipo de requerimiento"
+            options={categoryOptions}
+            value={categoria}
+            onChange={(e) => handleCategoriaChange(e.target.value as ProposalCategory)}
           />
           <Input
-            placeholder="Título"
+            label="Título"
+            placeholder="Título del requerimiento"
             value={titulo}
             onChange={(e) => setTitulo(e.target.value)}
             required
           />
           <TextArea
-            placeholder="Descripción"
+            label="Descripción"
+            placeholder="Detalle de lo que se necesita"
             value={descripcion}
             onChange={(e) => setDescripcion(e.target.value)}
             required
-            rows={2}
+            rows={3}
           />
-          <div className="flex flex-col sm:flex-row flex-wrap gap-2">
-            <Select
-              options={categoryOptions}
-              value={categoria}
-              onChange={(e) => handleCategoriaChange(e.target.value as ProposalCategory)}
-              className="w-full sm:flex-1"
-            />
-            <Select
-              options={[
-                { value: "ALTO", label: "Alto" },
-                { value: "MEDIO", label: "Medio" },
-                { value: "BAJO", label: "Bajo" },
-              ]}
-              value={impacto}
-              onChange={(e) => setImpacto(e.target.value as "ALTO" | "MEDIO" | "BAJO")}
-              className="w-full sm:flex-1 sm:max-w-[140px]"
-            />
-          </div>
+          <Select
+            label="Impacto"
+            options={[
+              { value: "ALTO", label: "Alto" },
+              { value: "MEDIO", label: "Medio" },
+              { value: "BAJO", label: "Bajo" },
+            ]}
+            value={impacto}
+            onChange={(e) => setImpacto(e.target.value as "ALTO" | "MEDIO" | "BAJO")}
+          />
           {extraFields.length > 0 && (
             <div className="space-y-3 pt-2 border-t border-slate-200">
               <p className="text-sm font-medium text-slate-600">
@@ -1072,7 +1101,7 @@ function NewProposalForm({ eventId }: { eventId: string }) {
           )}
           {error && <p className="text-red-600 text-sm">{error}</p>}
           <Button type="submit" disabled={create.isPending}>
-            {create.isPending ? "Creando…" : "Crear propuesta"}
+            {create.isPending ? "Creando…" : "Crear requerimiento"}
           </Button>
         </form>
       </CardBody>

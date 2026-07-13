@@ -5,7 +5,7 @@ import { buildAutoBriefResumen } from "../lib/buildAutoBrief.js";
 
 export const eventsRouter = Router();
 
-const validStatuses = ["PENDIENTE", "BORRADOR", "EN_ANALISIS", "CONFIRMADO", "CANCELADO", "REALIZADO"];
+const validStatuses = ["PENDIENTE", "EN_ANALISIS", "CONFIRMADO", "CANCELADO", "REALIZADO"];
 
 function dayBounds(fecha: Date) {
   const start = new Date(fecha);

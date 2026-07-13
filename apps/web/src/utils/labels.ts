@@ -2,7 +2,6 @@ import type { EventStatus, ProposalStatus, ProposalCategory, ProposalImpact, Rol
 
 export const eventStatusLabels: Record<EventStatus, string> = {
   PENDIENTE: "Pendiente",
-  BORRADOR: "Borrador",
   EN_ANALISIS: "En análisis",
   CONFIRMADO: "Confirmado",
   CANCELADO: "Cancelado",
@@ -11,7 +10,6 @@ export const eventStatusLabels: Record<EventStatus, string> = {
 
 export const eventStatusColors: Record<EventStatus, string> = {
   PENDIENTE: "bg-sky-50 text-sky-800 ring-1 ring-sky-200",
-  BORRADOR: "bg-slate-100 text-slate-700 ring-1 ring-slate-200",
   EN_ANALISIS: "bg-amber-50 text-amber-800 ring-1 ring-amber-200",
   CONFIRMADO: "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200",
   CANCELADO: "bg-red-50 text-red-800 ring-1 ring-red-200",
@@ -20,10 +18,10 @@ export const eventStatusColors: Record<EventStatus, string> = {
 
 export const proposalStatusLabels: Record<ProposalStatus, string> = {
   DRAFT: "Borrador",
-  SUBMITTED: "Enviada",
-  APPROVED: "Aprobada",
-  REJECTED: "Rechazada",
-  CANCELLED: "Cancelada",
+  SUBMITTED: "Enviado",
+  APPROVED: "Aprobado",
+  REJECTED: "Rechazado",
+  CANCELLED: "Cancelado",
 };
 
 export const proposalStatusColors: Record<ProposalStatus, string> = {

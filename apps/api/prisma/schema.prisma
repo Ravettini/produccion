@@ -9,10 +9,10 @@ datasource db {
 }
 
 // SQLite no soporta enums nativos; usamos String. Valores: ADMIN, ORGANIZACION, PRODUCCION, AGENDA, VALIDADOR
-// EventStatus: BORRADOR, EN_ANALISIS, CONFIRMADO, CANCELADO
+// EventStatus: PENDIENTE, EN_ANALISIS, CONFIRMADO, CANCELADO, REALIZADO
 // ProposalCategory: LOGISTICA, CATERING, TECNICA, AGENDA, PRODUCCION, OTRO
 // ProposalImpact: ALTO, MEDIO, BAJO
-// ProposalStatus: DRAFT, SUBMITTED, APPROVED, REJECTED, CANCELLED
+// ProposalStatus: DRAFT, SUBMITTED, APPROVED, REJECTED, CANCELLED (UI: Requerimientos)
 
 model User {
   id        String   @id @default(cuid())

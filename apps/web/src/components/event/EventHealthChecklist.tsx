@@ -8,7 +8,7 @@ interface EventHealthChecklistProps {
   eventTitle: string;
   proposals: Proposal[];
   loading?: boolean;
-  onGoToTab: (tab: "estado" | "propuestas", filterEstado?: ProposalStatus) => void;
+  onGoToTab: (tab: "estado" | "requerimientos", filterEstado?: ProposalStatus) => void;
 }
 
 function countByStatus(proposals: Proposal[]) {
@@ -96,7 +96,7 @@ export function EventHealthChecklist({
             <span className="text-slate-300 flex-shrink-0" aria-hidden>○</span>
           )}
           <span className="text-slate-700">
-            Propuestas aprobadas: <strong>{approved}</strong>
+            Requerimientos aprobados: <strong>{approved}</strong>
           </span>
         </li>
         {draft > 0 && (
@@ -140,10 +140,10 @@ export function EventHealthChecklist({
         <div className="mt-4 pt-4 border-t border-slate-100">
           <button
             type="button"
-            onClick={() => onGoToTab(submitted > 0 ? "estado" : "propuestas", submitted > 0 ? "SUBMITTED" : undefined)}
+            onClick={() => onGoToTab(submitted > 0 ? "estado" : "requerimientos", submitted > 0 ? "SUBMITTED" : undefined)}
             className="text-sm font-medium text-gov-600 hover:text-gov-800 focus:outline-none focus:ring-2 focus:ring-gov-500 focus:ring-offset-2 rounded-button px-2 py-1"
           >
-            Ver propuestas pendientes →
+            Ver requerimientos pendientes →
           </button>
         </div>
       )}

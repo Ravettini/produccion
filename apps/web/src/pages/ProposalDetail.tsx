@@ -131,17 +131,17 @@ export default function ProposalDetail() {
               <>
                 <Button variant="success" onClick={() => approve.mutate()} disabled={approve.isPending}>
                   <CheckCircle2 className="w-4 h-4" aria-hidden />
-                  Aprobar propuesta
+                  Aprobar requerimiento
                 </Button>
                 <Button variant="danger" onClick={() => setShowRejectModal(true)}>
                   <XCircle className="w-4 h-4" aria-hidden />
-                  Rechazar propuesta
+                  Rechazar requerimiento
                 </Button>
               </>
             )}
             {canCancelProposal(user, proposal) && (
               <Button variant="secondary" onClick={() => setShowCancelModal(true)} disabled={cancel.isPending}>
-                Cancelar propuesta
+                Cancelar requerimiento
               </Button>
             )}
           </div>
@@ -216,7 +216,7 @@ export default function ProposalDetail() {
       })()}
 
       <Card className="mb-6">
-        <CardHeader subtitle="Conversación sobre esta propuesta">Comentarios</CardHeader>
+        <CardHeader subtitle="Conversación sobre este requerimiento">Comentarios</CardHeader>
         <CardBody>
           <div className="space-y-4 max-h-80 overflow-y-auto mb-5">
             {(proposal.comments || []).length === 0 ? (
@@ -270,7 +270,7 @@ export default function ProposalDetail() {
       </Card>
 
       <Modal
-        title="Rechazar propuesta"
+        title="Rechazar requerimiento"
         subtitle="El motivo es obligatorio y quedará registrado"
         open={showRejectModal}
         onClose={() => setShowRejectModal(false)}
@@ -299,9 +299,9 @@ export default function ProposalDetail() {
         </div>
       </Modal>
 
-      <Modal title="Cancelar propuesta" open={showCancelModal} onClose={() => setShowCancelModal(false)}>
+      <Modal title="Cancelar requerimiento" open={showCancelModal} onClose={() => setShowCancelModal(false)}>
         <div className="space-y-4">
-          <p className="text-slate-600">¿Estás seguro de que querés cancelar esta propuesta?</p>
+          <p className="text-slate-600">¿Estás seguro de que querés cancelar este requerimiento?</p>
           <div className="stack-actions sm:justify-end [&_button]:w-full [&_button]:sm:w-auto">
             <Button variant="secondary" onClick={() => setShowCancelModal(false)}>
               No

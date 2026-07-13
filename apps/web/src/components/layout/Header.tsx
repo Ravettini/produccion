@@ -12,7 +12,7 @@ function getTitle(pathname: string): string | undefined {
   if (routeTitles[pathname]) return routeTitles[pathname];
   if (pathname.startsWith("/events/") && pathname.endsWith("/edit")) return "Editar evento";
   if (pathname.startsWith("/events/")) return "Detalle del evento";
-  if (pathname.startsWith("/proposals/")) return "Detalle de propuesta";
+  if (pathname.startsWith("/proposals/")) return "Detalle de requerimiento";
   return undefined;
 }
 
