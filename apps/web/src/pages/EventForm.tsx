@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getEvent, createEvent, updateEvent } from "../api/events";
@@ -6,27 +6,14 @@ import { uploadAttachment } from "../api/attachments";
 import type { EventStatus } from "../types";
 import { useAuth } from "../hooks/useAuth";
 import { Button } from "../components/ui/Button";
-import { Input } from "../components/ui/Input";
-import { TextArea } from "../components/ui/TextArea";
-import { Select } from "../components/ui/Select";
-import { CheckboxGroup } from "../components/ui/CheckboxGroup";
 import { Modal } from "../components/ui/Modal";
-import { Card, CardBody } from "../components/ui/Card";
-import { PageHeader } from "../components/layout/PageHeader";
-import { SearchableSelect } from "../components/ui/SearchableSelect";
+import { WizardShell } from "../components/wizard/WizardShell";
 import { eventStatusLabels } from "../utils/labels";
-import { categoryExtraFields, cateringFields, coberturaBriefFields } from "../config/proposalCategoryFields";
-import { DIRECCIONES_GENERALES_OPTIONS } from "../config/direccionesGenerales";
-import { getLugaresParaCantidad } from "../config/lugaresPorCapacidad";
+import { opcionesLocacionesSugeridas, criteriosDesdeProduccion, sugerirLocaciones } from "../utils/sugerirLocaciones";
 import { canEditEvent } from "../hooks/usePermissions";
-import { getProgramasParaArea } from "../config/programasPorArea";
-import { FUNCIONARIOS_OPTIONS } from "../config/funcionarios";
-
-const PRODUCCION_FORM_EXCLUDE = new Set(["horarioCitacion", "cantidadPersonas", "lugar"]);
-
-const statusOptions = (Object.entries(eventStatusLabels) as [EventStatus, string][]).map(
-  ([value, label]) => ({ value, label })
-);
+import { buildWizardSteps } from "../config/eventFormWizardSteps";
+import type { EventFormStepId } from "../config/eventFormWizardSteps";
+import { EventFormWizardContent } from "./EventFormWizardContent";
 
 const TIPO_OPCIONES = [
   { value: "Otro", label: "Otro", title: "Otro tipo de evento (especificar en el campo siguiente)." },
@@ -35,6 +22,10 @@ const TIPO_OPCIONES = [
   { value: "Cobertura", label: "Cobertura", title: "Registro audiovisual, fotográfico o de prensa del evento." },
 ];
 
+const statusOptions = (Object.entries(eventStatusLabels) as [EventStatus, string][]).map(
+  ([value, label]) => ({ value, label })
+);
+
 export default function EventForm() {
   const { id } = useParams<{ id: string }>();
   const isNew = !id || id === "new";
@@ -42,6 +33,7 @@ export default function EventForm() {
   const qc = useQueryClient();
   const { isAdmin, user } = useAuth();
   const isDirectorGeneral = user?.role === "DIRECTOR_GENERAL";
+  const [stepIndex, setStepIndex] = useState(0);
   const [titulo, setTitulo] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [tipoSeleccionados, setTipoSeleccionados] = useState<string[]>([]);
@@ -62,7 +54,7 @@ export default function EventForm() {
   const [realizacionImpacto, setRealizacionImpacto] = useState("");
   const [motivoCancelacion, setMotivoCancelacion] = useState("");
   const [confirmModal, setConfirmModal] = useState<{ action: "CONFIRMADO" | "CANCELADO" } | null>(null);
-  const [tipoError, setTipoError] = useState("");
+  const [stepError, setStepError] = useState("");
   const [archivosPdf, setArchivosPdf] = useState<File[]>([]);
 
   const { data: existing } = useQuery({
@@ -148,9 +140,53 @@ export default function EventForm() {
     },
   });
 
+  const tipoEventoValue = [...tipoSeleccionados, tipoOtro.trim()].filter(Boolean).join(", ");
+
+  const steps = useMemo(
+    () =>
+      buildWizardSteps({
+        tipoSeleccionados,
+        isEdit: !isNew,
+        estado,
+      }),
+    [tipoSeleccionados, isNew, estado]
+  );
+
+  const currentStep = steps[stepIndex] ?? steps[0];
+  const isLastStep = stepIndex >= steps.length - 1;
+
+  useEffect(() => {
+    if (stepIndex >= steps.length) {
+      setStepIndex(Math.max(0, steps.length - 1));
+    }
+  }, [steps.length, stepIndex]);
+
+  const cantidadPersonas = parseInt(datosProduccion.cantidadPersonas ?? "", 10);
+  const criteriosLocacion = useMemo(
+    () => ({
+      cantidadPersonas: !Number.isNaN(cantidadPersonas) && cantidadPersonas > 0 ? cantidadPersonas : undefined,
+      ...criteriosDesdeProduccion(datosProduccion),
+    }),
+    [cantidadPersonas, datosProduccion]
+  );
+  const lugaresSugeridos = useMemo(
+    () => sugerirLocaciones(criteriosLocacion, 20),
+    [criteriosLocacion]
+  );
+  const lugaresOpciones = useMemo(
+    () => opcionesLocacionesSugeridas(criteriosLocacion),
+    [criteriosLocacion]
+  );
+
+  const estadoOptions = isAdmin
+    ? statusOptions
+    : statusOptions.filter((o) => o.value !== "CONFIRMADO");
+
+  const showEstadoSelect = isAdmin && !isDirectorGeneral;
+
   const handleEstadoChange = (newEstado: EventStatus) => {
     if (newEstado === "CONFIRMADO" && !isAdmin) {
-      return; // Solo ADMIN puede confirmar
+      return;
     }
     if ((newEstado === "CONFIRMADO" || newEstado === "CANCELADO") && !isNew) {
       setConfirmModal({ action: newEstado });
@@ -166,21 +202,83 @@ export default function EventForm() {
     }
   };
 
-  const tipoEventoValue = [...tipoSeleccionados, tipoOtro.trim()].filter(Boolean).join(", ");
+  const validateStep = (stepId: EventFormStepId): string | null => {
+    switch (stepId) {
+      case "titulo":
+        if (!titulo.trim()) return "Ingresá el nombre del evento.";
+        return null;
+      case "dg-fecha":
+        if (!fechaTentativa) return "Seleccioná una fecha tentativa.";
+        if (isAdmin && !areaSolicitante.trim()) return "Seleccioná la dirección general solicitante.";
+        if (!user?.area && !isAdmin && !areaSolicitante.trim()) return "Seleccioná la dirección general solicitante.";
+        return null;
+      case "tipo":
+        if (tipoEventoValue.length === 0) return "Elegí al menos un tipo de apoyo.";
+        return null;
+      case "descripcion":
+        if (!descripcion.trim()) return "La descripción es obligatoria.";
+        return null;
+      case "estado-extra":
+        if (estado === "CANCELADO" && !motivoCancelacion.trim()) {
+          return "Indicá el motivo de la cancelación.";
+        }
+        return null;
+      default:
+        return null;
+    }
+  };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setTipoError("");
-    if (tipoEventoValue.length === 0) {
-      setTipoError("Seleccioná al menos una opción o completá «Otro»");
+  const handleNext = () => {
+    if (!currentStep) return;
+    const err = validateStep(currentStep.id);
+    if (err) {
+      setStepError(err);
       return;
     }
+    setStepError("");
+    setStepIndex((i) => Math.min(i + 1, steps.length - 1));
+  };
+
+  const handleBack = () => {
+    setStepError("");
+    if (stepIndex > 0) {
+      setStepIndex((i) => i - 1);
+    } else {
+      navigate(isNew ? "/" : `/events/${id}`);
+    }
+  };
+
+  const handleFinish = () => {
+    if (!currentStep) return;
+    const err = validateStep(currentStep.id);
+    if (err) {
+      setStepError(err);
+      return;
+    }
+    for (const step of steps) {
+      const stepErr = validateStep(step.id);
+      if (stepErr) {
+        setStepError(stepErr);
+        const idx = steps.findIndex((s) => s.id === step.id);
+        if (idx >= 0) setStepIndex(idx);
+        return;
+      }
+    }
+    setStepError("");
+    submitEvent();
+  };
+
+  const submitEvent = () => {
     if (!isNew && estado === "CANCELADO" && !motivoCancelacion.trim()) {
-      setTipoError("Al cancelar el evento es obligatorio indicar el motivo o razón.");
+      setStepError("Al cancelar el evento es obligatorio indicar el motivo o razón.");
       return;
     }
     if (isAdmin && !areaSolicitante.trim()) {
-      setTipoError("Seleccioná una dirección general solicitante.");
+      setStepError("Seleccioná una dirección general solicitante.");
+      return;
+    }
+    if (tipoEventoValue.length === 0) {
+      setStepError("Seleccioná al menos una opción o completá «Otro»");
       return;
     }
     if (isNew) {
@@ -243,6 +341,9 @@ export default function EventForm() {
 
   const err = create.error || update.error;
   const isPending = create.isPending || update.isPending;
+  const displayError =
+    stepError ||
+    (err instanceof Error ? err.message : err ? "Error al guardar" : "");
 
   if (!isNew && existing && !canEditEvent(user, existing)) {
     return (
@@ -255,453 +356,91 @@ export default function EventForm() {
     );
   }
 
-  const cantidadPersonas = parseInt(datosProduccion.cantidadPersonas ?? "", 10);
-  const lugaresOpciones = getLugaresParaCantidad(
-    !Number.isNaN(cantidadPersonas) ? cantidadPersonas : 0
-  );
+  if (!currentStep) {
+    return null;
+  }
 
-  const estadoOptions = isAdmin
-    ? statusOptions
-    : statusOptions.filter((o) => o.value !== "CONFIRMADO");
+  const canAdvance = validateStep(currentStep.id) === null;
 
   return (
     <div className="page-container max-w-3xl">
-      <PageHeader
-        title={isNew ? "Nuevo evento" : "Editar evento"}
-        subtitle={isNew ? "Completá la información del brief institucional" : "Actualizá los datos del evento"}
-        breadcrumb={
-          <button
-            type="button"
-            onClick={() => navigate(isNew ? "/" : `/events/${id}`)}
-            className="text-sm text-slate-500 hover:text-brand-600 transition-colors"
-          >
-            ← Volver
-          </button>
-        }
-      />
-      <Card>
-        <CardBody className="p-6 sm:p-8">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <Input
-              label="Título / Nombre del evento"
-              value={titulo}
-              onChange={(e) => setTitulo(e.target.value)}
-              required
-              placeholder="Nombre del evento"
-            />
-            <Input
-              label="Cantidad de personas (estimada)"
-              type="number"
-              min={1}
-              value={datosProduccion.cantidadPersonas ?? ""}
-              onChange={(e) =>
-                setDatosProduccion((prev) => ({ ...prev, cantidadPersonas: e.target.value }))
-              }
-              placeholder="Ej: 80"
-              hint="Define qué lugares están disponibles"
-            />
-            <div className="grid gap-4 md:grid-cols-2">
-              {user?.area && !isAdmin ? (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">DG solicitante</label>
-                  <p className="text-slate-800 py-2.5 px-3.5 bg-slate-100 rounded-xl border border-slate-200">{user.area}</p>
-                  <input type="hidden" name="areaSolicitante" value={user.area} />
-                </div>
-              ) : !user?.area && !isAdmin ? (
-                <Select
-                  label="DG solicitante"
-                  options={[{ value: "", label: "Seleccionar DG…" }, ...DIRECCIONES_GENERALES_OPTIONS]}
-                  value={areaSolicitante}
-                  onChange={(e) => setAreaSolicitante(e.target.value)}
-                  required
-                />
-              ) : (
-                <Select
-                  label="DG solicitante"
-                  options={[
-                    { value: "", label: "Seleccionar DG…" },
-                    ...DIRECCIONES_GENERALES_OPTIONS,
-                  ]}
-                  value={areaSolicitante}
-                  onChange={(e) => setAreaSolicitante(e.target.value)}
-                />
-              )}
-              <Input
-                label="Fecha"
-                type="date"
-                value={fechaTentativa}
-                onChange={(e) => setFechaTentativa(e.target.value)}
-                required
-              />
-            </div>
-            <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
-              <h3 className="text-sm font-semibold text-slate-800 mb-3">Horarios</h3>
-              <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
-                <Input
-                  label="Convocatoria"
-                  type="time"
-                  value={datosProduccion.horarioConvocatoria ?? ""}
-                  onChange={(e) =>
-                    setDatosProduccion((prev) => ({ ...prev, horarioConvocatoria: e.target.value }))
-                  }
-                />
-                <Input
-                  label="Comienzo"
-                  type="time"
-                  value={datosProduccion.horarioComienzo ?? ""}
-                  onChange={(e) =>
-                    setDatosProduccion((prev) => ({ ...prev, horarioComienzo: e.target.value }))
-                  }
-                />
-                <Input
-                  label="Finalización"
-                  type="time"
-                  value={datosProduccion.horarioFinalizacion ?? ""}
-                  onChange={(e) =>
-                    setDatosProduccion((prev) => ({ ...prev, horarioFinalizacion: e.target.value }))
-                  }
-                />
-              </div>
-            </div>
-            <Select
-              label="Lugar"
-              options={[
-                { value: "", label: "Seleccionar lugar…" },
-                ...lugaresOpciones.map((l) => ({ value: l.value, label: l.label })),
-                ...(lugar && !lugaresOpciones.some((l) => l.value === lugar)
-                  ? [{ value: lugar, label: lugar }]
-                  : []),
-              ]}
-              value={lugar}
-              onChange={(e) => setLugar(e.target.value)}
-            />
-            <div>
-              <CheckboxGroup
-                label="Requiere"
-                options={TIPO_OPCIONES}
-                value={tipoSeleccionados}
-                onChange={(v) => { setTipoSeleccionados(v); setTipoError(""); }}
-                required
-              />
-              {tipoError && (
-                <p className="mt-1 text-sm text-red-600">{tipoError}</p>
-              )}
-            </div>
-            <Input
-              label="Otro (opcional)"
-              value={tipoOtro}
-              onChange={(e) => setTipoOtro(e.target.value)}
-              placeholder="Ej: Jornada, Seminario..."
-            />
-            <TextArea
-              label="Descripción"
-              value={descripcion}
-              onChange={(e) => setDescripcion(e.target.value)}
-              required
-              rows={4}
-            />
-            <Select
-              label="Público"
-              options={[
-                { value: "", label: "Seleccionar…" },
-                { value: "INTERNO", label: "Interno" },
-                { value: "EXTERNO", label: "Externo" },
-                { value: "MIXTO", label: "Mixto" },
-              ]}
-              value={publico}
-              onChange={(e) => setPublico(e.target.value as "EXTERNO" | "INTERNO" | "MIXTO" | "")}
-            />
-            <Input
-              label="Referente del evento (opcional)"
-              value={usuarioSolicitante}
-              onChange={(e) => setUsuarioSolicitante(e.target.value)}
-              placeholder="Nombre de quien solicita o referente operativo"
-            />
-            {(() => {
-              const areaParaProgramas = (user?.area && !isAdmin) ? user.area : areaSolicitante.trim();
-              const opcionesPrograma = getProgramasParaArea(areaParaProgramas);
-              if (opcionesPrograma.length > 0) {
-                return (
-                  <SearchableSelect
-                    label="Programa (opcional)"
-                    placeholder="Buscar o seleccionar programa…"
-                    searchPlaceholder="Buscar programa…"
-                    options={[{ value: "", label: "— Sin programa —" }, ...opcionesPrograma]}
-                    value={programa}
-                    onChange={(v) => setPrograma(v)}
-                    emptyMessage="Ningún programa coincide con la búsqueda"
-                  />
-                );
-              }
-              return (
-                <Input
-                  label="Programa (opcional)"
-                  value={programa}
-                  onChange={(e) => setPrograma(e.target.value)}
-                  placeholder="No hay programas definidos para esta área. Escribí el nombre si corresponde."
-                />
-              );
-            })()}
-            <SearchableSelect
-              label="Funcionario(s) (opcional)"
-              placeholder="Buscar funcionario…"
-              searchPlaceholder="Buscar por nombre o apellido…"
-              options={[{ value: "Otro", label: "Otro" }, { value: "", label: "— Sin funcionario —" }, ...FUNCIONARIOS_OPTIONS]}
-              value={funcionario}
-              onChange={(v) => setFuncionario(v)}
-              emptyMessage="Ningún funcionario coincide con la búsqueda"
-            />
-            <div className="border border-slate-200 rounded-lg p-4 bg-slate-50/50">
-              <h3 className="text-sm font-semibold text-slate-800 mb-2">Acreditación</h3>
-              <Select
-                label="¿Se necesita acreditación?"
-                options={[
-                  { value: "", label: "Seleccionar…" },
-                  { value: "true", label: "Sí" },
-                  { value: "false", label: "No" },
-                ]}
-                value={necesitaAcreditacion === "" ? "" : necesitaAcreditacion ? "true" : "false"}
-                onChange={(e) => setNecesitaAcreditacion(e.target.value === "" ? "" : e.target.value === "true")}
-              />
-              {necesitaAcreditacion === true && (
-                <Input
-                  label="Link a convocados para acreditar"
-                  value={linkAcreditacionConvocados}
-                  onChange={(e) => setLinkAcreditacionConvocados(e.target.value)}
-                  placeholder="URL del formulario o listado de convocados"
-                  className="mt-3"
-                />
-              )}
-            </div>
-            <div className="border border-slate-200 rounded-lg p-4 bg-slate-50/50">
-              <h3 className="text-sm font-semibold text-slate-800 mb-2">Catering</h3>
-              <p className="text-xs text-slate-500 mb-3">¿Se requiere catering? Si es sí, completá los datos.</p>
-              <div className="space-y-3">
-                {cateringFields.filter((f) => f.key === "catering").map((field) => (
-                  <Select
-                    key={field.key}
-                    label={field.label}
-                    options={field.options ?? []}
-                    value={datosProduccion[field.key] ?? ""}
-                    onChange={(e) => setDatosProduccion((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                  />
-                ))}
-                {datosProduccion.catering === "si" &&
-                  cateringFields.filter((f) => f.key !== "catering").map((field) => (
-                    <div key={field.key}>
-                      {field.type === "textarea" ? (
-                        <TextArea
-                          label={field.label}
-                          placeholder={field.placeholder}
-                          value={datosProduccion[field.key] ?? ""}
-                          onChange={(e) => setDatosProduccion((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                          rows={2}
-                        />
-                      ) : field.type === "select" && field.options?.length ? (
-                        <Select
-                          label={field.label}
-                          options={field.options}
-                          value={datosProduccion[field.key] ?? ""}
-                          onChange={(e) => setDatosProduccion((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                        />
-                      ) : (
-                        <Input
-                          label={field.label}
-                          placeholder={field.placeholder}
-                          value={datosProduccion[field.key] ?? ""}
-                          onChange={(e) => setDatosProduccion((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                          type={field.type === "number" ? "number" : "text"}
-                        />
-                      )}
-                    </div>
-                  ))}
-              </div>
-            </div>
-            {tipoSeleccionados.includes("Cobertura") && (
-              <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
-                <h3 className="text-sm font-semibold text-slate-800 mb-2">Cobertura / Audiovisual</h3>
-                <p className="text-xs text-slate-500 mb-3">
-                  Datos para el brief de piezas de comunicación y/o cobertura del evento.
-                </p>
-                <div className="space-y-3">
-                  {coberturaBriefFields.map((field) => (
-                    <div key={field.key}>
-                      {field.type === "textarea" ? (
-                        <TextArea
-                          label={field.label}
-                          placeholder={field.placeholder}
-                          value={datosProduccion[field.key] ?? ""}
-                          onChange={(e) =>
-                            setDatosProduccion((prev) => ({ ...prev, [field.key]: e.target.value }))
-                          }
-                          rows={3}
-                        />
-                      ) : field.type === "select" && field.options?.length ? (
-                        <Select
-                          label={field.label}
-                          options={field.options}
-                          value={datosProduccion[field.key] ?? ""}
-                          onChange={(e) =>
-                            setDatosProduccion((prev) => ({ ...prev, [field.key]: e.target.value }))
-                          }
-                        />
-                      ) : (
-                        <Input
-                          label={field.label}
-                          placeholder={field.placeholder}
-                          value={datosProduccion[field.key] ?? ""}
-                          onChange={(e) =>
-                            setDatosProduccion((prev) => ({ ...prev, [field.key]: e.target.value }))
-                          }
-                        />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
-              <h3 className="text-sm font-semibold text-slate-800 mb-2">Producción (opcional)</h3>
-              <p className="text-xs text-slate-500 mb-3">Técnica y materiales. Se usan en el brief si no hay propuesta de Producción aprobada.</p>
-              <div className="space-y-3">
-                {categoryExtraFields.PRODUCCION.filter((f) => !PRODUCCION_FORM_EXCLUDE.has(f.key)).map((field) => (
-                  <div key={field.key}>
-                    {field.type === "textarea" ? (
-                      <TextArea
-                        label={field.label}
-                        placeholder={field.placeholder}
-                        value={datosProduccion[field.key] ?? ""}
-                        onChange={(e) => setDatosProduccion((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                        rows={2}
-                      />
-                    ) : field.type === "select" && field.options?.length ? (
-                      <Select
-                        label={field.label}
-                        options={field.options}
-                        value={datosProduccion[field.key] ?? ""}
-                        onChange={(e) => setDatosProduccion((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                      />
-                    ) : (
-                      <Input
-                        label={field.label}
-                        placeholder={field.placeholder}
-                        value={datosProduccion[field.key] ?? ""}
-                        onChange={(e) => setDatosProduccion((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                        type={field.type === "number" ? "number" : field.type === "date" ? "date" : "text"}
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-            {estado === "CANCELADO" && (
-              <div className="border border-red-200 rounded-lg p-4 bg-red-50/50">
-                <h3 className="text-sm font-semibold text-red-800 mb-2">Motivo de cancelación (obligatorio)</h3>
-                <TextArea
-                  label="Razón o motivo"
-                  value={motivoCancelacion}
-                  onChange={(e) => setMotivoCancelacion(e.target.value)}
-                  rows={2}
-                  placeholder="Indicá por qué se cancela el evento"
-                  required
-                />
-              </div>
-            )}
-            {estado === "REALIZADO" && (
-              <div className="border border-blue-200 rounded-lg p-4 bg-blue-50/50">
-                <h3 className="text-sm font-semibold text-blue-800 mb-2">Datos del evento realizado</h3>
-                <Input
-                  label="Cantidad de asistentes"
-                  type="number"
-                  min={0}
-                  value={realizacionAsistentes}
-                  onChange={(e) => setRealizacionAsistentes(e.target.value)}
-                  placeholder="Ej: 120"
-                />
-                <TextArea
-                  label="Impacto / comentarios"
-                  value={realizacionImpacto}
-                  onChange={(e) => setRealizacionImpacto(e.target.value)}
-                  rows={2}
-                  placeholder="Breve descripción del impacto o resultado"
-                  className="mt-3"
-                />
-              </div>
-            )}
-            {estadoOptions.length > 0 && (
-              <div className="grid gap-4 md:grid-cols-2">
-                <Select
-                  label="Estado"
-                  options={estadoOptions}
-                  value={estado}
-                  onChange={(e) => handleEstadoChange(e.target.value as EventStatus)}
-                />
-              </div>
-            )}
-            <TextArea
-              label="Resumen (opcional)"
-              value={resumen}
-              onChange={(e) => setResumen(e.target.value)}
-              rows={3}
-              placeholder="El evento se va a hacer en [lugar], se necesita producción [detalle], catering [detalle]..."
-            />
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Documentos PDF (opcional)
-              </label>
-              <label className="cursor-pointer inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300">
-                <input
-                  type="file"
-                  accept=".pdf,application/pdf"
-                  onChange={handleFileChange}
-                  className="hidden"
-                  multiple
-                />
-                <span>Agregar PDF</span>
-              </label>
-              <p className="text-slate-500 text-xs mt-1">Máx. 10 MB por archivo</p>
-              {archivosPdf.length > 0 && (
-                <ul className="mt-2 space-y-1">
-                  {archivosPdf.map((f, i) => (
-                    <li
-                      key={`${f.name}-${i}`}
-                      className="flex items-center justify-between gap-2 py-1.5 px-2 rounded bg-slate-50 text-sm"
-                    >
-                      <span className="truncate">📄 {f.name}</span>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeArchivo(i)}
-                        className="text-red-600 hover:text-red-800 text-xs shrink-0"
-                      >
-                        Quitar
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-            {err && (
-              <p className="text-red-600 text-sm" role="alert">
-                {err instanceof Error ? err.message : "Error"}
-              </p>
-            )}
-            <div className="stack-actions pt-2 [&_button]:w-full [&_button]:sm:w-auto">
-              <Button type="submit" disabled={isPending}>
-                {isPending ? "Guardando…" : "Guardar"}
-              </Button>
-              <Button
-                variant="secondary"
-                type="button"
-                onClick={() => navigate(isNew ? "/" : `/events/${id}`)}
-              >
-                Cancelar
-              </Button>
-            </div>
-          </form>
-        </CardBody>
-      </Card>
+      <div className="mb-4">
+        <button
+          type="button"
+          onClick={() => navigate(isNew ? "/" : `/events/${id}`)}
+          className="text-sm text-slate-500 hover:text-brand-600 transition-colors"
+        >
+          ← {isNew ? "Volver al inicio" : "Volver al evento"}
+        </button>
+      </div>
+
+      <WizardShell
+        title={currentStep.title}
+        subtitle={currentStep.subtitle}
+        stepIndex={stepIndex}
+        totalSteps={steps.length}
+        stepLabel={currentStep.label}
+        onBack={handleBack}
+        onNext={handleNext}
+        onFinish={handleFinish}
+        canNext={canAdvance}
+        isLast={isLastStep}
+        isPending={isPending}
+        finishLabel={isNew ? "Crear evento" : "Guardar cambios"}
+        error={displayError || undefined}
+      >
+        <EventFormWizardContent
+          stepId={currentStep.id}
+          titulo={titulo}
+          setTitulo={setTitulo}
+          areaSolicitante={areaSolicitante}
+          setAreaSolicitante={setAreaSolicitante}
+          fechaTentativa={fechaTentativa}
+          setFechaTentativa={setFechaTentativa}
+          tipoSeleccionados={tipoSeleccionados}
+          setTipoSeleccionados={setTipoSeleccionados}
+          tipoOtro={tipoOtro}
+          setTipoOtro={setTipoOtro}
+          publico={publico}
+          setPublico={setPublico}
+          descripcion={descripcion}
+          setDescripcion={setDescripcion}
+          datosProduccion={datosProduccion}
+          setDatosProduccion={setDatosProduccion}
+          lugar={lugar}
+          setLugar={setLugar}
+          lugaresSugeridos={lugaresSugeridos}
+          lugaresOpciones={lugaresOpciones}
+          usuarioSolicitante={usuarioSolicitante}
+          setUsuarioSolicitante={setUsuarioSolicitante}
+          programa={programa}
+          setPrograma={setPrograma}
+          funcionario={funcionario}
+          setFuncionario={setFuncionario}
+          necesitaAcreditacion={necesitaAcreditacion}
+          setNecesitaAcreditacion={setNecesitaAcreditacion}
+          linkAcreditacionConvocados={linkAcreditacionConvocados}
+          setLinkAcreditacionConvocados={setLinkAcreditacionConvocados}
+          resumen={resumen}
+          setResumen={setResumen}
+          archivosPdf={archivosPdf}
+          onFileChange={handleFileChange}
+          removeArchivo={removeArchivo}
+          estado={estado}
+          setEstado={setEstado}
+          estadoOptions={estadoOptions}
+          onEstadoChange={handleEstadoChange}
+          motivoCancelacion={motivoCancelacion}
+          setMotivoCancelacion={setMotivoCancelacion}
+          realizacionAsistentes={realizacionAsistentes}
+          setRealizacionAsistentes={setRealizacionAsistentes}
+          realizacionImpacto={realizacionImpacto}
+          setRealizacionImpacto={setRealizacionImpacto}
+          isAdmin={isAdmin}
+          userArea={user?.area}
+          showEstadoSelect={showEstadoSelect}
+        />
+      </WizardShell>
 
       <Modal
         title={confirmModal?.action === "CONFIRMADO" ? "Confirmar evento" : "Cancelar evento"}

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { getAuthToken } from "../api/client";
-import { me } from "../api/auth";
+import { me, logout } from "../api/auth";
 import type { User } from "../types";
 
 interface AuthContextValue {
@@ -23,7 +23,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     me()
       .then(setUser)
-      .catch(() => setUser(null))
+      .catch(() => {
+        logout();
+        setUser(null);
+      })
       .finally(() => setLoading(false));
   }, []);
 

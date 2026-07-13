@@ -40,6 +40,9 @@ export async function api<T>(
   const res = await fetch(`${BASE}${path}`, { ...opts, headers });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
+    if (res.status === 401) {
+      setAuthToken(null);
+    }
     const msg = err.detail ? `${err.error}: ${err.detail}` : (err.error || String(res.status));
     throw new Error(msg);
   }

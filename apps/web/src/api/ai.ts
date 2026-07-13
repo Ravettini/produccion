@@ -1,4 +1,4 @@
-import { api, getAuthToken, getApiBase } from "./client";
+import { api, getAuthToken, getApiBase, setAuthToken } from "./client";
 
 /** Genera un brief con IA a partir del evento y propuestas aprobadas. La API key y el modelo se configuran en apps/api/.env */
 export async function generarBriefIA(eventId: string): Promise<{ brief: string }> {
@@ -16,6 +16,9 @@ export async function exportarBriefDocx(eventId: string, filename: string): Prom
   const res = await fetch(`${getApiBase()}/events/${eventId}/exportar-brief-docx`, { headers });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
+    if (res.status === 401) {
+      setAuthToken(null);
+    }
     throw new Error(err.detail ?? err.error ?? "Error al exportar");
   }
   const blob = await res.blob();
