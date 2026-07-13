@@ -35,7 +35,7 @@ export default function Login() {
   return (
     <div className="min-h-screen flex">
       {/* Panel izquierdo — branding */}
-      <div className="hidden lg:flex lg:w-1/2 relative bg-gradient-to-br from-sidebar via-slate-900 to-brand-900 p-12 flex-col justify-between overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 relative bg-red-700 p-12 flex-col justify-between overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-20 left-20 w-72 h-72 rounded-full bg-brand-500 blur-3xl" />
           <div className="absolute bottom-20 right-10 w-96 h-96 rounded-full bg-cyan-500 blur-3xl" />
@@ -66,7 +66,7 @@ export default function Login() {
       </div>
 
       {/* Panel derecho — formulario */}
-      <div className="flex-1 flex items-center justify-center bg-surface px-4 py-8 sm:px-8">
+      <div className="flex-1 flex items-center justify-center bg-red-600 px-4 py-8 sm:px-8">
         <div className="w-full max-w-md">
           <div className="lg:hidden flex items-center gap-3 mb-8">
             <div className="w-10 h-10 rounded-xl bg-brand-600 flex items-center justify-center">
