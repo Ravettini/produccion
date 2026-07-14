@@ -7,6 +7,18 @@ import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { Card, CardBody } from "../components/ui/Card";
 
+const DEMO_ACCOUNTS = [
+  { role: "Admin", email: "admin@gobierno.gob", password: "admin123" },
+  { role: "Organización", email: "organizacion@gobierno.gob", password: "admin123" },
+  { role: "Producción", email: "produccion@gobierno.gob", password: "admin123" },
+  { role: "Institucionales", email: "institucionales@gobierno.gob", password: "admin123" },
+  { role: "Cobertura", email: "cobertura@gobierno.gob", password: "admin123" },
+  { role: "Validador", email: "validador@gobierno.gob", password: "admin123" },
+] as const;
+
+const DEMO_AREA_HINT =
+  "Usuarios por DG (cultura.ciudadana@…, bienestar.ciudadano@…, etc.): contraseña usuario123";
+
 export default function Login() {
   const { user, setUser } = useAuth();
   const navigate = useNavigate();
@@ -32,9 +44,14 @@ export default function Login() {
     }
   };
 
+  const fillAccount = (account: (typeof DEMO_ACCOUNTS)[number]) => {
+    setEmail(account.email);
+    setPassword(account.password);
+    setError("");
+  };
+
   return (
     <div className="min-h-screen flex">
-      {/* Panel izquierdo — branding */}
       <div className="hidden lg:flex lg:w-1/2 relative bg-gradient-to-br from-sidebar via-slate-900 to-brand-900 p-12 flex-col justify-between overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-20 left-20 w-72 h-72 rounded-full bg-brand-500 blur-3xl" />
@@ -65,7 +82,6 @@ export default function Login() {
         </p>
       </div>
 
-      {/* Panel derecho — formulario */}
       <div className="flex-1 flex items-center justify-center bg-surface px-4 py-8 sm:px-8">
         <div className="w-full max-w-md">
           <div className="lg:hidden flex items-center gap-3 mb-8">
@@ -114,6 +130,29 @@ export default function Login() {
                   {loading ? "Ingresando…" : "Ingresar"}
                 </Button>
               </form>
+
+              <div className="mt-6 pt-6 border-t border-slate-100">
+                <p className="text-slate-500 text-xs font-semibold uppercase tracking-wide mb-3">
+                  Credenciales demo — clic para completar
+                </p>
+                <ul className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                  {DEMO_ACCOUNTS.map((account) => (
+                    <li key={account.email}>
+                      <button
+                        type="button"
+                        onClick={() => fillAccount(account)}
+                        className="w-full text-left rounded-lg px-3 py-2 text-sm hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-colors"
+                      >
+                        <span className="font-medium text-slate-800">{account.role}</span>
+                        <span className="block text-slate-500 text-xs mt-0.5 truncate">
+                          {account.email} / {account.password}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-xs text-slate-400 mt-3 leading-relaxed">{DEMO_AREA_HINT}</p>
+              </div>
             </CardBody>
           </Card>
         </div>
