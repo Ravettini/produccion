@@ -65,17 +65,21 @@ export const impactColors: Record<ProposalImpact, string> = {
 export const roleLabels: Record<Role, string> = {
   ADMIN: "Administrador",
   DIRECTOR_GENERAL: "Director General",
-  VALIDADOR: "Validador",
-  ORGANIZACION: "Organización",
+  ORGANIZACION: "Organización (solicitante)",
   PRODUCCION: "Producción",
-  AGENDA: "Agenda",
+  INSTITUCIONALES: "Institucionales",
+  AGENDA: "Institucionales (Agenda)",
+  COBERTURA: "Cobertura",
+  VALIDADOR: "Validador",
 };
 
 export const roleColors: Record<Role, string> = {
   ADMIN: "bg-violet-50 text-violet-800 ring-1 ring-violet-200",
   DIRECTOR_GENERAL: "bg-brand-50 text-brand-800 ring-1 ring-brand-200",
-  VALIDADOR: "bg-slate-100 text-slate-700 ring-1 ring-slate-200",
   ORGANIZACION: "bg-brand-50 text-brand-700 ring-1 ring-brand-200",
   PRODUCCION: "bg-teal-50 text-teal-800 ring-1 ring-teal-200",
+  INSTITUCIONALES: "bg-indigo-50 text-indigo-800 ring-1 ring-indigo-200",
   AGENDA: "bg-amber-50 text-amber-800 ring-1 ring-amber-200",
+  COBERTURA: "bg-cyan-50 text-cyan-800 ring-1 ring-cyan-200",
+  VALIDADOR: "bg-slate-100 text-slate-700 ring-1 ring-slate-200",
 };

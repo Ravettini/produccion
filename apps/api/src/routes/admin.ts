@@ -10,7 +10,16 @@ import { authMiddleware, requireRoles } from "../middleware/auth.js";
 
 export const adminRouter = Router();
 
-const validRoles = ["ADMIN", "DIRECTOR_GENERAL", "ORGANIZACION", "PRODUCCION", "AGENDA", "VALIDADOR"];
+const validRoles = [
+  "ADMIN",
+  "DIRECTOR_GENERAL",
+  "ORGANIZACION",
+  "PRODUCCION",
+  "INSTITUCIONALES",
+  "AGENDA",
+  "COBERTURA",
+  "VALIDADOR",
+];
 
 adminRouter.use(authMiddleware);
 adminRouter.use(requireRoles("ADMIN"));

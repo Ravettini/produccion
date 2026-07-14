@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { authMiddleware, requireRoles } from "../middleware/auth.js";
 import { buildAutoBriefResumen } from "../lib/buildAutoBrief.js";
+import { canUserSeeEvent, filterEventsForUser } from "../lib/eventVisibility.js";
 
 export const eventsRouter = Router();
 
@@ -28,20 +29,32 @@ async function countEventsSameDayDg(areaSolicitante: string, fecha: Date, exclud
 }
 
 /**
- * GET /events - Listado de eventos (todos pueden ver).
+ * GET /events - Listado visible según el rol del usuario.
  */
-eventsRouter.get("/", authMiddleware, async (_req, res) => {
+eventsRouter.get("/", authMiddleware, async (req, res) => {
   const list = await prisma.event.findMany({
     orderBy: { createdAt: "desc" },
     include: {
       _count: { select: { proposals: true } },
     },
   });
-  res.json(list);
+  const dbUser = await prisma.user.findUnique({
+    where: { id: req.user!.id },
+    select: { id: true, role: true, area: true },
+  });
+  if (!dbUser) {
+    res.status(401).json({ error: "Usuario no encontrado" });
+    return;
+  }
+  const visible = filterEventsForUser(
+    { id: dbUser.id, role: dbUser.role, area: dbUser.area },
+    list
+  );
+  res.json(visible);
 });
 
 /**
- * GET /events/:id - Detalle de un evento.
+ * GET /events/:id - Detalle de un evento (si el rol puede verlo).
  */
 eventsRouter.get("/:id", authMiddleware, async (req, res) => {
   const event = await prisma.event.findUnique({
@@ -52,13 +65,30 @@ eventsRouter.get("/:id", authMiddleware, async (req, res) => {
     res.status(404).json({ error: "Evento no encontrado" });
     return;
   }
+  const dbUser = await prisma.user.findUnique({
+    where: { id: req.user!.id },
+    select: { id: true, role: true, area: true },
+  });
+  if (!dbUser) {
+    res.status(401).json({ error: "Usuario no encontrado" });
+    return;
+  }
+  if (!canUserSeeEvent({ id: dbUser.id, role: dbUser.role, area: dbUser.area }, event)) {
+    res.status(403).json({ error: "No tenés permiso para ver este evento" });
+    return;
+  }
   res.json(event);
 });
 
 /**
- * POST /events - Crear evento (requiere auth; en MVP todos autenticados pueden crear).
+ * POST /events - Crear evento (solicitantes / admin).
  */
 eventsRouter.post("/", authMiddleware, async (req, res) => {
+  const role = req.user?.role;
+  if (!role || !["ORGANIZACION", "ADMIN", "DIRECTOR_GENERAL"].includes(role)) {
+    res.status(403).json({ error: "Tu rol no puede crear eventos. Solo podés gestionar los que te solicitaron." });
+    return;
+  }
   const {
     titulo,
     descripcion,

@@ -1,9 +1,23 @@
 import type { User, Proposal } from "../types";
 
-const PROPOSAL_CREATOR_ROLES = ["ORGANIZACION", "PRODUCCION", "AGENDA", "ADMIN"];
+const PROPOSAL_CREATOR_ROLES = [
+  "ORGANIZACION",
+  "PRODUCCION",
+  "AGENDA",
+  "INSTITUCIONALES",
+  "COBERTURA",
+  "ADMIN",
+];
+
+const EVENT_CREATOR_ROLES = ["ORGANIZACION", "ADMIN", "DIRECTOR_GENERAL"];
 
 export function canCreateProposal(user: User | null): boolean {
   return user !== null && PROPOSAL_CREATOR_ROLES.includes(user.role);
+}
+
+/** Quién puede abrir la carga de un evento nuevo (solicitantes / admin). */
+export function canCreateEvent(user: User | null): boolean {
+  return user !== null && EVENT_CREATOR_ROLES.includes(user.role);
 }
 
 export function canApproveOrRejectProposal(user: User | null): boolean {

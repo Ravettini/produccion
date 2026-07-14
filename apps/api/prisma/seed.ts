@@ -64,6 +64,42 @@ async function main() {
     },
   });
 
+  const produccion = await prisma.user.upsert({
+    where: { email: "produccion@gobierno.gob" },
+    update: { role: "PRODUCCION", area: "Producción" },
+    create: {
+      email: "produccion@gobierno.gob",
+      password: hash,
+      name: "Usuario Producción",
+      role: "PRODUCCION",
+      area: "Producción",
+    },
+  });
+
+  const institucionales = await prisma.user.upsert({
+    where: { email: "institucionales@gobierno.gob" },
+    update: { role: "INSTITUCIONALES", area: "Institucionales" },
+    create: {
+      email: "institucionales@gobierno.gob",
+      password: hash,
+      name: "Usuario Institucionales",
+      role: "INSTITUCIONALES",
+      area: "Institucionales",
+    },
+  });
+
+  const cobertura = await prisma.user.upsert({
+    where: { email: "cobertura@gobierno.gob" },
+    update: { role: "COBERTURA", area: "Cobertura" },
+    create: {
+      email: "cobertura@gobierno.gob",
+      password: hash,
+      name: "Usuario Cobertura",
+      role: "COBERTURA",
+      area: "Cobertura",
+    },
+  });
+
   // Un usuario por área (rol ORGANIZACION: solo crear eventos y propuestas)
   for (const { area, email, name } of AREAS_USUARIOS) {
     await prisma.user.upsert({
@@ -281,8 +317,12 @@ async function main() {
     admin: admin.email,
     validador: validador.email,
     organizacion: organizacion.email,
+    produccion: produccion.email,
+    institucionales: institucionales.email,
+    cobertura: cobertura.email,
     usuariosPorArea: AREAS_USUARIOS.length,
     passwordAreaUsuarios: PASSWORD_AREA_USUARIOS,
+    passwordRolesEspecialidad: "admin123",
     evento: eventId,
   });
 }

@@ -8,6 +8,7 @@ import ProposalDetail from "./pages/ProposalDetail";
 import Admin from "./pages/Admin";
 import Calendar from "./pages/Calendar";
 import { AppShell } from "./components/layout/AppShell";
+import { canCreateEvent } from "./hooks/usePermissions";
 
 function Protected({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -19,6 +20,13 @@ function Protected({ children }: { children: React.ReactNode }) {
     );
   }
   if (!user) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+}
+
+function RequireCreateEvent({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (!canCreateEvent(user)) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
@@ -37,7 +45,14 @@ function AppRoutes() {
         <Route index element={<EventList />} />
         <Route path="calendar" element={<Calendar />} />
         <Route path="admin" element={<Admin />} />
-        <Route path="events/new" element={<EventForm />} />
+        <Route
+          path="events/new"
+          element={
+            <RequireCreateEvent>
+              <EventForm />
+            </RequireCreateEvent>
+          }
+        />
         <Route path="events/:id" element={<EventDetail />} />
         <Route path="events/:id/edit" element={<EventForm />} />
         <Route path="proposals/:id" element={<ProposalDetail />} />

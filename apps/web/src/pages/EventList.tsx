@@ -17,6 +17,8 @@ import { PageHeader } from "../components/layout/PageHeader";
 import { EventCard } from "../components/domain/EventCard";
 import { eventStatusLabels } from "../utils/labels";
 import { CheckCircle2, FileStack, Clock } from "lucide-react";
+import { useAuth } from "../hooks/useAuth";
+import { canCreateEvent } from "../hooks/usePermissions";
 
 const statusOptions = [
   { value: "", label: "Todos los estados" },
@@ -27,9 +29,21 @@ const statusOptions = [
 ];
 
 export default function EventList() {
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [sortBy, setSortBy] = useState<"date" | "title">("date");
+
+  const specialtyHint =
+    user?.role === "PRODUCCION"
+      ? "Mostrás solo eventos que solicitaron apoyo de Producción."
+      : user?.role === "INSTITUCIONALES" || user?.role === "AGENDA"
+        ? "Mostrás solo eventos que solicitaron apoyo Institucional."
+        : user?.role === "COBERTURA"
+          ? "Mostrás solo eventos que solicitaron Cobertura."
+          : user?.role === "ORGANIZACION" && user.area
+            ? `Mostrás eventos de tu área (${user.area}) y los que creaste.`
+            : null;
 
   const { data: events = [], isLoading, error, refetch } = useQuery({
     queryKey: ["events"],
@@ -93,14 +107,19 @@ export default function EventList() {
     <div className="page-container">
       <PageHeader
         title="Eventos"
-        subtitle="Gestioná eventos, requerimientos y briefs institucionales"
+        subtitle={
+          specialtyHint ??
+          "Gestioná eventos, requerimientos y briefs institucionales"
+        }
         actions={
-          <Link to="/events/new">
-            <Button>
-              <Plus className="w-4 h-4" aria-hidden />
-              Nuevo evento
-            </Button>
-          </Link>
+          canCreateEvent(user) ? (
+            <Link to="/events/new">
+              <Button>
+                <Plus className="w-4 h-4" aria-hidden />
+                Nuevo evento
+              </Button>
+            </Link>
+          ) : undefined
         }
       />
 

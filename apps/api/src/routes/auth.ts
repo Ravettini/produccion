@@ -26,7 +26,7 @@ authRouter.post("/login", async (req, res) => {
     return;
   }
   const token = jwt.sign(
-    { userId: user.id, email: user.email, role: user.role },
+    { userId: user.id, email: user.email, role: user.role, area: user.area ?? null },
     JWT_SECRET,
     { expiresIn: JWT_EXP }
   );
@@ -46,7 +46,16 @@ authRouter.post("/register", authMiddleware, requireRoles("ADMIN"), async (req, 
     res.status(400).json({ error: "email, password, name y role requeridos" });
     return;
   }
-  const validRoles = ["ADMIN", "DIRECTOR_GENERAL", "ORGANIZACION", "PRODUCCION", "AGENDA", "VALIDADOR"];
+  const validRoles = [
+    "ADMIN",
+    "DIRECTOR_GENERAL",
+    "ORGANIZACION",
+    "PRODUCCION",
+    "INSTITUCIONALES",
+    "AGENDA",
+    "COBERTURA",
+    "VALIDADOR",
+  ];
   if (!validRoles.includes(String(role))) {
     res.status(400).json({ error: "role inválido" });
     return;

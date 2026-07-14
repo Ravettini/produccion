@@ -5,6 +5,7 @@ export interface JwtPayload {
   userId: string;
   email: string;
   role: string;
+  area?: string | null;
 }
 
 declare global {
@@ -31,6 +32,7 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
     next();
   } catch {
     res.status(401).json({ error: "Token inválido o expirado" });
+    return;
   }
 }
 
@@ -76,6 +78,13 @@ export function requireRoles(...roles: string[]) {
 export const canValidate = requireRoles("ADMIN");
 
 /**
- * Puede crear propuestas: ORGANIZACION, PRODUCCION, AGENDA (y ADMIN).
+ * Puede crear requerimientos: organización, producción, institucionales/agenda, cobertura y admin.
  */
-export const canCreateProposal = requireRoles("ORGANIZACION", "PRODUCCION", "AGENDA", "ADMIN");
+export const canCreateProposal = requireRoles(
+  "ORGANIZACION",
+  "PRODUCCION",
+  "AGENDA",
+  "INSTITUCIONALES",
+  "COBERTURA",
+  "ADMIN"
+);
