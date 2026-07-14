@@ -5,6 +5,7 @@ import type { SearchableOption } from "./SearchableSelect";
 
 interface MultiSearchableSelectProps {
   label?: string;
+  hint?: string;
   placeholder?: string;
   options: SearchableOption[];
   value: string[];
@@ -17,6 +18,7 @@ interface MultiSearchableSelectProps {
 
 export function MultiSearchableSelect({
   label,
+  hint,
   placeholder = "Buscar o seleccionar…",
   options,
   value,
@@ -68,6 +70,7 @@ export function MultiSearchableSelect({
       {label && (
         <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
       )}
+      {hint && <p className="text-xs text-slate-500 mb-1.5">{hint}</p>}
       <button
         type="button"
         onClick={() => !disabled && setOpen((o) => !o)}
@@ -80,15 +83,15 @@ export function MultiSearchableSelect({
         )}
       >
         {value.length === 0 ? (
-          <span className="text-slate-500 flex items-center justify-between">
-            {placeholder}
-            <span className="text-slate-400 text-xs">▼</span>
+          <span className="text-slate-500 flex items-center justify-between gap-2">
+            <span>{placeholder}</span>
+            <span className="text-slate-400 text-xs shrink-0">varios · ▼</span>
           </span>
         ) : (
           <div className="flex flex-wrap gap-1.5 items-center">
             {selectedLabels.map((lab, i) => (
               <span
-                key={value[i]}
+                key={`${value[i]}-${i}`}
                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-brand-50 text-brand-800 text-xs font-medium"
               >
                 {lab}
@@ -113,13 +116,18 @@ export function MultiSearchableSelect({
                 </span>
               </span>
             ))}
-            <span className="text-slate-400 text-xs ml-auto">▼</span>
+            <span className="text-slate-400 text-xs ml-auto shrink-0">
+              {value.length} seleccionado{value.length !== 1 ? "s" : ""} · ▼
+            </span>
           </div>
         )}
       </button>
 
       {open && (
         <div className="absolute z-50 mt-1 w-full max-w-[calc(100vw-2rem)] rounded-lg border border-slate-200 bg-white shadow-lg py-1 max-h-60 flex flex-col">
+          <div className="px-3 py-1.5 text-xs text-slate-500 border-b border-slate-100 bg-slate-50">
+            Podés marcar varios. El menú no se cierra al elegir.
+          </div>
           <div className="p-2 border-b border-slate-100">
             <input
               type="text"
@@ -128,6 +136,7 @@ export function MultiSearchableSelect({
               placeholder={searchPlaceholder}
               className="w-full px-2 py-1.5 text-sm border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-gov-500"
               autoFocus
+              onClick={(e) => e.stopPropagation()}
             />
           </div>
           <ul className="overflow-y-auto py-1">
@@ -140,7 +149,11 @@ export function MultiSearchableSelect({
                   <li key={opt.value}>
                     <button
                       type="button"
-                      onClick={() => toggle(opt.value)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        toggle(opt.value);
+                      }}
                       className={cn(
                         "w-full px-3 py-2 text-left text-sm hover:bg-gov-50 flex items-center gap-2",
                         active && "bg-gov-100 text-gov-800"
@@ -148,7 +161,7 @@ export function MultiSearchableSelect({
                     >
                       <span
                         className={cn(
-                          "w-4 h-4 rounded border flex items-center justify-center text-[10px]",
+                          "w-4 h-4 rounded border flex items-center justify-center text-[10px] shrink-0",
                           active ? "bg-brand-600 border-brand-600 text-white" : "border-slate-300"
                         )}
                       >
@@ -161,6 +174,15 @@ export function MultiSearchableSelect({
               })
             )}
           </ul>
+          <div className="p-2 border-t border-slate-100">
+            <button
+              type="button"
+              className="w-full text-sm font-medium text-brand-700 hover:bg-brand-50 rounded-lg py-1.5"
+              onClick={() => setOpen(false)}
+            >
+              Listo
+            </button>
+          </div>
         </div>
       )}
     </div>

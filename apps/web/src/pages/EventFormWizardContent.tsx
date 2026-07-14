@@ -351,8 +351,9 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
             />
           )}
           <MultiSearchableSelect
-            label="Funcionario(s) (opcional)"
-            placeholder="Buscar y seleccionar funcionarios…"
+            label="Funcionario(s)"
+            hint="Podés seleccionar varios. Quedan como chips y se guardan separados por coma."
+            placeholder="Buscar y marcar uno o más funcionarios…"
             searchPlaceholder="Buscar por nombre…"
             options={[
               { value: "Otro", label: "Otro" },

@@ -81,7 +81,7 @@ const BASE_STEPS: WizardStepDef[] = [
     id: "complementos",
     label: "Extras",
     title: "¿Hay datos adicionales?",
-    subtitle: "Programa, funcionario, referente y acreditación (opcional).",
+    subtitle: "Programa, funcionarios (varios), referente y acreditación (opcional).",
   },
   {
     id: "catering",
