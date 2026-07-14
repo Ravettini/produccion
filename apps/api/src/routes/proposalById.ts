@@ -5,6 +5,11 @@ import {
   canCreateProposal,
   canValidate,
 } from "../middleware/auth.js";
+import {
+  canUserSeeEvent,
+  isSpecialtyRole,
+  isUserResponsibleForEvent,
+} from "../lib/eventVisibility.js";
 export const proposalByIdRouter = Router();
 
 const categories = ["LOGISTICA", "CATERING", "TECNICA", "AGENDA", "PRODUCCION", "OTRO"];
@@ -45,41 +50,126 @@ proposalByIdRouter.get("/:id", authMiddleware, async (req, res) => {
 });
 
 /**
- * PUT /proposals/:id - Editar solo si está en DRAFT y es el creador o admin.
+ * PUT /proposals/:id - Editar requerimiento.
+ * Creador/admin: solo DRAFT.
+ * Rol de especialidad del evento: puede editar (aunque no esté en borrador) y queda auditado.
  */
 proposalByIdRouter.put("/:id", authMiddleware, async (req, res) => {
-  const proposal = await prisma.proposal.findUnique({ where: { id: req.params.id } });
+  const proposal = await prisma.proposal.findUnique({
+    where: { id: req.params.id },
+    include: { event: { select: { id: true, tipoEvento: true, areaSolicitante: true, createdById: true } } },
+  });
   if (!proposal) {
     res.status(404).json({ error: "Propuesta no encontrada" });
     return;
   }
-  if (proposal.estado !== "DRAFT") {
-    res.status(400).json({ error: "Solo se puede editar una propuesta en estado DRAFT" });
+
+  const dbUser = await prisma.user.findUnique({
+    where: { id: req.user!.id },
+    select: { id: true, role: true, area: true },
+  });
+  if (!dbUser) {
+    res.status(401).json({ error: "Usuario no encontrado" });
     return;
   }
-  if (proposal.createdById !== req.user!.id && req.user!.role !== "ADMIN") {
-    res.status(403).json({ error: "Solo el creador o un admin puede editar esta propuesta" });
+
+  const isOwnerOrAdmin =
+    proposal.createdById === dbUser.id || dbUser.role === "ADMIN";
+  const isSpecialtyEditor =
+    isSpecialtyRole(dbUser.role) &&
+    canUserSeeEvent(dbUser, proposal.event) &&
+    isUserResponsibleForEvent(dbUser, proposal.event);
+
+  if (!isOwnerOrAdmin && !isSpecialtyEditor) {
+    res.status(403).json({ error: "No tenés permiso para editar este requerimiento" });
     return;
   }
-  const { titulo, nombreProyecto, descripcion, categoria, impacto, datosExtra } = req.body ?? {};
+  if (isOwnerOrAdmin && !isSpecialtyEditor && proposal.estado !== "DRAFT") {
+    res.status(400).json({ error: "Solo se puede editar un requerimiento en estado DRAFT" });
+    return;
+  }
+  if (["CANCELLED"].includes(proposal.estado)) {
+    res.status(400).json({ error: "No se puede editar un requerimiento cancelado" });
+    return;
+  }
+
+  const { titulo, nombreProyecto, descripcion, categoria, impacto, datosExtra, editReason } =
+    req.body ?? {};
   const data: Record<string, unknown> = {};
-  if (titulo !== undefined) data.titulo = String(titulo);
-  if (nombreProyecto !== undefined) data.nombreProyecto = nombreProyecto == null || String(nombreProyecto).trim() === "" ? null : String(nombreProyecto).trim();
-  if (descripcion !== undefined) data.descripcion = String(descripcion);
-  if (categoria !== undefined) data.categoria = asProposalCategory(categoria);
-  if (impacto !== undefined) data.impacto = asProposalImpact(impacto);
+  const changeNotes: string[] = [];
+
+  if (titulo !== undefined && String(titulo) !== proposal.titulo) {
+    data.titulo = String(titulo);
+    changeNotes.push(`título: "${proposal.titulo}" → "${titulo}"`);
+  }
+  if (nombreProyecto !== undefined) {
+    const next =
+      nombreProyecto == null || String(nombreProyecto).trim() === ""
+        ? null
+        : String(nombreProyecto).trim();
+    if (next !== proposal.nombreProyecto) {
+      data.nombreProyecto = next;
+      changeNotes.push(`proyecto: "${proposal.nombreProyecto ?? ""}" → "${next ?? ""}"`);
+    }
+  }
+  if (descripcion !== undefined && String(descripcion) !== proposal.descripcion) {
+    data.descripcion = String(descripcion);
+    changeNotes.push("descripción actualizada");
+  }
+  if (categoria !== undefined) {
+    const next = asProposalCategory(categoria);
+    if (next !== proposal.categoria) {
+      data.categoria = next;
+      changeNotes.push(`categoría: ${proposal.categoria} → ${next}`);
+    }
+  }
+  if (impacto !== undefined) {
+    const next = asProposalImpact(impacto);
+    if (next !== proposal.impacto) {
+      data.impacto = next;
+      changeNotes.push(`impacto: ${proposal.impacto} → ${next}`);
+    }
+  }
   if (datosExtra !== undefined) {
-    data.datosExtra =
+    const nextStr =
       datosExtra && typeof datosExtra === "object" && Object.keys(datosExtra).length > 0
         ? JSON.stringify(datosExtra)
         : null;
+    if (nextStr !== proposal.datosExtra) {
+      data.datosExtra = nextStr;
+      changeNotes.push("datos adicionales actualizados");
+    }
   }
 
-  const updated = await prisma.proposal.update({
-    where: { id: req.params.id },
-    data: data as Parameters<typeof prisma.proposal.update>[0]["data"],
-    include: { createdBy: { select: { id: true, name: true, email: true } } },
+  if (Object.keys(data).length === 0) {
+    res.status(400).json({ error: "No hay cambios para guardar" });
+    return;
+  }
+
+  const reason =
+    editReason != null && String(editReason).trim() !== ""
+      ? String(editReason).trim()
+      : changeNotes.join("; ");
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const row = await tx.proposal.update({
+      where: { id: req.params.id },
+      data: data as Parameters<typeof prisma.proposal.update>[0]["data"],
+      include: { createdBy: { select: { id: true, name: true, email: true } } },
+    });
+    await tx.proposalAudit.create({
+      data: {
+        proposalId: req.params.id,
+        userId: dbUser.id,
+        action: "EDIT",
+        fromStatus: proposal.estado,
+        toStatus: proposal.estado,
+        reason,
+      },
+    });
+    return row;
   });
+
   res.json(updated);
 });
 

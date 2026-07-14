@@ -12,6 +12,7 @@ import { eventsAIRouter } from "./routes/eventsAI.js";
 import { proposalsRouter } from "./routes/proposals.js";
 import { proposalByIdRouter } from "./routes/proposalById.js";
 import { eventAttachmentsRouter } from "./routes/eventAttachments.js";
+import { eventDecisionsRouter } from "./routes/eventDecisions.js";
 import { isMockMode } from "./lib/prisma.js";
 import { mountWebApp, getWebDistPath, spaDocumentNavMiddleware } from "./staticWeb.js";
 
@@ -44,6 +45,7 @@ app.use("/auth", authRouter);
 app.use("/admin", adminRouter);
 app.use("/events", eventsAIRouter);
 app.use("/events", eventAttachmentsRouter); // Antes de eventsRouter para que /:id/attachments tenga prioridad
+app.use("/events", eventDecisionsRouter);
 app.use("/events", eventsRouter);
 app.use("/events", proposalsRouter);
 app.use("/proposals", proposalByIdRouter);

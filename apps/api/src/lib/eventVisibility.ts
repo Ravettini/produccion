@@ -28,6 +28,52 @@ const ROLE_TIPO_KEYWORDS: Record<string, string[]> = {
   COBERTURA: ["cobertura", "comunicación", "comunicacion"],
 };
 
+/** Roles de especialidad que responden a un tipo de apoyo. */
+export const SPECIALTY_ROLES = [
+  "PRODUCCION",
+  "INSTITUCIONALES",
+  "AGENDA",
+  "COBERTURA",
+] as const;
+
+/** Roles canónicos usados en EventAreaDecision.areaRole */
+export const AREA_DECISION_ROLES = ["PRODUCCION", "INSTITUCIONALES", "COBERTURA"] as const;
+export type AreaDecisionRole = (typeof AREA_DECISION_ROLES)[number];
+
+export function normalizeAreaRole(role: string): AreaDecisionRole | null {
+  if (role === "AGENDA") return "INSTITUCIONALES";
+  if ((AREA_DECISION_ROLES as readonly string[]).includes(role)) {
+    return role as AreaDecisionRole;
+  }
+  return null;
+}
+
+/** Áreas solicitadas según tipoEvento del evento. */
+export function getRequestedAreaRoles(tipoEvento: string | null | undefined): AreaDecisionRole[] {
+  const requested: AreaDecisionRole[] = [];
+  for (const area of AREA_DECISION_ROLES) {
+    const kws = ROLE_TIPO_KEYWORDS[area];
+    if (kws && tipoEventoMatchesKeywords(tipoEvento, kws)) {
+      requested.push(area);
+    }
+  }
+  return requested;
+}
+
+export function isSpecialtyRole(role: string): boolean {
+  return (SPECIALTY_ROLES as readonly string[]).includes(role);
+}
+
+/** ¿El rol del usuario es responsable del área solicitada en este evento? */
+export function isUserResponsibleForEvent(
+  user: EventVisibilityUser,
+  event: { tipoEvento?: string | null }
+): boolean {
+  const area = normalizeAreaRole(user.role);
+  if (!area) return false;
+  return getRequestedAreaRoles(event.tipoEvento).includes(area);
+}
+
 export function tipoEventoMatchesKeywords(
   tipoEvento: string | null | undefined,
   keywords: string[]

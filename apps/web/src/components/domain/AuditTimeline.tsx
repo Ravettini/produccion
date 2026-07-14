@@ -15,11 +15,12 @@ interface AuditTimelineProps {
 }
 
 const actionConfig: Record<string, { icon: typeof CheckCircle2; color: string; label: string }> = {
-  CREATE: { icon: PlusCircle, color: "text-brand-600 bg-brand-50", label: "Creada" },
-  SUBMIT: { icon: Send, color: "text-amber-600 bg-amber-50", label: "Enviada" },
-  APPROVE: { icon: CheckCircle2, color: "text-emerald-600 bg-emerald-50", label: "Aprobada" },
-  REJECT: { icon: XCircle, color: "text-red-600 bg-red-50", label: "Rechazada" },
-  CANCEL: { icon: Ban, color: "text-slate-600 bg-slate-100", label: "Cancelada" },
+  CREATE: { icon: PlusCircle, color: "text-brand-600 bg-brand-50", label: "Creado" },
+  SUBMIT: { icon: Send, color: "text-amber-600 bg-amber-50", label: "Enviado" },
+  APPROVE: { icon: CheckCircle2, color: "text-emerald-600 bg-emerald-50", label: "Aprobado" },
+  REJECT: { icon: XCircle, color: "text-red-600 bg-red-50", label: "Rechazado" },
+  CANCEL: { icon: Ban, color: "text-slate-600 bg-slate-100", label: "Cancelado" },
+  EDIT: { icon: ArrowRight, color: "text-indigo-600 bg-indigo-50", label: "Editado" },
 };
 
 export function AuditTimeline({ audits }: AuditTimelineProps) {

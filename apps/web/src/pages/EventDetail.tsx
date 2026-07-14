@@ -40,6 +40,7 @@ import {
 import { categoryExtraFields } from "../config/proposalCategoryFields";
 import { formatDate } from "../utils/formatters";
 import { EventHealthChecklist } from "../components/event/EventHealthChecklist";
+import { AreaDecisionsPanel } from "../components/domain/AreaDecisionsPanel";
 
 export default function EventDetail() {
   const { id } = useParams<{ id: string }>();
@@ -228,7 +229,13 @@ export default function EventDetail() {
         />
       </div>
 
-      <div className="mb-6">
+      <AreaDecisionsPanel
+        eventId={id!}
+        user={user}
+        funcionario={(event as { funcionario?: string | null }).funcionario}
+      />
+
+      <div className="mb-6 mt-6">
         <Tabs tabs={tabs} active={tab} onChange={(id) => setTab(id as typeof tab)} />
       </div>
 

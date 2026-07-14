@@ -29,6 +29,8 @@ model User {
   proposalsValidated Proposal[]         @relation("ValidatedBy")
   comments           ProposalComment[]
   auditEntries       ProposalAudit[]
+  eventAreaDecisions EventAreaDecision[]
+  eventAudits        EventAudit[]
 }
 
 model Event {
@@ -58,6 +60,42 @@ model Event {
 
   proposals   Proposal[]
   attachments EventAttachment[]
+  areaDecisions EventAreaDecision[]
+  audits      EventAudit[]
+}
+
+// Check de aprobacion por area solicitada (Produccion / Institucionales / Cobertura)
+model EventAreaDecision {
+  id        String   @id @default(cuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  areaRole  String   // PRODUCCION | INSTITUCIONALES | COBERTURA
+  estado    String   @default("PENDING") // PENDING | APPROVED | REJECTED
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  reason    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([eventId, areaRole])
+  @@index([eventId])
+}
+
+// Historial de ediciones / decisiones sobre el evento
+model EventAudit {
+  id        String   @id @default(cuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String   // EDIT | AREA_APPROVE | AREA_REJECT
+  field     String?
+  fromValue String?
+  toValue   String?
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([eventId])
 }
 
 model EventAttachment {

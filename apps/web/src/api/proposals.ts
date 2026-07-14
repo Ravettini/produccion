@@ -26,7 +26,10 @@ export async function createProposal(
   });
 }
 
-export async function updateProposal(id: string, data: Partial<Proposal>): Promise<Proposal> {
+export async function updateProposal(
+  id: string,
+  data: Partial<Proposal> & { editReason?: string; datosExtra?: Record<string, string> }
+): Promise<Proposal> {
   return api<Proposal>(`/proposals/${id}`, {
     method: "PUT",
     body: JSON.stringify(data),

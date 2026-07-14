@@ -9,12 +9,15 @@ import {
   rejectProposal,
   cancelProposal,
   addComment,
+  updateProposal,
 } from "../api/proposals";
+import { getAreaDecisions } from "../api/eventDecisions";
 import { useAuth } from "../hooks/useAuth";
 import {
   canApproveOrRejectProposal,
   canSubmitProposal,
   canCancelProposal,
+  canEditProposal,
 } from "../hooks/usePermissions";
 import type { ProposalStatus, ProposalCategory } from "../types";
 import {
@@ -24,6 +27,7 @@ import {
   CardBody,
   Modal,
   TextArea,
+  Input,
   DetailSkeleton,
   StatusBadge,
   Badge,
@@ -43,11 +47,23 @@ export default function ProposalDetail() {
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editTitulo, setEditTitulo] = useState("");
+  const [editDescripcion, setEditDescripcion] = useState("");
+  const [editReason, setEditReason] = useState("");
+  const [editDatosExtra, setEditDatosExtra] = useState<Record<string, string>>({});
 
   const { data: proposal, isLoading } = useQuery({
     queryKey: ["proposal", id],
     queryFn: () => getProposal(id!),
     enabled: !!id,
+  });
+
+  const eventIdForDecisions = proposal?.eventId;
+  const { data: areaDecisions } = useQuery({
+    queryKey: ["area-decisions", eventIdForDecisions],
+    queryFn: () => getAreaDecisions(eventIdForDecisions!),
+    enabled: !!eventIdForDecisions,
   });
 
   const submit = useMutation({
@@ -89,6 +105,21 @@ export default function ProposalDetail() {
       qc.invalidateQueries({ queryKey: ["proposal", id] });
     },
   });
+  const saveEdit = useMutation({
+    mutationFn: () =>
+      updateProposal(id!, {
+        titulo: editTitulo,
+        descripcion: editDescripcion,
+        datosExtra: editDatosExtra,
+        editReason: editReason.trim() || undefined,
+      } as Parameters<typeof updateProposal>[1] & { editReason?: string }),
+    onSuccess: () => {
+      setEditing(false);
+      setEditReason("");
+      qc.invalidateQueries({ queryKey: ["proposal", id] });
+      qc.invalidateQueries({ queryKey: ["proposals"] });
+    },
+  });
 
   if (isLoading || !proposal) {
     return <DetailSkeleton />;
@@ -96,6 +127,23 @@ export default function ProposalDetail() {
 
   const eventId = proposal.eventId || (proposal.event as { id: string })?.id;
   const eventTitulo = (proposal.event as { titulo?: string })?.titulo ?? "Evento";
+  const specialtyCanEdit = Boolean(areaDecisions?.canDecide);
+  const allowEdit = canEditProposal(user, proposal, { specialtyCanEdit });
+
+  const startEditing = () => {
+    setEditTitulo(proposal.titulo);
+    setEditDescripcion(proposal.descripcion);
+    let extra: Record<string, string> = {};
+    try {
+      const raw = proposal.datosExtra;
+      if (raw && typeof raw === "string") extra = JSON.parse(raw) as Record<string, string>;
+      else if (raw && typeof raw === "object") extra = raw as Record<string, string>;
+    } catch {
+      extra = {};
+    }
+    setEditDatosExtra(extra);
+    setEditing(true);
+  };
 
   const initials = (name: string) =>
     name
@@ -104,6 +152,8 @@ export default function ProposalDetail() {
       .join("")
       .slice(0, 2)
       .toUpperCase();
+
+  const extraFields = categoryExtraFields[proposal.categoria as ProposalCategory] ?? [];
 
   return (
     <div className="page-container max-w-4xl">
@@ -121,6 +171,11 @@ export default function ProposalDetail() {
         subtitle={proposal.nombreProyecto ? `Proyecto: ${proposal.nombreProyecto}` : undefined}
         actions={
           <div className="flex flex-wrap gap-2">
+            {allowEdit && !editing && (
+              <Button variant="secondary" onClick={startEditing}>
+                Editar requerimiento
+              </Button>
+            )}
             {proposal.estado === "DRAFT" && canSubmitProposal(user, proposal) && (
               <Button onClick={() => submit.mutate()} disabled={submit.isPending}>
                 <Send className="w-4 h-4" aria-hidden />
@@ -148,6 +203,53 @@ export default function ProposalDetail() {
         }
       />
 
+      {editing && (
+        <Card className="mb-6 border-brand-200">
+          <CardHeader>Editar requerimiento</CardHeader>
+          <CardBody className="space-y-3">
+            <Input
+              label="Título"
+              value={editTitulo}
+              onChange={(e) => setEditTitulo(e.target.value)}
+            />
+            <TextArea
+              label="Descripción"
+              value={editDescripcion}
+              onChange={(e) => setEditDescripcion(e.target.value)}
+              rows={4}
+            />
+            {extraFields.map((field) => (
+              <Input
+                key={field.key}
+                label={field.label}
+                value={editDatosExtra[field.key] ?? ""}
+                onChange={(e) =>
+                  setEditDatosExtra((prev) => ({ ...prev, [field.key]: e.target.value }))
+                }
+              />
+            ))}
+            <Input
+              label="Motivo del cambio (queda en el historial)"
+              value={editReason}
+              onChange={(e) => setEditReason(e.target.value)}
+              placeholder="Ej: el funcionario solicitado no está disponible"
+            />
+            <div className="flex gap-2">
+              <Button disabled={saveEdit.isPending} onClick={() => saveEdit.mutate()}>
+                Guardar cambios
+              </Button>
+              <Button variant="secondary" onClick={() => setEditing(false)}>
+                Cancelar
+              </Button>
+            </div>
+            {saveEdit.error && (
+              <p className="text-sm text-red-600">
+                {saveEdit.error instanceof Error ? saveEdit.error.message : "Error"}
+              </p>
+            )}
+          </CardBody>
+        </Card>
+      )}
       <div className="flex flex-wrap gap-2 mb-6">
         <StatusBadge kind="proposal" value={proposal.estado as ProposalStatus} />
         <Badge className={categoryColors[proposal.categoria as ProposalCategory]}>
