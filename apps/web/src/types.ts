@@ -7,7 +7,13 @@ export type Role =
   | "AGENDA"
   | "COBERTURA"
   | "VALIDADOR";
-export type EventStatus = "PENDIENTE" | "EN_ANALISIS" | "CONFIRMADO" | "CANCELADO" | "REALIZADO";
+export type EventStatus =
+  | "PENDIENTE"
+  | "EN_RADAR"
+  | "EN_ANALISIS"
+  | "CONFIRMADO"
+  | "CANCELADO"
+  | "REALIZADO";
 export type ProposalCategory = "LOGISTICA" | "CATERING" | "TECNICA" | "AGENDA" | "PRODUCCION" | "OTRO";
 export type ProposalImpact = "ALTO" | "MEDIO" | "BAJO";
 export type ProposalStatus = "DRAFT" | "SUBMITTED" | "APPROVED" | "REJECTED" | "CANCELLED";
@@ -34,6 +40,7 @@ export interface Event {
   lugar?: string | null;
   programa?: string | null;
   funcionario?: string | null;
+  productor?: string | null;
   necesitaAcreditacion?: boolean | null;
   linkAcreditacionConvocados?: string | null;
   motivoCancelacion?: string | null;

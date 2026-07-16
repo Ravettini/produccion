@@ -16,7 +16,7 @@ import {
 import { PageHeader } from "../components/layout/PageHeader";
 import { EventCard } from "../components/domain/EventCard";
 import { eventStatusLabels } from "../utils/labels";
-import { CheckCircle2, FileStack, Clock } from "lucide-react";
+import { CheckCircle2, FileStack, Clock, Radar } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { canCreateEvent } from "../hooks/usePermissions";
 
@@ -36,9 +36,9 @@ export default function EventList() {
 
   const specialtyHint =
     user?.role === "PRODUCCION"
-      ? "Mostrás solo eventos que solicitaron apoyo de Producción."
+      ? "Mostrás solo eventos que solicitaron requerimiento de Producción."
       : user?.role === "INSTITUCIONALES" || user?.role === "AGENDA"
-        ? "Mostrás solo eventos que solicitaron apoyo Institucional."
+        ? "Mostrás solo eventos que solicitaron requerimiento Institucional."
         : user?.role === "COBERTURA"
           ? "Mostrás solo eventos que solicitaron Cobertura."
           : user?.role === "ORGANIZACION" && user.area
@@ -53,6 +53,7 @@ export default function EventList() {
   const stats = useMemo(() => {
     return {
       total: events.length,
+      enRadar: events.filter((e) => e.estado === "EN_RADAR").length,
       enAnalisis: events.filter((e) => e.estado === "EN_ANALISIS").length,
       confirmados: events.filter((e) => e.estado === "CONFIRMADO").length,
       pendientes: events.filter((e) => e.estado === "PENDIENTE").length,
@@ -128,7 +129,7 @@ export default function EventList() {
           Resumen del listado según el estado actual de cada evento.
         </p>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-8">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5 mb-8">
         <StatCard
           label="Total de eventos"
           value={stats.total}
@@ -137,11 +138,18 @@ export default function EventList() {
           subtitle="Todos los eventos cargados en el sistema"
         />
         <StatCard
+          label="En radar"
+          value={stats.enRadar}
+          icon={Radar}
+          accent="blue"
+          subtitle="Largo plazo; se siguen sin fecha inmediata"
+        />
+        <StatCard
           label="En análisis"
           value={stats.enAnalisis}
           icon={Clock}
           accent="amber"
-          subtitle="Eventos en revisión antes de confirmarse"
+          subtitle="En revisión / armado de requerimientos"
         />
         <StatCard
           label="Confirmados"

@@ -74,7 +74,7 @@ export function LocacionesSugeridasPanel({
       </div>
       {restantes > 0 && (
         <p className="text-xs text-slate-500">
-          + {restantes} más en el buscador de abajo
+          + {restantes} más disponibles en el buscador de arriba
         </p>
       )}
     </div>

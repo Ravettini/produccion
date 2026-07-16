@@ -11,8 +11,10 @@ import { DIRECCIONES_GENERALES_OPTIONS } from "../config/direccionesGenerales";
 import { categoryExtraFields, cateringFields, coberturaBriefFields } from "../config/proposalCategoryFields";
 import { getProgramasParaArea } from "../config/programasPorArea";
 import { FUNCIONARIOS_OPTIONS } from "../config/funcionarios";
+import { PRODUCTORES_OPTIONS } from "../config/productores";
 import type { EventFormStepId } from "../config/eventFormWizardSteps";
 import type { LocacionSugerida } from "../config/locaciones2026.types";
+import { eventStatusHints } from "../utils/labels";
 
 const PRODUCCION_FORM_EXCLUDE = new Set(["horarioCitacion", "cantidadPersonas", "lugar"]);
 
@@ -60,6 +62,8 @@ export interface EventFormWizardContentProps {
   setPrograma: (v: string) => void;
   funcionario: string[];
   setFuncionario: (v: string[]) => void;
+  productor: string;
+  setProductor: (v: string) => void;
   necesitaAcreditacion: boolean | "";
   setNecesitaAcreditacion: (v: boolean | "") => void;
   linkAcreditacionConvocados: string;
@@ -113,6 +117,8 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
     setPrograma,
     funcionario,
     setFuncionario,
+    productor,
+    setProductor,
     necesitaAcreditacion,
     setNecesitaAcreditacion,
     linkAcreditacionConvocados,
@@ -289,16 +295,10 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
 
     case "lugar":
       return (
-        <div className="space-y-4">
-          <LocacionesSugeridasPanel
-            sugerencias={lugaresSugeridos}
-            seleccionado={lugar}
-            onSeleccionar={setLugar}
-            maxVisible={8}
-          />
+        <div className="space-y-5">
           <SearchableSelect
-            label="Buscar en todo el catálogo"
-            placeholder="Buscar locación…"
+            label="Buscar locación"
+            placeholder="Buscar en el catálogo…"
             searchPlaceholder="Sede, nombre o dirección…"
             options={[
               { value: "", label: "Seleccionar lugar…" },
@@ -311,6 +311,18 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
             onChange={setLugar}
             emptyMessage="Sin resultados"
           />
+          <div>
+            <h3 className="text-sm font-semibold text-slate-800 mb-2">Sugerencias</h3>
+            <p className="text-xs text-slate-500 mb-3">
+              Según cantidad de personas y requisitos del espacio.
+            </p>
+            <LocacionesSugeridasPanel
+              sugerencias={lugaresSugeridos}
+              seleccionado={lugar}
+              onSeleccionar={setLugar}
+              maxVisible={8}
+            />
+          </div>
         </div>
       );
 
@@ -350,19 +362,35 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
               onChange={(e) => setPrograma(e.target.value)}
             />
           )}
-          <MultiSearchableSelect
-            label="Funcionario(s)"
-            hint="Podés seleccionar varios. Quedan como chips y se guardan separados por coma."
-            placeholder="Buscar y marcar uno o más funcionarios…"
-            searchPlaceholder="Buscar por nombre…"
-            options={[
-              { value: "Otro", label: "Otro" },
-              ...FUNCIONARIOS_OPTIONS,
-            ]}
-            value={funcionario}
-            onChange={setFuncionario}
-            emptyMessage="Ningún funcionario coincide"
-          />
+          {(tipoSeleccionados.includes("Institucionales")) && (
+            <MultiSearchableSelect
+              label="Funcionario(s)"
+              hint="Podés seleccionar varios. Quedan como chips y se guardan separados por coma."
+              placeholder="Buscar y marcar uno o más funcionarios…"
+              searchPlaceholder="Buscar por nombre…"
+              options={[
+                { value: "Otro", label: "Otro" },
+                ...FUNCIONARIOS_OPTIONS,
+              ]}
+              value={funcionario}
+              onChange={setFuncionario}
+              emptyMessage="Ningún funcionario coincide"
+            />
+          )}
+          {tipoSeleccionados.includes("Producción") && (
+            <SearchableSelect
+              label="Productor"
+              placeholder="Seleccionar productor del equipo…"
+              searchPlaceholder="Buscar productor…"
+              options={[
+                { value: "", label: "— Sin productor —" },
+                ...PRODUCTORES_OPTIONS,
+              ]}
+              value={productor}
+              onChange={setProductor}
+              emptyMessage="Ningún productor coincide"
+            />
+          )}
           <Select
             label="¿Se necesita acreditación?"
             options={[
@@ -403,28 +431,30 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
           {datosProduccion.catering === "si" &&
             cateringFields
               .filter((f) => f.key !== "catering")
-              .map((field) => (
-                <div key={field.key}>
-                  {field.type === "textarea" ? (
-                    <TextArea
-                      label={field.label}
-                      value={datosProduccion[field.key] ?? ""}
-                      onChange={(e) =>
-                        setDatosProduccion((prev) => ({ ...prev, [field.key]: e.target.value }))
-                      }
-                      rows={2}
-                    />
-                  ) : (
-                    <Input
-                      label={field.label}
-                      value={datosProduccion[field.key] ?? ""}
-                      onChange={(e) =>
-                        setDatosProduccion((prev) => ({ ...prev, [field.key]: e.target.value }))
-                      }
-                    />
-                  )}
-                </div>
-              ))}
+              .map((field) =>
+                field.type === "select" && field.options?.length ? (
+                  <Select
+                    key={field.key}
+                    label={field.label}
+                    options={field.options}
+                    value={datosProduccion[field.key] ?? ""}
+                    onChange={(e) =>
+                      setDatosProduccion((prev) => ({ ...prev, [field.key]: e.target.value }))
+                    }
+                  />
+                ) : (
+                  <Input
+                    key={field.key}
+                    label={field.label}
+                    value={datosProduccion[field.key] ?? ""}
+                    onChange={(e) =>
+                      setDatosProduccion((prev) => ({ ...prev, [field.key]: e.target.value }))
+                    }
+                    type={field.type === "number" ? "number" : "text"}
+                    placeholder={field.placeholder}
+                  />
+                )
+              )}
         </div>
       );
 
@@ -510,12 +540,17 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
       return (
         <div className="space-y-4">
           {showEstadoSelect && (
-            <Select
-              label="Estado del evento"
-              options={estadoOptions}
-              value={estado}
-              onChange={(e) => onEstadoChange(e.target.value as EventStatus)}
-            />
+            <div className="space-y-1.5">
+              <Select
+                label="Estado del evento"
+                options={estadoOptions}
+                value={estado}
+                onChange={(e) => onEstadoChange(e.target.value as EventStatus)}
+              />
+              {eventStatusHints[estado] && (
+                <p className="text-xs text-slate-500 px-0.5">{eventStatusHints[estado]}</p>
+              )}
+            </div>
           )}
           <TextArea
             label="Resumen (opcional)"

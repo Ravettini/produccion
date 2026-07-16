@@ -210,6 +210,7 @@ adminRouter.get("/metrics", async (_req, res) => {
     totalProposals,
     eventsByStatus: {
       PENDIENTE: eventsByStatus.PENDIENTE ?? 0,
+      EN_RADAR: eventsByStatus.EN_RADAR ?? 0,
       EN_ANALISIS: eventsByStatus.EN_ANALISIS ?? 0,
       CONFIRMADO: eventsByStatus.CONFIRMADO ?? 0,
       CANCELADO: eventsByStatus.CANCELADO ?? 0,
@@ -262,7 +263,7 @@ adminRouter.post("/cargar-json", async (req, res) => {
     res.status(400).json({ error: "Se espera un array de eventos en el body" });
     return;
   }
-  const validStatuses = ["BORRADOR", "EN_ANALISIS", "CONFIRMADO", "CANCELADO"];
+  const validStatuses = ["PENDIENTE", "EN_RADAR", "EN_ANALISIS", "CONFIRMADO", "CANCELADO", "REALIZADO"];
   const normalizeArea = (a: unknown) => {
     const s = String(a ?? "").trim();
     if (!s || s.toLowerCase() === "nan" || s === "null") return "Sin área";

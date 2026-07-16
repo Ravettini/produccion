@@ -135,6 +135,7 @@ export function buildAudiovisualBriefText(data: AudiovisualBriefData): string {
     "BRIEF — PEDIDO DE PIEZAS DE COMUNICACIÓN Y/O COBERTURA DE EVENTO",
     "",
     `Nombre del proyecto: ${data.nombreProyecto}`,
+    "Fecha estimada de entrega (a coordinar con el equipo audiovisual)",
     `Sinopsis del proyecto: ${data.sinopsis}`,
     `¿Qué querés comunicar?: ${data.objetivoComunicacion}`,
     `¿Por qué canal va a salir?: ${data.canal}`,

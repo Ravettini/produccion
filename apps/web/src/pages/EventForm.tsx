@@ -9,6 +9,7 @@ import { Button } from "../components/ui/Button";
 import { Modal } from "../components/ui/Modal";
 import { WizardShell } from "../components/wizard/WizardShell";
 import { eventStatusLabels } from "../utils/labels";
+
 import { opcionesLocacionesSugeridas, criteriosDesdeProduccion, sugerirLocaciones } from "../utils/sugerirLocaciones";
 import { canEditEvent } from "../hooks/usePermissions";
 import { buildWizardSteps } from "../config/eventFormWizardSteps";
@@ -47,6 +48,7 @@ export default function EventForm() {
   const [lugar, setLugar] = useState("");
   const [programa, setPrograma] = useState("");
   const [funcionario, setFuncionario] = useState<string[]>([]);
+  const [productor, setProductor] = useState("");
   const [necesitaAcreditacion, setNecesitaAcreditacion] = useState<boolean | "">("");
   const [linkAcreditacionConvocados, setLinkAcreditacionConvocados] = useState("");
   const [datosProduccion, setDatosProduccion] = useState<Record<string, string>>({});
@@ -94,6 +96,7 @@ export default function EventForm() {
           .map((s) => s.trim())
           .filter(Boolean)
       );
+      setProductor((existing as { productor?: string | null }).productor ?? "");
       setNecesitaAcreditacion((existing as { necesitaAcreditacion?: boolean | null }).necesitaAcreditacion ?? "");
       setLinkAcreditacionConvocados((existing as { linkAcreditacionConvocados?: string | null }).linkAcreditacionConvocados ?? "");
       const dp = existing.datosProduccion;
@@ -218,7 +221,25 @@ export default function EventForm() {
         if (!user?.area && !isAdmin && !areaSolicitante.trim()) return "Seleccioná la dirección general solicitante.";
         return null;
       case "tipo":
-        if (tipoEventoValue.length === 0) return "Elegí al menos un tipo de apoyo.";
+        if (tipoEventoValue.length === 0) return "Elegí al menos un tipo de requerimiento.";
+        return null;
+      case "horarios":
+        if (!(datosProduccion.horarioComienzo ?? "").trim()) return "Indicá el horario de comienzo.";
+        if (!(datosProduccion.horarioFinalizacion ?? "").trim()) return "Indicá el horario de finalización.";
+        return null;
+      case "lugar":
+        if (!lugar.trim()) return "Seleccioná una locación.";
+        return null;
+      case "requisitos":
+        if (!(datosProduccion.requiereMobiliario ?? "").trim()) {
+          return "Indicá si necesitás mobiliario (Sí / No / Indistinto).";
+        }
+        if (!(datosProduccion.requiereTecnica ?? "").trim()) {
+          return "Indicá si necesitás técnica (Sí / No / Indistinto).";
+        }
+        return null;
+      case "catering":
+        if (!(datosProduccion.catering ?? "").trim()) return "Indicá si necesitás catering.";
         return null;
       case "descripcion":
         if (!descripcion.trim()) return "La descripción es obligatoria.";
@@ -300,6 +321,7 @@ export default function EventForm() {
         lugar: lugar.trim() || undefined,
         programa: programa.trim() || undefined,
         funcionario: funcionario.length > 0 ? funcionario.join(", ") : undefined,
+        productor: productor.trim() || undefined,
         necesitaAcreditacion: necesitaAcreditacion === true || necesitaAcreditacion === false ? necesitaAcreditacion : undefined,
         linkAcreditacionConvocados: linkAcreditacionConvocados.trim() || undefined,
         datosProduccion: Object.keys(datosProduccion).length > 0 ? datosProduccion : undefined,
@@ -321,6 +343,7 @@ export default function EventForm() {
           lugar: lugar.trim() || null,
           programa: programa.trim() || null,
           funcionario: funcionario.length > 0 ? funcionario.join(", ") : null,
+          productor: productor.trim() || null,
           necesitaAcreditacion: necesitaAcreditacion === true || necesitaAcreditacion === false ? necesitaAcreditacion : null,
           linkAcreditacionConvocados: linkAcreditacionConvocados.trim() || null,
           datosProduccion: Object.keys(datosProduccion).length > 0 ? datosProduccion : null,
@@ -422,6 +445,8 @@ export default function EventForm() {
           setPrograma={setPrograma}
           funcionario={funcionario}
           setFuncionario={setFuncionario}
+          productor={productor}
+          setProductor={setProductor}
           necesitaAcreditacion={necesitaAcreditacion}
           setNecesitaAcreditacion={setNecesitaAcreditacion}
           linkAcreditacionConvocados={linkAcreditacionConvocados}

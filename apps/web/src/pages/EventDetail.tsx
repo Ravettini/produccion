@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Sparkles, FileDown } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getEvent, updateEvent, deleteEvent } from "../api/events";
 import { listProposals, createProposal } from "../api/proposals";
-import { generarBriefIA, exportarBriefDocx } from "../api/ai";
+import { generarBriefIA, exportarBriefDocx, exportarBriefAcDocx } from "../api/ai";
 import {
   listAttachments,
   uploadAttachment,
@@ -41,6 +41,7 @@ import { categoryExtraFields } from "../config/proposalCategoryFields";
 import { formatDate } from "../utils/formatters";
 import { EventHealthChecklist } from "../components/event/EventHealthChecklist";
 import { AreaDecisionsPanel } from "../components/domain/AreaDecisionsPanel";
+import { hasUnseenChanges, markSeen } from "../utils/changeAlerts";
 
 export default function EventDetail() {
   const { id } = useParams<{ id: string }>();
@@ -61,12 +62,21 @@ export default function EventDetail() {
   const [realizacionLinkImpacto, setRealizacionLinkImpacto] = useState("");
   const [realizacionPdfFile, setRealizacionPdfFile] = useState<File | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [exportandoAc, setExportandoAc] = useState(false);
+  const [showChangeAlert, setShowChangeAlert] = useState(false);
 
   const { data: event, isLoading: loadingEvent } = useQuery({
     queryKey: ["event", id],
     queryFn: () => getEvent(id!),
     enabled: !!id,
   });
+
+  useEffect(() => {
+    if (!event?.id || !event.updatedAt) return;
+    const hadChanges = hasUnseenChanges("event", event.id, event.updatedAt, event.createdAt);
+    setShowChangeAlert(hadChanges);
+    markSeen("event", event.id, event.updatedAt);
+  }, [event?.id, event?.updatedAt, event?.createdAt]);
   const { data: proposals = [], isLoading: loadingProposals } = useQuery({
     queryKey: ["proposals", id],
     queryFn: () => listProposals(id!),
@@ -174,7 +184,7 @@ export default function EventDetail() {
                 Confirmar evento
               </Button>
             )}
-            {canConfirmEvent(user) && (event.estado === "CONFIRMADO" || event.estado === "EN_ANALISIS" || event.estado === "PENDIENTE") && (
+            {canConfirmEvent(user) && (event.estado === "CONFIRMADO" || event.estado === "EN_ANALISIS" || event.estado === "PENDIENTE" || event.estado === "EN_RADAR") && (
               <>
                 <Button size="sm" variant="secondary" onClick={() => setConfirmEstado("REALIZADO")}>
                   Marcar como realizado
@@ -204,6 +214,19 @@ export default function EventDetail() {
           <span className="text-sm text-slate-500">{event._count.proposals} requerimientos</span>
         )}
       </div>
+
+      {(showChangeAlert ||
+        proposals.some((p) => hasUnseenChanges("proposal", p.id, p.updatedAt, p.createdAt))) && (
+        <div
+          className="mb-6 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+          role="status"
+        >
+          <p className="font-medium">Hay cambios recientes en este evento o sus requerimientos.</p>
+          <p className="mt-0.5 text-amber-800">
+            Revisá el historial de auditoría y las tarjetas marcadas con “Cambios”.
+          </p>
+        </div>
+      )}
 
       {/* Stats row */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
@@ -265,6 +288,24 @@ export default function EventDetail() {
                   </Button>
                   <Button
                     size="sm"
+                    variant="secondary"
+                    disabled={exportandoAc}
+                    onClick={async () => {
+                      setExportandoAc(true);
+                      try {
+                        await exportarBriefAcDocx(id!, `Brief reducido AC - ${event.titulo}`);
+                      } catch (e) {
+                        console.error(e);
+                        alert((e as Error).message);
+                      } finally {
+                        setExportandoAc(false);
+                      }
+                    }}
+                  >
+                    {exportandoAc ? "Exportando…" : "Brief reducido AC"}
+                  </Button>
+                  <Button
+                    size="sm"
                     onClick={() => generarBrief.mutate()}
                     disabled={generarBrief.isPending}
                   >
@@ -314,6 +355,12 @@ export default function EventDetail() {
                   <div>
                     <h3 className="text-sm font-medium text-slate-500">Funcionario(s)</h3>
                     <p className="text-slate-800">{(event as { funcionario?: string | null }).funcionario}</p>
+                  </div>
+                )}
+                {(event as { productor?: string | null }).productor && (
+                  <div>
+                    <h3 className="text-sm font-medium text-slate-500">Productor</h3>
+                    <p className="text-slate-800">{(event as { productor?: string | null }).productor}</p>
                   </div>
                 )}
                 {(event as { necesitaAcreditacion?: boolean | null }).necesitaAcreditacion != null && (
@@ -964,6 +1011,8 @@ function NewProposalForm({
   const [descripcion, setDescripcion] = useState("");
   const [categoria, setCategoria] = useState<ProposalCategory>(categoriesDisponibles[0] ?? "OTRO");
   const [impacto, setImpacto] = useState<"ALTO" | "MEDIO" | "BAJO">("MEDIO");
+  const [modalidad, setModalidad] = useState<"INTERNO" | "EXTERNO" | "PAGO" | "">("");
+  const [modalidadDetalle, setModalidadDetalle] = useState("");
   const [datosExtra, setDatosExtra] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
   const qc = useQueryClient();
@@ -979,6 +1028,8 @@ function NewProposalForm({
       qc.invalidateQueries({ queryKey: ["proposals", eventId] });
       setTitulo("");
       setDescripcion("");
+      setModalidad("");
+      setModalidadDetalle("");
       setDatosExtra({});
       setError("");
     },
@@ -991,7 +1042,21 @@ function NewProposalForm({
       setError("Ya existe un requerimiento de este tipo. Editá la tarjeta existente.");
       return;
     }
-    const extra = Object.keys(datosExtra).length > 0 ? datosExtra : undefined;
+    if (!modalidad) {
+      setError("Indicá si el requerimiento es interno, externo o pago.");
+      return;
+    }
+    if ((modalidad === "EXTERNO" || modalidad === "PAGO") && !modalidadDetalle.trim()) {
+      setError("Completá el detalle para requerimientos externos o pagos.");
+      return;
+    }
+    const extra: Record<string, string> = {
+      ...datosExtra,
+      modalidad,
+    };
+    if (modalidad === "EXTERNO" || modalidad === "PAGO") {
+      extra.modalidadDetalle = modalidadDetalle.trim();
+    }
     create.mutate({
       titulo: titulo.trim() || categoryLabels[categoria],
       descripcion,
@@ -1065,6 +1130,27 @@ function NewProposalForm({
             value={impacto}
             onChange={(e) => setImpacto(e.target.value as "ALTO" | "MEDIO" | "BAJO")}
           />
+          <Select
+            label="Modalidad del requerimiento"
+            options={[
+              { value: "", label: "Seleccionar…" },
+              { value: "INTERNO", label: "Interno" },
+              { value: "EXTERNO", label: "Externo" },
+              { value: "PAGO", label: "Pago" },
+            ]}
+            value={modalidad}
+            onChange={(e) => setModalidad(e.target.value as typeof modalidad)}
+          />
+          {(modalidad === "EXTERNO" || modalidad === "PAGO") && (
+            <TextArea
+              label={modalidad === "PAGO" ? "Detalle del pago / proveedor" : "Detalle del requerimiento externo"}
+              placeholder="Anotá proveedor, presupuesto, contacto u otras precisiones"
+              value={modalidadDetalle}
+              onChange={(e) => setModalidadDetalle(e.target.value)}
+              rows={2}
+              required
+            />
+          )}
           {extraFields.length > 0 && (
             <div className="space-y-3 pt-2 border-t border-slate-200">
               <p className="text-sm font-medium text-slate-600">

@@ -1,38 +1,46 @@
 /**
  * POST /events/:id/generar-brief-ia - Genera un brief redactado con IA (Google/Gemma)
  * GET  /events/:id/exportar-brief-docx - Exporta brief DOCX (modelo audiovisual)
+ * GET  /events/:id/exportar-brief-ac-docx - Brief reducido para AC
  */
 import { Router } from "express";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { generateBriefDocx } from "brief-generator";
+import { generateBriefDocx, generateAcBriefReducidoDocx } from "brief-generator";
 import { prisma } from "../lib/prisma.js";
 import { authMiddleware } from "../middleware/auth.js";
 import { getAIConfig } from "../lib/config.js";
 
 export const eventsAIRouter = Router();
 
-/** GET /events/:id/exportar-brief-docx - Devuelve DOCX según modelo BRIEF AUDIOVISUAL */
-eventsAIRouter.get("/:id/exportar-brief-docx", authMiddleware, async (req, res) => {
-  const { id } = req.params;
-  const event = await prisma.event.findUnique({
-    where: { id },
-    include: {
-      proposals: {
-        where: { estado: "APPROVED" },
-        orderBy: { updatedAt: "asc" },
-      },
-    },
-  });
-  if (!event) {
-    res.status(404).json({ error: "Evento no encontrado" });
-    return;
-  }
+function buildBriefInput(event: {
+  titulo: string;
+  descripcion: string;
+  tipoEvento: string;
+  areaSolicitante: string;
+  usuarioSolicitante: string | null;
+  publico: string | null;
+  fechaTentativa: Date;
+  estado: string;
+  lugar: string | null;
+  programa: string | null;
+  funcionario: string | null;
+  productor?: string | null;
+  datosProduccion: unknown;
+  proposals: Array<{
+    categoria: string;
+    titulo: string;
+    nombreProyecto: string | null;
+    descripcion: string;
+    impacto: string;
+    datosExtra: string | null;
+  }>;
+}) {
+  const requiere =
+    typeof event.tipoEvento === "string"
+      ? event.tipoEvento.split(",").map((s) => s.trim()).filter(Boolean)
+      : [];
 
-  const requiere = typeof event.tipoEvento === "string"
-    ? event.tipoEvento.split(",").map((s) => s.trim()).filter(Boolean)
-    : [];
-
-  const input = {
+  return {
     event: {
       titulo: event.titulo,
       descripcion: event.descripcion,
@@ -45,8 +53,17 @@ eventsAIRouter.get("/:id/exportar-brief-docx", authMiddleware, async (req, res) 
       lugar: event.lugar ?? undefined,
       programa: event.programa ?? undefined,
       funcionario: event.funcionario ?? undefined,
+      productor: event.productor ?? undefined,
       datosProduccion: event.datosProduccion
-        ? (typeof event.datosProduccion === "string" ? (() => { try { return JSON.parse(event.datosProduccion as string); } catch { return undefined; } })() : event.datosProduccion)
+        ? typeof event.datosProduccion === "string"
+          ? (() => {
+              try {
+                return JSON.parse(event.datosProduccion as string);
+              } catch {
+                return undefined;
+              }
+            })()
+          : event.datosProduccion
         : undefined,
     },
     proposals: event.proposals.map((p) => ({
@@ -65,9 +82,31 @@ eventsAIRouter.get("/:id/exportar-brief-docx", authMiddleware, async (req, res) 
       })(),
     })),
   };
+}
+
+async function loadEventForBrief(id: string) {
+  return prisma.event.findUnique({
+    where: { id },
+    include: {
+      proposals: {
+        where: { estado: "APPROVED" },
+        orderBy: { updatedAt: "asc" },
+      },
+    },
+  });
+}
+
+/** GET /events/:id/exportar-brief-docx - Devuelve DOCX según modelo BRIEF AUDIOVISUAL */
+eventsAIRouter.get("/:id/exportar-brief-docx", authMiddleware, async (req, res) => {
+  const { id } = req.params;
+  const event = await loadEventForBrief(id);
+  if (!event) {
+    res.status(404).json({ error: "Evento no encontrado" });
+    return;
+  }
 
   try {
-    const buffer = await generateBriefDocx(input);
+    const buffer = await generateBriefDocx(buildBriefInput(event));
     const filename = `Brief - ${event.titulo.replace(/[/\\:*?"<>|]/g, "-")}.docx`;
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
     res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(filename)}"`);
@@ -76,6 +115,30 @@ eventsAIRouter.get("/:id/exportar-brief-docx", authMiddleware, async (req, res) 
     const message = err instanceof Error ? err.message : String(err);
     res.status(500).json({
       error: "Error al generar el documento",
+      detail: message,
+    });
+  }
+});
+
+/** GET /events/:id/exportar-brief-ac-docx - Brief reducido para AC */
+eventsAIRouter.get("/:id/exportar-brief-ac-docx", authMiddleware, async (req, res) => {
+  const { id } = req.params;
+  const event = await loadEventForBrief(id);
+  if (!event) {
+    res.status(404).json({ error: "Evento no encontrado" });
+    return;
+  }
+
+  try {
+    const buffer = await generateAcBriefReducidoDocx(buildBriefInput(event));
+    const filename = `Brief reducido AC - ${event.titulo.replace(/[/\\:*?"<>|]/g, "-")}.docx`;
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+    res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(filename)}"`);
+    res.send(Buffer.from(buffer));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({
+      error: "Error al generar el brief reducido AC",
       detail: message,
     });
   }
@@ -101,7 +164,8 @@ eventsAIRouter.post("/:id/generar-brief-ia", authMiddleware, async (req, res) =>
   const { apiKey, model } = await getAIConfig();
   if (!apiKey) {
     res.status(503).json({
-      error: "IA no configurada. Agregá GOOGLE_AI_API_KEY en apps/api/.env (obtené la key en https://aistudio.google.com/apikey)",
+      error:
+        "IA no configurada. Agregá GOOGLE_AI_API_KEY en apps/api/.env (obtené la key en https://aistudio.google.com/apikey)",
     });
     return;
   }
@@ -112,6 +176,7 @@ eventsAIRouter.post("/:id/generar-brief-ia", authMiddleware, async (req, res) =>
     `Requiere (según checkboxes): ${event.tipoEvento}`,
     `Área solicitante: ${event.areaSolicitante}`,
     `Usuario solicitante: ${event.usuarioSolicitante ?? "—"}`,
+    `Productor: ${(event as { productor?: string | null }).productor ?? "—"}`,
     `Público: ${event.publico === "EXTERNO" ? "Externo" : event.publico === "INTERNO" ? "Interno" : event.publico === "MIXTO" ? "Mixto" : "—"}`,
     `Fecha tentativa: ${event.fechaTentativa.toISOString().slice(0, 10)}`,
     `Estado: ${event.estado}`,

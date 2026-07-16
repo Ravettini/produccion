@@ -22,114 +22,136 @@ export interface WizardStepDef {
   subtitle?: string;
 }
 
-const BASE_STEPS: WizardStepDef[] = [
-  {
+const STEP: Record<EventFormStepId, WizardStepDef> = {
+  titulo: {
     id: "titulo",
     label: "Nombre",
     title: "¿Cómo se llama el evento?",
     subtitle: "Usá un nombre claro que identifique la actividad institucional.",
   },
-  {
+  "dg-fecha": {
     id: "dg-fecha",
     label: "DG y fecha",
     title: "¿Quién solicita y para qué fecha?",
     subtitle: "La dirección general y la fecha tentativa del evento.",
   },
-  {
+  tipo: {
     id: "tipo",
-    label: "Tipo",
-    title: "¿Qué tipo de apoyo necesitás?",
-    subtitle: "Podés elegir más de una opción.",
+    label: "Requerimiento",
+    title: "¿Qué tipo de requerimiento necesitás?",
+    subtitle: "Podés elegir más de una opción. Solo verás preguntas de lo que marques.",
   },
-  {
+  publico: {
     id: "publico",
     label: "Público",
     title: "¿A quién está dirigido?",
     subtitle: "Definí si el evento es interno, externo o mixto.",
   },
-  {
+  personas: {
     id: "personas",
     label: "Personas",
     title: "¿Cuántas personas participarán?",
     subtitle: "Estimación de asistencia para sugerir locaciones del catálogo 2026.",
   },
-  {
+  requisitos: {
     id: "requisitos",
     label: "Requisitos",
     title: "¿Qué debe tener el espacio?",
-    subtitle: "Marcá solo lo que sea obligatorio para filtrar sugerencias.",
+    subtitle: "Mobiliario, técnica y otros filtros para sugerir locaciones.",
   },
-  {
+  horarios: {
     id: "horarios",
     label: "Horarios",
     title: "¿En qué horarios se realizará?",
     subtitle: "Convocatoria, comienzo y finalización del evento.",
   },
-  {
+  lugar: {
     id: "lugar",
     label: "Lugar",
     title: "¿Dónde querés hacerlo?",
     subtitle: "Elegí una locación sugerida o buscá en el catálogo completo.",
   },
-  {
+  descripcion: {
     id: "descripcion",
     label: "Descripción",
     title: "Contanos más del evento",
     subtitle: "Objetivo, dinámica y cualquier detalle relevante para el brief.",
   },
-  {
+  complementos: {
     id: "complementos",
     label: "Extras",
     title: "¿Hay datos adicionales?",
-    subtitle: "Programa, funcionarios (varios), referente y acreditación (opcional).",
+    subtitle: "Según el tipo de requerimiento: programa, funcionarios, productor u otros.",
   },
-  {
+  catering: {
     id: "catering",
     label: "Catering",
     title: "¿Necesitás catering?",
     subtitle: "Coffee break, almuerzo u otro servicio de comida.",
   },
-  {
+  cobertura: {
+    id: "cobertura",
+    label: "Cobertura",
+    title: "Datos de cobertura audiovisual",
+    subtitle: "Información para el brief de comunicación y/o registro del evento.",
+  },
+  produccion: {
+    id: "produccion",
+    label: "Producción",
+    title: "¿Qué necesitás en producción?",
+    subtitle: "Técnica, pantallas, sonido y materiales.",
+  },
+  cierre: {
     id: "cierre",
     label: "Cierre",
     title: "¿Algo más antes de guardar?",
     subtitle: "Resumen opcional y documentos PDF de apoyo.",
   },
-];
+  "estado-extra": {
+    id: "estado-extra",
+    label: "Estado",
+    title: "Datos del estado",
+    subtitle: undefined,
+  },
+};
 
+/** Pasos del wizard según tipos elegidos: no se preguntan secciones no solicitadas. */
 export function buildWizardSteps(input: {
   tipoSeleccionados: string[];
   isEdit: boolean;
   estado: string;
 }): WizardStepDef[] {
-  const steps = [...BASE_STEPS];
-  const insertBefore = steps.findIndex((s) => s.id === "cierre");
+  const tieneProduccion = input.tipoSeleccionados.includes("Producción");
+  const tieneCobertura = input.tipoSeleccionados.includes("Cobertura");
 
-  if (input.tipoSeleccionados.includes("Cobertura")) {
-    steps.splice(insertBefore, 0, {
-      id: "cobertura",
-      label: "Cobertura",
-      title: "Datos de cobertura audiovisual",
-      subtitle: "Información para el brief de comunicación y/o registro del evento.",
-    });
+  const steps: WizardStepDef[] = [
+    STEP.titulo,
+    STEP["dg-fecha"],
+    STEP.tipo,
+    STEP.publico,
+    STEP.personas,
+  ];
+
+  // Requisitos de espacio (mobiliario/técnica) solo si hay Producción
+  if (tieneProduccion) {
+    steps.push(STEP.requisitos);
   }
 
-  if (input.tipoSeleccionados.includes("Producción")) {
-    steps.splice(insertBefore, 0, {
-      id: "produccion",
-      label: "Producción",
-      title: "¿Qué necesitás en producción?",
-      subtitle: "Técnica, pantallas, sonido y materiales.",
-    });
+  steps.push(STEP.horarios, STEP.lugar, STEP.descripcion, STEP.complementos);
+
+  if (tieneProduccion) {
+    steps.push(STEP.catering, STEP.produccion);
   }
 
-  if (
-    input.isEdit &&
-    (input.estado === "CANCELADO" || input.estado === "REALIZADO")
-  ) {
+  if (tieneCobertura) {
+    steps.push(STEP.cobertura);
+  }
+
+  steps.push(STEP.cierre);
+
+  if (input.isEdit && (input.estado === "CANCELADO" || input.estado === "REALIZADO")) {
     steps.push({
-      id: "estado-extra",
-      label: "Estado",
+      ...STEP["estado-extra"],
       title:
         input.estado === "CANCELADO"
           ? "Motivo de la cancelación"

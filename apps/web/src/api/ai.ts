@@ -7,13 +7,12 @@ export async function generarBriefIA(eventId: string): Promise<{ brief: string }
   });
 }
 
-/** Descarga el brief como DOCX (modelo audiovisual: cobertura y piezas de comunicación) */
-export async function exportarBriefDocx(eventId: string, filename: string): Promise<void> {
+async function downloadBriefDocx(path: string, filename: string): Promise<void> {
   const token = getAuthToken();
   const headers: Record<string, string> = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(`${getApiBase()}/events/${eventId}/exportar-brief-docx`, { headers });
+  const res = await fetch(`${getApiBase()}${path}`, { headers });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
     if (res.status === 401) {
@@ -28,4 +27,14 @@ export async function exportarBriefDocx(eventId: string, filename: string): Prom
   a.download = filename.endsWith(".docx") ? filename : `${filename}.docx`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+/** Descarga el brief como DOCX (modelo audiovisual: cobertura y piezas de comunicación) */
+export async function exportarBriefDocx(eventId: string, filename: string): Promise<void> {
+  return downloadBriefDocx(`/events/${eventId}/exportar-brief-docx`, filename);
+}
+
+/** Brief reducido para AC (Área de Comunicación) */
+export async function exportarBriefAcDocx(eventId: string, filename: string): Promise<void> {
+  return downloadBriefDocx(`/events/${eventId}/exportar-brief-ac-docx`, filename);
 }

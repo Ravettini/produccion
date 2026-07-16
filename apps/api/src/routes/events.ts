@@ -6,7 +6,7 @@ import { canUserSeeEvent, filterEventsForUser } from "../lib/eventVisibility.js"
 
 export const eventsRouter = Router();
 
-const validStatuses = ["PENDIENTE", "EN_ANALISIS", "CONFIRMADO", "CANCELADO", "REALIZADO"];
+const validStatuses = ["PENDIENTE", "EN_RADAR", "EN_ANALISIS", "CONFIRMADO", "CANCELADO", "REALIZADO"];
 
 function dayBounds(fecha: Date) {
   const start = new Date(fecha);
@@ -102,6 +102,7 @@ eventsRouter.post("/", authMiddleware, async (req, res) => {
     lugar,
     programa,
     funcionario,
+    productor,
     necesitaAcreditacion,
     linkAcreditacionConvocados,
     motivoCancelacion,
@@ -180,8 +181,9 @@ eventsRouter.post("/", authMiddleware, async (req, res) => {
       publico: validPublico,
       lugar: lugar !== undefined && String(lugar).trim() !== "" ? String(lugar).trim() : null,
       programa: programa !== undefined && String(programa).trim() !== "" ? String(programa).trim() : null,
-      funcionario: funcionario !== undefined && String(funcionario).trim() !== "" ? String(funcionario).trim() : null,
-      necesitaAcreditacion: necesitaAcreditacion === undefined ? undefined : (necesitaAcreditacion === true || String(necesitaAcreditacion) === "true"),
+          funcionario: funcionario !== undefined && String(funcionario).trim() !== "" ? String(funcionario).trim() : null,
+          productor: productor !== undefined && String(productor).trim() !== "" ? String(productor).trim() : null,
+          necesitaAcreditacion: necesitaAcreditacion === undefined ? undefined : (necesitaAcreditacion === true || String(necesitaAcreditacion) === "true"),
       linkAcreditacionConvocados: linkAcreditacionConvocados !== undefined && String(linkAcreditacionConvocados).trim() !== "" ? String(linkAcreditacionConvocados).trim() : null,
       motivoCancelacion: motivoCancelacion != null && String(motivoCancelacion).trim() !== "" ? String(motivoCancelacion).trim() : null,
       realizacionAsistentes: realizacionAsistentes != null && (typeof realizacionAsistentes === "number" ? !Number.isNaN(realizacionAsistentes) : String(realizacionAsistentes).trim() !== "") ? (typeof realizacionAsistentes === "number" ? realizacionAsistentes : parseInt(String(realizacionAsistentes), 10)) : null,
@@ -220,6 +222,7 @@ eventsRouter.put("/:id", authMiddleware, async (req, res) => {
     lugar,
     programa,
     funcionario,
+    productor,
     necesitaAcreditacion,
     linkAcreditacionConvocados,
     motivoCancelacion,
@@ -286,6 +289,9 @@ eventsRouter.put("/:id", authMiddleware, async (req, res) => {
   }
   if (funcionario !== undefined) {
     updates.funcionario = funcionario === null || String(funcionario).trim() === "" ? null : String(funcionario).trim();
+  }
+  if (productor !== undefined) {
+    updates.productor = productor === null || String(productor).trim() === "" ? null : String(productor).trim();
   }
   if (necesitaAcreditacion !== undefined) {
     updates.necesitaAcreditacion = necesitaAcreditacion === true || String(necesitaAcreditacion) === "true";

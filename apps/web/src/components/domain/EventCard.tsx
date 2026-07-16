@@ -4,6 +4,7 @@ import type { Event, EventStatus } from "../../types";
 import { StatusBadge } from "../ui/StatusBadge";
 import { formatDate } from "../../utils/formatters";
 import { getEventHorario } from "../../utils/eventHelpers";
+import { hasUnseenChanges } from "../../utils/changeAlerts";
 import { cn } from "../../utils/cn";
 
 interface EventCardProps {
@@ -13,13 +14,15 @@ interface EventCardProps {
 
 export function EventCard({ event, className }: EventCardProps) {
   const horario = getEventHorario(event);
+  const changed = hasUnseenChanges("event", event.id, event.updatedAt, event.createdAt);
 
   return (
     <Link
       to={`/events/${event.id}`}
       className={cn(
-        "group block bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-sm",
+        "group block bg-white rounded-2xl border p-4 sm:p-5 shadow-sm",
         "hover:border-brand-300 hover:shadow-md transition-all duration-200",
+        changed ? "border-amber-400 ring-2 ring-amber-100" : "border-slate-200",
         className
       )}
     >
@@ -27,7 +30,14 @@ export function EventCard({ event, className }: EventCardProps) {
         <h2 className="font-semibold text-slate-900 group-hover:text-brand-700 transition-colors line-clamp-2 flex-1">
           {event.titulo}
         </h2>
-        <StatusBadge kind="event" value={event.estado as EventStatus} />
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          <StatusBadge kind="event" value={event.estado as EventStatus} />
+          {changed && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide bg-amber-100 text-amber-900">
+              Cambios
+            </span>
+          )}
+        </div>
       </div>
 
       <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm mb-4">

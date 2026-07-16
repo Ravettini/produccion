@@ -2,6 +2,7 @@ import type { EventStatus, ProposalStatus, ProposalCategory, ProposalImpact, Rol
 
 export const eventStatusLabels: Record<EventStatus, string> = {
   PENDIENTE: "Pendiente",
+  EN_RADAR: "En radar",
   EN_ANALISIS: "En análisis",
   CONFIRMADO: "Confirmado",
   CANCELADO: "Cancelado",
@@ -10,10 +11,21 @@ export const eventStatusLabels: Record<EventStatus, string> = {
 
 export const eventStatusColors: Record<EventStatus, string> = {
   PENDIENTE: "bg-sky-50 text-sky-800 ring-1 ring-sky-200",
+  EN_RADAR: "bg-violet-50 text-violet-800 ring-1 ring-violet-200",
   EN_ANALISIS: "bg-amber-50 text-amber-800 ring-1 ring-amber-200",
   CONFIRMADO: "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200",
   CANCELADO: "bg-red-50 text-red-800 ring-1 ring-red-200",
   REALIZADO: "bg-brand-50 text-brand-800 ring-1 ring-brand-200",
+};
+
+/** Ayuda corta bajo el selector de estado */
+export const eventStatusHints: Partial<Record<EventStatus, string>> = {
+  PENDIENTE: "Entró al sistema y todavía no lo tomó el equipo.",
+  EN_RADAR: "Largo plazo: se sigue en el radar sin fecha de ejecución inmediata.",
+  EN_ANALISIS: "Se está trabajando: revisión y armado de requerimientos.",
+  CONFIRMADO: "Aprobado para realizarse.",
+  CANCELADO: "No se realiza.",
+  REALIZADO: "Ya ocurrió.",
 };
 
 export const proposalStatusLabels: Record<ProposalStatus, string> = {

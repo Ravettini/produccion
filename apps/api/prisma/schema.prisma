@@ -9,7 +9,7 @@ datasource db {
 }
 
 // SQLite no soporta enums nativos; usamos String. Valores: ADMIN, ORGANIZACION, PRODUCCION, AGENDA, VALIDADOR
-// EventStatus: PENDIENTE, EN_ANALISIS, CONFIRMADO, CANCELADO, REALIZADO
+// EventStatus: PENDIENTE, EN_RADAR, EN_ANALISIS, CONFIRMADO, CANCELADO, REALIZADO
 // User.role: ADMIN, DIRECTOR_GENERAL, ORGANIZACION, PRODUCCION, INSTITUCIONALES, AGENDA, COBERTURA, VALIDADOR
 // ProposalCategory: LOGISTICA, CATERING, TECNICA, AGENDA, PRODUCCION, OTRO
 // ProposalImpact: ALTO, MEDIO, BAJO
@@ -48,6 +48,7 @@ model Event {
   lugar                  String?   // Lugar o dirección prevista (para el brief)
   programa               String?   // Programa (para el brief)
   funcionario            String?   // Funcionario(s) clave (para el brief)
+  productor              String?   // Productor asignado del equipo de producción
   necesitaAcreditacion   Boolean?  // ¿Se necesita acreditación?
   linkAcreditacionConvocados String? // Link a convocados para acreditar
   motivoCancelacion      String?   // Obligatorio cuando estado = CANCELADO

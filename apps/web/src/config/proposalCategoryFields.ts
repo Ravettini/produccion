@@ -9,66 +9,65 @@ export interface CategoryFieldConfig {
   options?: { value: string; label: string }[];
 }
 
+const SI_NO: { value: string; label: string }[] = [
+  { value: "", label: "—" },
+  { value: "si", label: "Sí" },
+  { value: "no", label: "No" },
+];
+
+const RESTRICCIONES_OPTIONS: { value: string; label: string }[] = [
+  { value: "", label: "—" },
+  { value: "ninguna", label: "Ninguna" },
+  { value: "vegano", label: "Vegano" },
+  { value: "vegetariano", label: "Vegetariano" },
+  { value: "sin TACC", label: "Sin TACC" },
+  { value: "sin lactosa", label: "Sin lactosa" },
+  { value: "varias", label: "Varias (a coordinar)" },
+];
+
+const REQUERIMIENTOS_TECNICOS_OPTIONS: { value: string; label: string }[] = [
+  { value: "", label: "—" },
+  { value: "ninguno", label: "Ninguno adicional" },
+  { value: "wifi", label: "WiFi / conectividad" },
+  { value: "potencia", label: "Potencia eléctrica extra" },
+  { value: "streaming", label: "Streaming / transmisión" },
+  { value: "traduccion", label: "Traducción / interpretación" },
+  { value: "varios", label: "Varios (a coordinar)" },
+];
+
+const EQUIPAMIENTO_OPTIONS: { value: string; label: string }[] = [
+  { value: "", label: "—" },
+  { value: "basico", label: "Básico (sonido + micrófono)" },
+  { value: "audiovisual", label: "Audiovisual (pantalla / proyector)" },
+  { value: "completo", label: "Completo (sonido + AV)" },
+  { value: "ninguno", label: "Sin equipamiento extra" },
+];
+
 export const categoryExtraFields: Record<ProposalCategory, CategoryFieldConfig[]> = {
   PRODUCCION: [
     { key: "horarioCitacion", label: "Horario de citación", type: "text", placeholder: "Ej: 9:00 hs" },
     { key: "lugar", label: "Lugar", type: "text", placeholder: "Lugar de realización" },
     { key: "cantidadPersonas", label: "Cantidad de personas", type: "number", placeholder: "Ej: 50" },
-    { key: "equipamiento", label: "Equipamiento necesario", type: "textarea", placeholder: "Listado de equipos" },
+    {
+      key: "equipamiento",
+      label: "Equipamiento necesario",
+      type: "select",
+      options: EQUIPAMIENTO_OPTIONS,
+    },
     // Técnica (incluida en Producción)
-    {
-      key: "pantallaLED",
-      label: "Pantalla LED",
-      type: "select",
-      options: [
-        { value: "", label: "—" },
-        { value: "si", label: "Sí" },
-        { value: "no", label: "No" },
-      ],
-    },
+    { key: "pantallaLED", label: "Pantalla LED", type: "select", options: SI_NO },
     { key: "pantallaLEDCantidad", label: "Cantidad pantallas LED", type: "number", placeholder: "Ej: 1" },
-    {
-      key: "pantallaRetractil",
-      label: "Pantalla retráctil",
-      type: "select",
-      options: [
-        { value: "", label: "—" },
-        { value: "si", label: "Sí" },
-        { value: "no", label: "No" },
-      ],
-    },
-    {
-      key: "proyector",
-      label: "Proyector",
-      type: "select",
-      options: [
-        { value: "", label: "—" },
-        { value: "si", label: "Sí" },
-        { value: "no", label: "No" },
-      ],
-    },
-    {
-      key: "sonido",
-      label: "Sonido",
-      type: "select",
-      options: [
-        { value: "", label: "—" },
-        { value: "si", label: "Sí" },
-        { value: "no", label: "No" },
-      ],
-    },
-    {
-      key: "microfonos",
-      label: "Micrófonos",
-      type: "select",
-      options: [
-        { value: "", label: "—" },
-        { value: "si", label: "Sí" },
-        { value: "no", label: "No" },
-      ],
-    },
+    { key: "pantallaRetractil", label: "Pantalla retráctil", type: "select", options: SI_NO },
+    { key: "proyector", label: "Proyector", type: "select", options: SI_NO },
+    { key: "sonido", label: "Sonido", type: "select", options: SI_NO },
+    { key: "microfonos", label: "Micrófonos", type: "select", options: SI_NO },
     { key: "microfonosCantidad", label: "Cantidad de micrófonos", type: "number", placeholder: "Ej: 2" },
-    { key: "requerimientosTecnicos", label: "Requerimientos técnicos", type: "textarea", placeholder: "Conectividad, potencia, etc." },
+    {
+      key: "requerimientosTecnicos",
+      label: "Requerimientos técnicos",
+      type: "select",
+      options: REQUERIMIENTOS_TECNICOS_OPTIONS,
+    },
   ],
   AGENDA: [
     { key: "horario", label: "Horario", type: "text", placeholder: "Ej: 10:00 a 12:00" },
@@ -80,19 +79,46 @@ export const categoryExtraFields: Record<ProposalCategory, CategoryFieldConfig[]
     { key: "horarioMontaje", label: "Horario de montaje", type: "text", placeholder: "Ej: 8:00 hs" },
   ],
   CATERING: [
+    {
+      key: "tipoCatering",
+      label: "Tipo de catering",
+      type: "select",
+      options: [
+        { value: "", label: "—" },
+        { value: "desayuno", label: "Desayuno" },
+        { value: "almuerzo", label: "Almuerzo" },
+        { value: "cena", label: "Cena" },
+        { value: "coffee break", label: "Coffee break" },
+      ],
+    },
     { key: "cantidadPersonas", label: "Cantidad de personas", type: "number", placeholder: "Ej: 30" },
-    { key: "restriccionesAlimentarias", label: "Restricciones alimentarias", type: "textarea", placeholder: "Vegano, sin TACC, etc." },
+    {
+      key: "restriccionesAlimentarias",
+      label: "Restricciones alimentarias",
+      type: "select",
+      options: RESTRICCIONES_OPTIONS,
+    },
   ],
   TECNICA: [
-    { key: "equipamiento", label: "Equipamiento necesario", type: "textarea", placeholder: "Listado de equipos técnicos" },
-    { key: "requerimientosTecnicos", label: "Requerimientos técnicos", type: "textarea", placeholder: "Conectividad, potencia, etc." },
+    {
+      key: "equipamiento",
+      label: "Equipamiento necesario",
+      type: "select",
+      options: EQUIPAMIENTO_OPTIONS,
+    },
+    {
+      key: "requerimientosTecnicos",
+      label: "Requerimientos técnicos",
+      type: "select",
+      options: REQUERIMIENTOS_TECNICOS_OPTIONS,
+    },
   ],
   OTRO: [],
 };
 
 /** Campos de catering (fuera de Producción; se usan en formulario de evento y en brief) */
 export const cateringFields: CategoryFieldConfig[] = [
-  { key: "catering", label: "¿Catering?", type: "select", options: [{ value: "", label: "—" }, { value: "si", label: "Sí" }, { value: "no", label: "No" }] },
+  { key: "catering", label: "¿Catering?", type: "select", options: SI_NO },
   {
     key: "tipoCatering",
     label: "Tipo de catering",
@@ -106,7 +132,12 @@ export const cateringFields: CategoryFieldConfig[] = [
     ],
   },
   { key: "cateringCantidad", label: "Cantidad catering (personas)", type: "number", placeholder: "Ej: 50" },
-  { key: "restriccionesAlimentarias", label: "Restricciones alimentarias", type: "textarea", placeholder: "Vegano, sin TACC, etc." },
+  {
+    key: "restriccionesAlimentarias",
+    label: "Restricciones alimentarias",
+    type: "select",
+    options: RESTRICCIONES_OPTIONS,
+  },
 ];
 
 /** Campos del brief audiovisual (modelo: piezas de comunicación y/o cobertura) */

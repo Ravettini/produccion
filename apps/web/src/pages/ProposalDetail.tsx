@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, CheckCircle2, Send, XCircle } from "lucide-react";
@@ -28,6 +28,7 @@ import {
   Modal,
   TextArea,
   Input,
+  Select,
   DetailSkeleton,
   StatusBadge,
   Badge,
@@ -37,6 +38,7 @@ import { AuditTimeline } from "../components/domain/AuditTimeline";
 import { categoryLabels, categoryColors } from "../utils/labels";
 import { categoryExtraFields } from "../config/proposalCategoryFields";
 import { formatDateShort } from "../utils/formatters";
+import { hasUnseenChanges, markSeen, modalidadLabels } from "../utils/changeAlerts";
 
 export default function ProposalDetail() {
   const { id } = useParams<{ id: string }>();
@@ -52,12 +54,21 @@ export default function ProposalDetail() {
   const [editDescripcion, setEditDescripcion] = useState("");
   const [editReason, setEditReason] = useState("");
   const [editDatosExtra, setEditDatosExtra] = useState<Record<string, string>>({});
+  const [changeAlert, setChangeAlert] = useState(false);
 
   const { data: proposal, isLoading } = useQuery({
     queryKey: ["proposal", id],
     queryFn: () => getProposal(id!),
     enabled: !!id,
   });
+
+  useEffect(() => {
+    if (!proposal?.id || !proposal.updatedAt) return;
+    setChangeAlert(
+      hasUnseenChanges("proposal", proposal.id, proposal.updatedAt, proposal.createdAt)
+    );
+    markSeen("proposal", proposal.id, proposal.updatedAt);
+  }, [proposal?.id, proposal?.updatedAt, proposal?.createdAt]);
 
   const eventIdForDecisions = proposal?.eventId;
   const { data: areaDecisions } = useQuery({
@@ -106,13 +117,26 @@ export default function ProposalDetail() {
     },
   });
   const saveEdit = useMutation({
-    mutationFn: () =>
-      updateProposal(id!, {
+    mutationFn: () => {
+      const modalidad = (editDatosExtra.modalidad ?? "").trim();
+      if (!modalidad) {
+        return Promise.reject(new Error("Indicá si el requerimiento es interno, externo o pago."));
+      }
+      if (
+        (modalidad === "EXTERNO" || modalidad === "PAGO") &&
+        !(editDatosExtra.modalidadDetalle ?? "").trim()
+      ) {
+        return Promise.reject(
+          new Error("Completá el detalle para requerimientos externos o pagos.")
+        );
+      }
+      return updateProposal(id!, {
         titulo: editTitulo,
         descripcion: editDescripcion,
         datosExtra: editDatosExtra,
         editReason: editReason.trim() || undefined,
-      } as Parameters<typeof updateProposal>[1] & { editReason?: string }),
+      } as Parameters<typeof updateProposal>[1] & { editReason?: string });
+    },
     onSuccess: () => {
       setEditing(false);
       setEditReason("");
@@ -218,16 +242,67 @@ export default function ProposalDetail() {
               onChange={(e) => setEditDescripcion(e.target.value)}
               rows={4}
             />
-            {extraFields.map((field) => (
-              <Input
-                key={field.key}
-                label={field.label}
-                value={editDatosExtra[field.key] ?? ""}
-                onChange={(e) =>
-                  setEditDatosExtra((prev) => ({ ...prev, [field.key]: e.target.value }))
+            {extraFields.map((field) =>
+              field.type === "select" && field.options?.length ? (
+                <Select
+                  key={field.key}
+                  label={field.label}
+                  options={field.options}
+                  value={editDatosExtra[field.key] ?? ""}
+                  onChange={(e) =>
+                    setEditDatosExtra((prev) => ({ ...prev, [field.key]: e.target.value }))
+                  }
+                />
+              ) : field.type === "textarea" ? (
+                <TextArea
+                  key={field.key}
+                  label={field.label}
+                  value={editDatosExtra[field.key] ?? ""}
+                  onChange={(e) =>
+                    setEditDatosExtra((prev) => ({ ...prev, [field.key]: e.target.value }))
+                  }
+                  rows={2}
+                />
+              ) : (
+                <Input
+                  key={field.key}
+                  label={field.label}
+                  value={editDatosExtra[field.key] ?? ""}
+                  onChange={(e) =>
+                    setEditDatosExtra((prev) => ({ ...prev, [field.key]: e.target.value }))
+                  }
+                  type={field.type === "number" ? "number" : field.type === "date" ? "date" : "text"}
+                  placeholder={field.placeholder}
+                />
+              )
+            )}
+            <Select
+              label="Modalidad del requerimiento"
+              options={[
+                { value: "", label: "Seleccionar…" },
+                { value: "INTERNO", label: "Interno" },
+                { value: "EXTERNO", label: "Externo" },
+                { value: "PAGO", label: "Pago" },
+              ]}
+              value={editDatosExtra.modalidad ?? ""}
+              onChange={(e) =>
+                setEditDatosExtra((prev) => ({ ...prev, modalidad: e.target.value }))
+              }
+            />
+            {(editDatosExtra.modalidad === "EXTERNO" || editDatosExtra.modalidad === "PAGO") && (
+              <TextArea
+                label={
+                  editDatosExtra.modalidad === "PAGO"
+                    ? "Detalle del pago / proveedor"
+                    : "Detalle del requerimiento externo"
                 }
+                value={editDatosExtra.modalidadDetalle ?? ""}
+                onChange={(e) =>
+                  setEditDatosExtra((prev) => ({ ...prev, modalidadDetalle: e.target.value }))
+                }
+                rows={2}
               />
-            ))}
+            )}
             <Input
               label="Motivo del cambio (queda en el historial)"
               value={editReason}
@@ -256,6 +331,23 @@ export default function ProposalDetail() {
           {categoryLabels[proposal.categoria as ProposalCategory]}
         </Badge>
         <StatusBadge kind="impact" value={proposal.impacto} />
+        {(() => {
+          let extra: Record<string, string> = {};
+          try {
+            const raw = proposal.datosExtra;
+            if (raw && typeof raw === "string") extra = JSON.parse(raw) as Record<string, string>;
+            else if (raw && typeof raw === "object") extra = raw as Record<string, string>;
+          } catch {
+            extra = {};
+          }
+          if (!extra.modalidad) return null;
+          return (
+            <span className="inline-flex px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 text-slate-700 ring-1 ring-slate-200 self-center">
+              {modalidadLabels[extra.modalidad] ?? extra.modalidad}
+              {extra.modalidadDetalle ? ` · ${extra.modalidadDetalle}` : ""}
+            </span>
+          );
+        })()}
         {proposal.createdBy && (
           <span className="text-sm text-slate-500 self-center">Por {proposal.createdBy.name}</span>
         )}
@@ -263,6 +355,15 @@ export default function ProposalDetail() {
           <span className="text-sm text-slate-500 self-center">· Validado por {proposal.validatedBy.name}</span>
         )}
       </div>
+
+      {changeAlert && (
+        <div
+          className="mb-6 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+          role="status"
+        >
+          <p className="font-medium">Este requerimiento fue modificado desde la última vez que lo viste.</p>
+        </div>
+      )}
 
       {proposal.estado === "REJECTED" && proposal.decisionReason && (
         <Card className="border-red-200 bg-red-50/50 mb-6">

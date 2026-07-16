@@ -27,9 +27,11 @@ export function AreaDecisionsPanel({ eventId, user, funcionario }: AreaDecisions
   const qc = useQueryClient();
   const [rejectReason, setRejectReason] = useState("");
   const [rejecting, setRejecting] = useState(false);
+  const [adminRejectRole, setAdminRejectRole] = useState<string | null>(null);
   const [funcionarioDraft, setFuncionarioDraft] = useState(funcionario ?? "");
   const [editReason, setEditReason] = useState("");
   const [editingFunc, setEditingFunc] = useState(false);
+  const isAdmin = user?.role === "ADMIN";
 
   const { data, isLoading } = useQuery({
     queryKey: ["area-decisions", eventId],
@@ -42,13 +44,17 @@ export function AreaDecisionsPanel({ eventId, user, funcionario }: AreaDecisions
   });
 
   const decide = useMutation({
-    mutationFn: (payload: { decision: "APPROVED" | "REJECTED"; reason?: string }) =>
-      submitAreaDecision(eventId, payload),
+    mutationFn: (payload: {
+      decision: "APPROVED" | "REJECTED";
+      reason?: string;
+      areaRole?: string;
+    }) => submitAreaDecision(eventId, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["area-decisions", eventId] });
       qc.invalidateQueries({ queryKey: ["event-audits", eventId] });
       setRejecting(false);
       setRejectReason("");
+      setAdminRejectRole(null);
     },
   });
 
@@ -89,6 +95,7 @@ export function AreaDecisionsPanel({ eventId, user, funcionario }: AreaDecisions
         <CardBody className="space-y-4">
           <p className="text-sm text-slate-500">
             Cada área pedida en el evento debe marcar su conformidad (check) o rechazar con motivo.
+            {isAdmin ? " Como admin podés poner el check en cualquier área." : ""}
           </p>
           <ul className="space-y-3">
             {data.decisions.map((d: EventAreaDecision) => {
@@ -107,21 +114,86 @@ export function AreaDecisionsPanel({ eventId, user, funcionario }: AreaDecisions
               return (
                 <li
                   key={d.areaRole}
-                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-xl border border-slate-200 px-4 py-3"
+                  className="rounded-xl border border-slate-200 px-4 py-3 space-y-2"
                 >
-                  <div>
-                    <p className="font-medium text-slate-900">{d.label ?? d.areaRole}</p>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      {d.user?.name
-                        ? `${estadoLabel} por ${d.user.name}`
-                        : estadoLabel}
-                      {d.reason ? ` · ${d.reason}` : ""}
-                    </p>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div>
+                      <p className="font-medium text-slate-900">{d.label ?? d.areaRole}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {d.user?.name
+                          ? `${estadoLabel} por ${d.user.name}`
+                          : estadoLabel}
+                        {d.reason ? ` · ${d.reason}` : ""}
+                      </p>
+                    </div>
+                    <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-medium ring-1 ${color} self-start`}>
+                      {d.estado === "APPROVED" ? "✓ " : d.estado === "REJECTED" ? "✕ " : "○ "}
+                      {estadoLabel}
+                    </span>
                   </div>
-                  <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-medium ring-1 ${color}`}>
-                    {d.estado === "APPROVED" ? "✓ " : d.estado === "REJECTED" ? "✕ " : "○ "}
-                    {estadoLabel}
-                  </span>
+                  {isAdmin && (
+                    <div className="flex flex-wrap gap-2 pt-1 border-t border-slate-100">
+                      {adminRejectRole === d.areaRole ? (
+                        <div className="w-full space-y-2">
+                          <TextArea
+                            label={`Motivo rechazo · ${d.label ?? d.areaRole}`}
+                            value={rejectReason}
+                            onChange={(e) => setRejectReason(e.target.value)}
+                            rows={2}
+                          />
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="danger"
+                              disabled={decide.isPending || !rejectReason.trim()}
+                              onClick={() =>
+                                decide.mutate({
+                                  decision: "REJECTED",
+                                  reason: rejectReason.trim(),
+                                  areaRole: d.areaRole,
+                                })
+                              }
+                            >
+                              Confirmar rechazo
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => {
+                                setAdminRejectRole(null);
+                                setRejectReason("");
+                              }}
+                            >
+                              Cancelar
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="success"
+                            disabled={decide.isPending}
+                            onClick={() =>
+                              decide.mutate({ decision: "APPROVED", areaRole: d.areaRole })
+                            }
+                          >
+                            <Check className="w-4 h-4" aria-hidden />
+                            Check admin
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            disabled={decide.isPending}
+                            onClick={() => setAdminRejectRole(d.areaRole)}
+                          >
+                            <X className="w-4 h-4" aria-hidden />
+                            Rechazar
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </li>
               );
             })}
