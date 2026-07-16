@@ -40,15 +40,23 @@ import {
 import { categoryExtraFields } from "../config/proposalCategoryFields";
 import { formatDate } from "../utils/formatters";
 import { EventHealthChecklist } from "../components/event/EventHealthChecklist";
+import { EventOverview } from "../components/event/EventOverview";
 import { AreaDecisionsPanel } from "../components/domain/AreaDecisionsPanel";
 import { EventChangesPanel } from "../components/domain/EventChangesPanel";
 import { hasUnseenChanges, markSeen } from "../utils/changeAlerts";
+
+type EventDetailTab =
+  | "estado"
+  | "requerimientos"
+  | "aprobaciones"
+  | "documentos"
+  | "cambios";
 
 export default function EventDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [tab, setTab] = useState<"brief" | "estado" | "requerimientos" | "documentos">("brief");
+  const [tab, setTab] = useState<EventDetailTab>("estado");
   const [filterEstado, setFilterEstado] = useState<ProposalStatus | "">("");
   const [filterCategoria, setFilterCategoria] = useState<ProposalCategory | "">("");
   const [editingResumen, setEditingResumen] = useState(false);
@@ -133,15 +141,50 @@ export default function EventDetail() {
     },
   });
 
+  const handleExportDocx = async () => {
+    setExportandoDocx(true);
+    try {
+      await exportarBriefDocx(id!, `Brief - ${event?.titulo ?? "Evento"}`);
+    } catch (error) {
+      console.error(error);
+      alert((error as Error).message);
+    } finally {
+      setExportandoDocx(false);
+    }
+  };
+
+  const handleExportAc = async () => {
+    setExportandoAc(true);
+    try {
+      await exportarBriefAcDocx(id!, `Brief reducido AC - ${event?.titulo ?? "Evento"}`);
+    } catch (error) {
+      console.error(error);
+      alert((error as Error).message);
+    } finally {
+      setExportandoAc(false);
+    }
+  };
+
+  const handleShowChanges = () => {
+    setTab("cambios");
+    window.setTimeout(() => {
+      document.getElementById("detalle-operativo")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 0);
+  };
+
   if (loadingEvent || !event) {
     return <DetailSkeleton />;
   }
 
   const tabs = [
-    { id: "brief", label: "Brief" },
-    { id: "estado", label: "Estado de la información" },
+    { id: "estado", label: "Estado" },
     { id: "requerimientos", label: "Requerimientos" },
+    { id: "aprobaciones", label: "Aprobaciones" },
     { id: "documentos", label: "Documentos" },
+    { id: "cambios", label: "Cambios" },
   ];
 
   const publicoLabel =
@@ -224,309 +267,88 @@ export default function EventDetail() {
         >
           <p className="font-medium">Hay cambios recientes en este evento o sus requerimientos.</p>
           <p className="mt-0.5 text-amber-800">
-            Mirálos en el panel{" "}
-            <a href="#cambios-del-evento" className="underline font-medium">
+            Mirálos en la sección{" "}
+            <button
+              type="button"
+              onClick={handleShowChanges}
+              className="font-medium underline"
+            >
               Cambios
-            </a>{" "}
-            más abajo.
+            </button>
+            .
           </p>
         </div>
       )}
 
-      {/* Stats row */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
-        <StatCard label="Aprobadas" value={aprobadas.length} accent="green" subtitle="Listas para brief" />
-        <StatCard label="Pendientes" value={pendientes.length} accent="amber" subtitle="Requieren validación" />
-        <StatCard label="Rechazadas" value={rechazadas.length} accent="red" subtitle="Con motivo registrado" />
-        <StatCard
-          label="Completitud"
-          value={`${proposals.length ? Math.round((aprobadas.length / proposals.length) * 100) : 0}%`}
-          accent="blue"
-          subtitle="Requerimientos aprobados"
-        />
-      </div>
-
-      {/* Event Health / Checklist */}
-      <div className="mb-6">
-        <EventHealthChecklist
-          eventId={id!}
-          eventTitle={event.titulo}
-          proposals={proposals}
-          loading={loadingProposals}
-          onGoToTab={handleGoToTab}
-        />
-      </div>
-
-      <div className="mb-6">
-        <EventChangesPanel
-          eventId={id!}
-          highlight={
-            showChangeAlert ||
-            proposals.some((p) => hasUnseenChanges("proposal", p.id, p.updatedAt, p.createdAt))
-          }
-        />
-      </div>
-
-      <AreaDecisionsPanel
-        eventId={id!}
-        user={user}
-        funcionario={(event as { funcionario?: string | null }).funcionario}
+      <EventOverview
+        event={event}
+        editingResumen={editingResumen}
+        resumenDraft={resumenDraft}
+        onStartEditResumen={() => {
+          setResumenDraft(event.resumen ?? "");
+          setEditingResumen(true);
+        }}
+        onResumenChange={setResumenDraft}
+        onSaveResumen={() => updateResumen.mutate(resumenDraft)}
+        onCancelEditResumen={() => {
+          setEditingResumen(false);
+          setResumenDraft(event.resumen ?? "");
+        }}
+        savingResumen={updateResumen.isPending}
+        resumenError={
+          updateResumen.error instanceof Error ? updateResumen.error.message : undefined
+        }
+        onGenerateBrief={() => generarBrief.mutate()}
+        generatingBrief={generarBrief.isPending}
+        briefError={
+          generarBrief.error instanceof Error ? generarBrief.error.message : undefined
+        }
+        onExportDocx={handleExportDocx}
+        exportingDocx={exportandoDocx}
+        onExportAc={handleExportAc}
+        exportingAc={exportandoAc}
       />
 
-      <div className="mb-6 mt-6">
-        <Tabs tabs={tabs} active={tab} onChange={(id) => setTab(id as typeof tab)} />
+      <div id="detalle-operativo" className="mb-6 scroll-mt-4">
+        <Tabs tabs={tabs} active={tab} onChange={(nextTab) => setTab(nextTab as EventDetailTab)} />
       </div>
-
-      {tab === "brief" && (
-        <div className="space-y-6">
-          <Card>
-            <CardHeader
-              action={
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    disabled={exportandoDocx}
-                    onClick={async () => {
-                      setExportandoDocx(true);
-                      try {
-                        await exportarBriefDocx(id!, `Brief - ${event.titulo}`);
-                      } catch (e) {
-                        console.error(e);
-                        alert((e as Error).message);
-                      } finally {
-                        setExportandoDocx(false);
-                      }
-                    }}
-                  >
-                    {exportandoDocx ? "Exportando…" : "Exportar brief DOCX"}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    disabled={exportandoAc}
-                    onClick={async () => {
-                      setExportandoAc(true);
-                      try {
-                        await exportarBriefAcDocx(id!, `Brief reducido AC - ${event.titulo}`);
-                      } catch (e) {
-                        console.error(e);
-                        alert((e as Error).message);
-                      } finally {
-                        setExportandoAc(false);
-                      }
-                    }}
-                  >
-                    {exportandoAc ? "Exportando…" : "Brief reducido AC"}
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => generarBrief.mutate()}
-                    disabled={generarBrief.isPending}
-                  >
-                    {generarBrief.isPending ? "Generando…" : "Generar brief con IA"}
-                  </Button>
-                </div>
-              }
-            >
-              Resumen y brief
-            </CardHeader>
-            <CardBody>
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-sm font-medium text-slate-500">Descripción</h3>
-                <p className="text-slate-800 mt-1 whitespace-pre-wrap">{event.descripcion}</p>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <h3 className="text-sm font-medium text-slate-500">Requiere</h3>
-                  <p className="text-slate-800">{event.tipoEvento}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-slate-500">Área solicitante</h3>
-                  <p className="text-slate-800">{event.areaSolicitante}</p>
-                </div>
-                {event.usuarioSolicitante && (
-                  <div>
-                    <h3 className="text-sm font-medium text-slate-500">Usuario solicitante</h3>
-                    <p className="text-slate-800">{event.usuarioSolicitante}</p>
-                  </div>
-                )}
-                {event.publico && (
-                  <div>
-                    <h3 className="text-sm font-medium text-slate-500">Público</h3>
-                    <p className="text-slate-800">
-                      {event.publico === "EXTERNO" ? "Externo" : event.publico === "INTERNO" ? "Interno" : "Mixto"}
-                    </p>
-                  </div>
-                )}
-                {(event as { programa?: string | null }).programa && (
-                  <div>
-                    <h3 className="text-sm font-medium text-slate-500">Programa</h3>
-                    <p className="text-slate-800">{(event as { programa?: string | null }).programa}</p>
-                  </div>
-                )}
-                {(event as { funcionario?: string | null }).funcionario && (
-                  <div>
-                    <h3 className="text-sm font-medium text-slate-500">Funcionario(s)</h3>
-                    <p className="text-slate-800">{(event as { funcionario?: string | null }).funcionario}</p>
-                  </div>
-                )}
-                {(event as { productor?: string | null }).productor && (
-                  <div>
-                    <h3 className="text-sm font-medium text-slate-500">Productor</h3>
-                    <p className="text-slate-800">{(event as { productor?: string | null }).productor}</p>
-                  </div>
-                )}
-                {(event as { necesitaAcreditacion?: boolean | null }).necesitaAcreditacion != null && (
-                  <div>
-                    <h3 className="text-sm font-medium text-slate-500">¿Se necesita acreditación?</h3>
-                    <p className="text-slate-800">{(event as { necesitaAcreditacion?: boolean }).necesitaAcreditacion ? "Sí" : "No"}</p>
-                  </div>
-                )}
-                {(event as { linkAcreditacionConvocados?: string | null }).linkAcreditacionConvocados && (
-                  <div>
-                    <h3 className="text-sm font-medium text-slate-500">Link a convocados para acreditar</h3>
-                    <a href={(event as { linkAcreditacionConvocados: string }).linkAcreditacionConvocados} target="_blank" rel="noopener noreferrer" className="text-gov-600 hover:underline truncate block">
-                      {(event as { linkAcreditacionConvocados: string }).linkAcreditacionConvocados}
-                    </a>
-                  </div>
-                )}
-              </div>
-              {event.resumen && (
-                <div>
-                  <h3 className="text-sm font-medium text-slate-500">Resumen</h3>
-                  <p className="text-slate-800 mt-1 whitespace-pre-wrap">{event.resumen}</p>
-                </div>
-              )}
-              {event.estado === "CANCELADO" && (event as { motivoCancelacion?: string | null }).motivoCancelacion && (
-                <div className="rounded-lg bg-red-50 border border-red-200 p-4">
-                  <h3 className="text-sm font-medium text-red-800">Motivo de cancelación</h3>
-                  <p className="text-red-900 mt-1 whitespace-pre-wrap">{(event as { motivoCancelacion: string }).motivoCancelacion}</p>
-                </div>
-              )}
-              {event.estado === "REALIZADO" && ((event as { realizacionAsistentes?: number | null }).realizacionAsistentes != null || (event as { realizacionImpacto?: string | null }).realizacionImpacto || (event as { realizacionLinkImpacto?: string | null }).realizacionLinkImpacto) && (
-                <div className="rounded-lg bg-blue-50 border border-blue-200 p-4">
-                  <h3 className="text-sm font-medium text-blue-800">Datos del evento realizado</h3>
-                  <div className="mt-2 space-y-1 text-blue-900">
-                    {(event as { realizacionAsistentes?: number | null }).realizacionAsistentes != null && (
-                      <p><strong>Asistentes:</strong> {(event as { realizacionAsistentes: number }).realizacionAsistentes}</p>
-                    )}
-                    {(event as { realizacionImpacto?: string | null }).realizacionImpacto && (
-                      <p className="whitespace-pre-wrap"><strong>Impacto:</strong> {(event as { realizacionImpacto: string }).realizacionImpacto}</p>
-                    )}
-                    {(event as { realizacionLinkImpacto?: string | null }).realizacionLinkImpacto && (
-                      <p>
-                        <strong>Link PDF / recurso:</strong>{" "}
-                        <a href={(event as { realizacionLinkImpacto: string }).realizacionLinkImpacto} target="_blank" rel="noopener noreferrer" className="underline">
-                          {(event as { realizacionLinkImpacto: string }).realizacionLinkImpacto}
-                        </a>
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-              {!event.resumen && (
-                <p className="text-slate-500 text-sm italic">
-                  Sin resumen. Generá uno con IA o agregalo desde la pestaña Estado de la información.
-                </p>
-              )}
-            </div>
-            </CardBody>
-          </Card>
-        </div>
-      )}
 
       {tab === "estado" && (
         <div className="mt-6 space-y-6">
-          <Card>
-            <CardHeader
-              action={
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    disabled={exportandoDocx}
-                    onClick={async () => {
-                      setExportandoDocx(true);
-                      try {
-                        await exportarBriefDocx(id!, `Brief - ${event.titulo}`);
-                      } catch (e) {
-                        console.error(e);
-                        alert((e as Error).message);
-                      } finally {
-                        setExportandoDocx(false);
-                      }
-                    }}
-                  >
-                    {exportandoDocx ? "Exportando…" : "Exportar brief DOCX"}
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => generarBrief.mutate()}
-                    disabled={generarBrief.isPending}
-                  >
-                    {generarBrief.isPending ? "Generando…" : "Generar brief con IA"}
-                  </Button>
-                  {!editingResumen && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setResumenDraft(event.resumen ?? "");
-                        setEditingResumen(true);
-                      }}
-                    >
-                      {event.resumen ? "Editar resumen" : "Agregar resumen"}
-                    </Button>
-                  )}
-                </div>
-              }
-            >
-              Resumen
-            </CardHeader>
-            <CardBody>
-              {editingResumen ? (
-                <div className="space-y-3">
-                  <TextArea
-                    value={resumenDraft}
-                    onChange={(e) => setResumenDraft(e.target.value)}
-                    rows={4}
-                    placeholder="El evento se va a hacer en [lugar], se necesita producción [detalle], catering [detalle]..."
-                  />
-                  {generarBrief.error && (
-                    <p className="text-red-600 text-sm">{generarBrief.error.message}</p>
-                  )}
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => updateResumen.mutate(resumenDraft)}
-                      disabled={updateResumen.isPending}
-                    >
-                      {updateResumen.isPending ? "Guardando…" : "Guardar"}
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      onClick={() => {
-                        setEditingResumen(false);
-                        setResumenDraft(event.resumen ?? "");
-                      }}
-                    >
-                      Cancelar
-                    </Button>
-                  </div>
-                  {updateResumen.error && (
-                    <p className="text-red-600 text-sm">{updateResumen.error.message}</p>
-                  )}
-                </div>
-              ) : event.resumen ? (
-                <p className="text-slate-800 whitespace-pre-wrap">{event.resumen}</p>
-              ) : (
-                <p className="text-slate-500 text-sm italic">
-                  Sin resumen. Podés agregar un texto o generar uno con IA.
-                </p>
-              )}
-            </CardBody>
-          </Card>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              label="Aprobadas"
+              value={aprobadas.length}
+              accent="green"
+              subtitle="Listas para brief"
+            />
+            <StatCard
+              label="Pendientes"
+              value={pendientes.length}
+              accent="amber"
+              subtitle="Requieren validación"
+            />
+            <StatCard
+              label="Rechazadas"
+              value={rechazadas.length}
+              accent="red"
+              subtitle="Con motivo registrado"
+            />
+            <StatCard
+              label="Completitud"
+              value={`${proposals.length ? Math.round((aprobadas.length / proposals.length) * 100) : 0}%`}
+              accent="blue"
+              subtitle="Requerimientos aprobados"
+            />
+          </div>
+
+          <EventHealthChecklist
+            eventId={id!}
+            eventTitle={event.titulo}
+            proposals={proposals}
+            loading={loadingProposals}
+            onGoToTab={handleGoToTab}
+          />
 
           <p className="text-slate-600 text-sm">
             Qué está aprobado, qué está pendiente y qué fue rechazado.
@@ -657,6 +479,16 @@ export default function EventDetail() {
         </div>
       )}
 
+      {tab === "aprobaciones" && (
+        <div className="mt-6">
+          <AreaDecisionsPanel
+            eventId={id!}
+            user={user}
+            funcionario={(event as { funcionario?: string | null }).funcionario}
+          />
+        </div>
+      )}
+
       {tab === "documentos" && (
         <div className="mt-6">
           <Card>
@@ -676,6 +508,20 @@ export default function EventDetail() {
               )}
             </CardBody>
           </Card>
+        </div>
+      )}
+
+      {tab === "cambios" && (
+        <div className="mt-6">
+          <EventChangesPanel
+            eventId={id!}
+            highlight={
+              showChangeAlert ||
+              proposals.some((p) =>
+                hasUnseenChanges("proposal", p.id, p.updatedAt, p.createdAt)
+              )
+            }
+          />
         </div>
       )}
 
@@ -710,17 +556,7 @@ export default function EventDetail() {
             <Button
               variant="secondary"
               disabled={exportandoDocx}
-              onClick={async () => {
-                setExportandoDocx(true);
-                try {
-                  await exportarBriefDocx(id!, `Brief - ${event.titulo}`);
-                } catch (e) {
-                  console.error(e);
-                  alert((e as Error).message);
-                } finally {
-                  setExportandoDocx(false);
-                }
-              }}
+              onClick={handleExportDocx}
             >
               <FileDown className="w-4 h-4" aria-hidden />
               {exportandoDocx ? "Exportando…" : "Exportar como documento de Word"}
