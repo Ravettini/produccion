@@ -41,6 +41,7 @@ import { categoryExtraFields } from "../config/proposalCategoryFields";
 import { formatDate } from "../utils/formatters";
 import { EventHealthChecklist } from "../components/event/EventHealthChecklist";
 import { AreaDecisionsPanel } from "../components/domain/AreaDecisionsPanel";
+import { EventChangesPanel } from "../components/domain/EventChangesPanel";
 import { hasUnseenChanges, markSeen } from "../utils/changeAlerts";
 
 export default function EventDetail() {
@@ -223,7 +224,11 @@ export default function EventDetail() {
         >
           <p className="font-medium">Hay cambios recientes en este evento o sus requerimientos.</p>
           <p className="mt-0.5 text-amber-800">
-            Revisá el historial de auditoría y las tarjetas marcadas con “Cambios”.
+            Mirálos en el panel{" "}
+            <a href="#cambios-del-evento" className="underline font-medium">
+              Cambios
+            </a>{" "}
+            más abajo.
           </p>
         </div>
       )}
@@ -249,6 +254,16 @@ export default function EventDetail() {
           proposals={proposals}
           loading={loadingProposals}
           onGoToTab={handleGoToTab}
+        />
+      </div>
+
+      <div className="mb-6">
+        <EventChangesPanel
+          eventId={id!}
+          highlight={
+            showChangeAlert ||
+            proposals.some((p) => hasUnseenChanges("proposal", p.id, p.updatedAt, p.createdAt))
+          }
         />
       </div>
 

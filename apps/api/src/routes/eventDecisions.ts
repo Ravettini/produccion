@@ -152,7 +152,7 @@ eventDecisionsRouter.post("/:eventId/area-decisions", authMiddleware, async (req
 });
 
 /**
- * GET /events/:eventId/audits - Historial de cambios del evento.
+ * GET /events/:eventId/audits - Historial unificado de cambios del evento y sus requerimientos.
  */
 eventDecisionsRouter.get("/:eventId/audits", authMiddleware, async (req, res) => {
   const { eventId } = req.params;
@@ -166,12 +166,62 @@ eventDecisionsRouter.get("/:eventId/audits", authMiddleware, async (req, res) =>
     res.status(403).json({ error: "No tenés permiso" });
     return;
   }
-  const audits = await prisma.eventAudit.findMany({
-    where: { eventId },
-    orderBy: { createdAt: "asc" },
-    include: { user: { select: { id: true, name: true, role: true } } },
-  });
-  res.json(audits);
+
+  const [eventAudits, proposals] = await Promise.all([
+    prisma.eventAudit.findMany({
+      where: { eventId },
+      orderBy: { createdAt: "desc" },
+      include: { user: { select: { id: true, name: true, role: true } } },
+    }),
+    prisma.proposal.findMany({
+      where: { eventId },
+      select: {
+        id: true,
+        titulo: true,
+        audits: {
+          orderBy: { createdAt: "desc" },
+          include: { user: { select: { id: true, name: true, role: true } } },
+        },
+      },
+    }),
+  ]);
+
+  const items = [
+    ...eventAudits.map((a) => ({
+      id: a.id,
+      source: "event" as const,
+      action: a.action,
+      field: a.field,
+      fromValue: a.fromValue,
+      toValue: a.toValue,
+      reason: a.reason,
+      createdAt: a.createdAt,
+      user: a.user,
+      proposalId: null as string | null,
+      proposalTitulo: null as string | null,
+      fromStatus: null as string | null,
+      toStatus: null as string | null,
+    })),
+    ...proposals.flatMap((p) =>
+      p.audits.map((a) => ({
+        id: a.id,
+        source: "proposal" as const,
+        action: a.action,
+        field: null as string | null,
+        fromValue: null as string | null,
+        toValue: null as string | null,
+        reason: a.reason,
+        createdAt: a.createdAt,
+        user: a.user,
+        proposalId: p.id,
+        proposalTitulo: p.titulo,
+        fromStatus: a.fromStatus,
+        toStatus: a.toStatus,
+      }))
+    ),
+  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  res.json({ items });
 });
 
 /**

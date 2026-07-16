@@ -3,11 +3,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, X } from "lucide-react";
 import {
   getAreaDecisions,
-  getEventAudits,
   patchEventFields,
   submitAreaDecision,
   type EventAreaDecision,
-  type EventAuditEntry,
 } from "../../api/eventDecisions";
 import { Button } from "../ui/Button";
 import { Card, CardBody, CardHeader } from "../ui/Card";
@@ -15,7 +13,6 @@ import { Input } from "../ui/Input";
 import { TextArea } from "../ui/TextArea";
 import { canSpecialtyEditEventFields } from "../../hooks/usePermissions";
 import type { User } from "../../types";
-import { formatDateShort } from "../../utils/formatters";
 
 interface AreaDecisionsPanelProps {
   eventId: string;
@@ -36,11 +33,6 @@ export function AreaDecisionsPanel({ eventId, user, funcionario }: AreaDecisions
   const { data, isLoading } = useQuery({
     queryKey: ["area-decisions", eventId],
     queryFn: () => getAreaDecisions(eventId),
-  });
-
-  const { data: audits = [] } = useQuery({
-    queryKey: ["event-audits", eventId],
-    queryFn: () => getEventAudits(eventId),
   });
 
   const decide = useMutation({
@@ -318,38 +310,6 @@ export function AreaDecisionsPanel({ eventId, user, funcionario }: AreaDecisions
                 )}
               </div>
             )}
-          </CardBody>
-        </Card>
-      )}
-
-      {audits.length > 0 && (
-        <Card>
-          <CardHeader>Historial de cambios del evento</CardHeader>
-          <CardBody>
-            <ul className="space-y-2 text-sm">
-              {audits.map((a: EventAuditEntry) => (
-                <li key={a.id} className="border-l-2 border-slate-200 pl-3 py-1">
-                  <p className="text-slate-800">
-                    <span className="font-medium">{a.user?.name ?? "Usuario"}</span>
-                    {" · "}
-                    {a.action === "EDIT"
-                      ? `editó ${a.field ?? "campo"}`
-                      : a.action === "AREA_APPROVE"
-                        ? `aprobó ${a.field ?? "área"}`
-                        : a.action === "AREA_REJECT"
-                          ? `rechazó ${a.field ?? "área"}`
-                          : a.action}
-                  </p>
-                  {(a.fromValue || a.toValue) && (
-                    <p className="text-slate-500 text-xs mt-0.5">
-                      {a.fromValue ?? "—"} → {a.toValue ?? "—"}
-                    </p>
-                  )}
-                  {a.reason && <p className="text-slate-500 text-xs mt-0.5">{a.reason}</p>}
-                  <p className="text-slate-400 text-xs mt-0.5">{formatDateShort(a.createdAt)}</p>
-                </li>
-              ))}
-            </ul>
           </CardBody>
         </Card>
       )}
