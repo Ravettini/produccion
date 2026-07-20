@@ -1,6 +1,7 @@
 /**
- * Brief reducido para AC (Área de Comunicación / cobertura operativa).
- * Formato corto: solo campos con contenido. Fuente Arial.
+ * Brief reducido para AC (Área de Comunicación).
+ * Formato corto: datos básicos, dinámica, descripción breve, Cobertura/Producción SI|NO.
+ * Fuente Arial. Sin detalle de producción ni audiovisual.
  */
 import {
   Document,
@@ -11,8 +12,12 @@ import {
 } from "docx";
 import type { BriefInput } from "../schemas/index.js";
 import { normalizeInput } from "../normalize/index.js";
-import { filterApproved, type ApprovedProposal } from "../rules/index.js";
-import { buildAudiovisualBriefData, hasContent } from "../rules/audiovisual.js";
+import {
+  formatFechaBriefModelo,
+  formatHoraBriefModelo,
+  trimOrNull,
+} from "../normalize/index.js";
+import { hasContent } from "../rules/audiovisual.js";
 
 const COLOR = "000000";
 const FONT = "Arial";
@@ -43,6 +48,12 @@ function title(text: string, size = 28): Paragraph {
   return p([run(text, { bold: true, size })], { alignment: "center" });
 }
 
+function sectionTitle(text: string): Paragraph {
+  return p([run(text, { bold: true, size: 24 })], {
+    spacing: { before: 240, after: 120 },
+  });
+}
+
 function lineIf(label: string, value?: string | null): Paragraph | null {
   if (!hasContent(value)) return null;
   return p(
@@ -51,75 +62,146 @@ function lineIf(label: string, value?: string | null): Paragraph | null {
   );
 }
 
+function bodyText(text: string): Paragraph {
+  return p([run(text.trim())], { alignment: "both", spacing: { before: 0, after: 120 } });
+}
+
+function siNoLine(label: string, value: boolean): Paragraph {
+  return p(
+    [run(`${label}: `, { bold: true }), run(value ? "SI" : "NO")],
+    { spacing: { before: 80, after: 80 } }
+  );
+}
+
+function parseDatos(event: BriefInput["event"]): Record<string, unknown> {
+  const raw = (event as { datosProduccion?: unknown }).datosProduccion;
+  if (raw == null) return {};
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+  if (typeof raw === "object") return raw as Record<string, unknown>;
+  return {};
+}
+
+function pick(datos: Record<string, unknown>, key: string): string | null {
+  const v = datos[key];
+  if (v == null || String(v).trim() === "") return null;
+  return String(v).trim();
+}
+
+function computeDuration(ini?: string | null, fin?: string | null): string | null {
+  if (!ini || !fin) return null;
+  const parse = (t: string) => {
+    const m = t.match(/^(\d{1,2}):(\d{2})/);
+    if (!m) return null;
+    return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+  };
+  const a = parse(ini);
+  const b = parse(fin);
+  if (a == null || b == null || b <= a) return null;
+  const mins = b - a;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h > 0 && m > 0) return `${h} h ${m} min`;
+  if (h > 0) return `${h} h`;
+  return `${m} min`;
+}
+
+function requiereFlags(event: BriefInput["event"]): {
+  cobertura: boolean;
+  produccion: boolean;
+} {
+  const list = (event as { requiere?: string[] }).requiere;
+  const fromList = Array.isArray(list) ? list : [];
+  const fromTipo =
+    typeof (event as { tipoEvento?: string }).tipoEvento === "string"
+      ? String((event as { tipoEvento?: string }).tipoEvento)
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [];
+  const all = [...fromList, ...fromTipo].map((s) => s.toLowerCase());
+  return {
+    cobertura: all.some((s) => s.includes("cobertura")),
+    produccion: all.some((s) => s.includes("producci")),
+  };
+}
+
 export function buildAcBriefReducidoDocument(input: BriefInput): Document {
   const normalized = normalizeInput(input);
-  let approved = filterApproved(normalized.proposals);
   const event = normalized.event;
-  const eventDatos = (event as { datosProduccion?: Record<string, unknown> | null })
-    .datosProduccion;
-  if (eventDatos && typeof eventDatos === "object" && Object.keys(eventDatos).length > 0) {
-    const synthetic: ApprovedProposal = {
-      categoria: "PRODUCCION",
-      status: "APPROVED",
-      titulo: "",
-      descripcion: "",
-      impacto: "MEDIO",
-      datosExtra: eventDatos,
-    };
-    approved = [synthetic, ...approved];
-  }
+  const datos = parseDatos(event);
+  const flags = requiereFlags(event);
 
-  const data = buildAudiovisualBriefData(event, approved);
-  const productor = (event as { productor?: string | null }).productor?.trim();
-  const requiereList = (event as { requiere?: string[] }).requiere;
-  const requiere =
-    (Array.isArray(requiereList) && requiereList.length > 0
-      ? requiereList.join(", ")
-      : null) ||
-    (event as { tipoEvento?: string }).tipoEvento ||
-    "";
-  const tituloDoc = hasContent(data.nombreProyecto)
-    ? data.nombreProyecto
-    : event.titulo || "Evento";
+  const titulo = trimOrNull(event.titulo) ?? "Evento";
+  const fecha = event.fechaTentativa
+    ? formatFechaBriefModelo(event.fechaTentativa)
+    : null;
+  const horaIni = pick(datos, "horarioComienzo");
+  const horaFin = pick(datos, "horarioFinalizacion");
+  const hora = horaIni
+    ? horaFin
+      ? `${formatHoraBriefModelo(horaIni)} – ${formatHoraBriefModelo(horaFin)}`
+      : formatHoraBriefModelo(horaIni)
+    : null;
+  const duracion =
+    pick(datos, "coberturaDuracion") ??
+    computeDuration(horaIni, horaFin);
+  const lugar = trimOrNull((event as { lugar?: string | null }).lugar);
+  const area = trimOrNull(event.areaSolicitante);
+  const funcionario = trimOrNull((event as { funcionario?: string | null }).funcionario);
+  const usuario = trimOrNull(event.usuarioSolicitante);
 
-  const body: (Paragraph | null)[] = [
-    lineIf("Nombre del proyecto:", data.nombreProyecto),
-    lineIf("Fecha:", data.fecha),
-    lineIf("Hora:", data.hora),
-    lineIf("Lugar:", data.lugar),
-    lineIf("Sinopsis:", data.sinopsis),
-    lineIf("Qué requiere:", requiere),
-    lineIf("Contacto DG/área:", data.contactoDg),
-    lineIf("Contacto del lugar:", data.contactoLugar),
-    lineIf("Productor:", productor),
+  const resumen = trimOrNull((event as { resumen?: string | null }).resumen);
+  const descripcion = trimOrNull(event.descripcion);
+
+  // Breve descripción = sinopsis IA si hay; si no, la descripción del formulario
+  const breveDescripcion = resumen ?? descripcion;
+  // Dinámica = descripción del formulario cuando hay sinopsis aparte; si no, no se duplica
+  const dinamica = resumen && descripcion && descripcion !== resumen ? descripcion : null;
+
+  const basicos: (Paragraph | null)[] = [
+    lineIf("Fecha:", fecha),
+    lineIf("Hora:", hora),
+    lineIf("Locación:", lugar),
+    lineIf("Duración:", duracion),
+    lineIf("Área solicitante:", area),
+    lineIf("Responsable:", usuario),
+    lineIf("Participantes / funcionarios:", funcionario),
   ];
 
   const children: FileChild[] = [
-    title("BRIEF REDUCIDO — AC", 32),
-    title("Área de Comunicación / Cobertura", 22),
+    title("ACTIVIDAD", 32),
+    title(titulo, 26),
     p(
-      [
-        run("Resumen operativo del evento (formato corto).", {
-          italics: true,
-          size: 20,
-        }),
-      ],
-      { alignment: "center", spacing: { before: 120, after: 240 } }
+      [run("Brief reducido — AC", { italics: true, size: 20 })],
+      { alignment: "center", spacing: { before: 40, after: 200 } }
     ),
-    ...body.filter((x): x is Paragraph => x != null),
-    p(
-      [
-        run("Fecha estimada de entrega (a coordinar con el equipo audiovisual)", {
-          bold: true,
-        }),
-      ],
-      { spacing: { before: 200, after: 0 } }
-    ),
+
+    sectionTitle("Datos básicos"),
+    ...basicos.filter((x): x is Paragraph => x != null),
+
+    ...(hasContent(breveDescripcion)
+      ? [sectionTitle("Breve descripción del evento"), bodyText(breveDescripcion!)]
+      : []),
+
+    ...(hasContent(dinamica)
+      ? [sectionTitle("Dinámica"), bodyText(dinamica!)]
+      : []),
+
+    sectionTitle("Requerimientos"),
+    siNoLine("Cobertura", flags.cobertura),
+    siNoLine("Producción", flags.produccion),
   ];
 
   return new Document({
     sections: [{ children }],
-    title: `Brief reducido AC - ${tituloDoc}`,
+    title: `Brief reducido AC - ${titulo}`,
     creator: "Sistema de Gestión de Eventos",
   });
 }
