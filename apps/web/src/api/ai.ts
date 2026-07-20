@@ -1,8 +1,10 @@
 import { api, getAuthToken, getApiBase, setAuthToken } from "./client";
 
-/** Genera un brief con IA a partir del evento y propuestas aprobadas. La API key y el modelo se configuran en apps/api/.env */
-export async function generarBriefIA(eventId: string): Promise<{ brief: string }> {
-  return api<{ brief: string }>(`/events/${eventId}/generar-brief-ia`, {
+/** Genera la sinopsis con IA, la guarda en el evento y deja listo el brief para exportar. */
+export async function generarBriefIA(
+  eventId: string
+): Promise<{ brief: string; saved?: boolean }> {
+  return api<{ brief: string; saved?: boolean }>(`/events/${eventId}/generar-brief-ia`, {
     method: "POST",
   });
 }

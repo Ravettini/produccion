@@ -98,6 +98,7 @@ export const eventSchema = z.object({
   programa: z.string().optional().nullable(),
   funcionario: z.string().optional().nullable(),
   productor: z.string().optional().nullable(),
+  resumen: z.string().optional().nullable(),
   datosProduccion: z.record(z.unknown()).optional().nullable(),
 });
 

@@ -9,8 +9,8 @@ function extractDocxText(buffer: Buffer): string {
   return entry.getData().toString("utf-8");
 }
 
-describe("No inventar datos", () => {
-  it("debe incluir 'Por confirmar' cuando faltan datos del evento", async () => {
+describe("Brief dinámico (solo contenido respondido)", () => {
+  it("omite campos vacíos y no inventa 'Por confirmar'", async () => {
     const input = {
       event: {
         titulo: "Evento Test",
@@ -20,16 +20,22 @@ describe("No inventar datos", () => {
         usuarioSolicitante: null,
         publico: null,
         fechaTentativa: null,
-        estado: "BORRADOR",
+        estado: "PENDIENTE",
       },
       proposals: [],
     };
     const buffer = await generateBriefDocx(input);
     const xml = extractDocxText(buffer);
-    expect(xml).toContain("Por confirmar");
+    expect(xml).toContain("BRIEF");
+    expect(xml).toContain("Nombre del proyecto:");
+    expect(xml).toContain("Evento Test");
+    expect(xml).not.toContain("Por confirmar");
+    expect(xml).not.toContain("Sinopsis del proyecto:");
+    expect(xml).not.toContain("¿Qué querés comunicar?");
+    expect(xml).toContain("Arial");
   });
 
-  it("muestra etiquetas del modelo cuando faltan datos de cobertura", async () => {
+  it("no muestra preguntas de cobertura sin respuesta", async () => {
     const input = {
       event: {
         titulo: "Evento Sin Cobertura",
@@ -37,9 +43,9 @@ describe("No inventar datos", () => {
         requiere: [],
         areaSolicitante: "Área",
         usuarioSolicitante: "User",
-        publico: "INTERNO",
+        publico: "INTERNO" as const,
         fechaTentativa: "2025-01-15",
-        estado: "BORRADOR",
+        estado: "PENDIENTE",
       },
       proposals: [
         {
@@ -54,7 +60,29 @@ describe("No inventar datos", () => {
     };
     const buffer = await generateBriefDocx(input);
     const xml = extractDocxText(buffer);
-    expect(xml).toContain("¿Qué querés comunicar?");
-    expect(xml).toContain("¿Por qué canal va a salir?");
+    expect(xml).not.toContain("¿Qué querés comunicar?");
+    expect(xml).not.toContain("¿Por qué canal va a salir?");
+    expect(xml).toContain("Fecha:");
+    expect(xml).toContain("Arial");
+  });
+
+  it("usa el resumen IA como sinopsis (no la descripción)", async () => {
+    const input = {
+      event: {
+        titulo: "Evento",
+        descripcion: "Descripción larga del formulario",
+        resumen: "Resumen generado por IA",
+        requiere: [],
+        areaSolicitante: "Área",
+        fechaTentativa: "2026-06-22",
+        estado: "PENDIENTE",
+      },
+      proposals: [],
+    };
+    const buffer = await generateBriefDocx(input);
+    const xml = extractDocxText(buffer);
+    expect(xml).toContain("Sinopsis del proyecto:");
+    expect(xml).toContain("Resumen generado por IA");
+    expect(xml).not.toContain("Descripción larga del formulario");
   });
 });

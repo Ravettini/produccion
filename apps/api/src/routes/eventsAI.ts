@@ -1,5 +1,5 @@
 /**
- * POST /events/:id/generar-brief-ia - Genera un brief redactado con IA (Google/Gemma)
+ * POST /events/:id/generar-brief-ia - Genera sinopsis con IA, la guarda y deja listo el brief
  * GET  /events/:id/exportar-brief-docx - Exporta brief DOCX (modelo audiovisual)
  * GET  /events/:id/exportar-brief-ac-docx - Brief reducido para AC
  */
@@ -25,6 +25,7 @@ function buildBriefInput(event: {
   programa: string | null;
   funcionario: string | null;
   productor?: string | null;
+  resumen?: string | null;
   datosProduccion: unknown;
   proposals: Array<{
     categoria: string;
@@ -54,6 +55,7 @@ function buildBriefInput(event: {
       programa: event.programa ?? undefined,
       funcionario: event.funcionario ?? undefined,
       productor: event.productor ?? undefined,
+      resumen: event.resumen ?? undefined,
       datosProduccion: event.datosProduccion
         ? typeof event.datosProduccion === "string"
           ? (() => {
@@ -144,6 +146,24 @@ eventsAIRouter.get("/:id/exportar-brief-ac-docx", authMiddleware, async (req, re
   }
 });
 
+/** Quita preámbulos meta que a veces agrega el modelo ("Aquí tenés…", títulos, etc.). */
+function cleanSinopsis(raw: string): string {
+  let text = raw.trim();
+  text = text.replace(/^```(?:\w+)?\s*|\s*```$/g, "").trim();
+  text = text.replace(/^\*\*[^*]+\*\*\s*/g, "").trim();
+
+  const metaLine =
+    /^(aquí\s+ten[eé]s|aquí\s+tienes|te\s+presento|propuesta\s+de\s+redacci[oó]n|a\s+continuaci[oó]n|brief\s+de\s+evento)\b[^\n]*\n+/i;
+  text = text.replace(metaLine, "").trim();
+
+  const metaPrefix =
+    /^(aquí\s+ten[eé]s|aquí\s+tienes|te\s+presento|propuesta\s+de\s+redacci[oó]n)[^.!?\n]*[.!:]\s*/i;
+  text = text.replace(metaPrefix, "").trim();
+
+  text = text.replace(/^brief\s+de\s+evento\s*:\s*[^\n]+\n+/i, "").trim();
+  return text;
+}
+
 eventsAIRouter.post("/:id/generar-brief-ia", authMiddleware, async (req, res) => {
   const { id } = req.params;
   const event = await prisma.event.findUnique({
@@ -170,6 +190,19 @@ eventsAIRouter.post("/:id/generar-brief-ia", authMiddleware, async (req, res) =>
     return;
   }
 
+  let datosProduccionTxt = "—";
+  if (event.datosProduccion) {
+    try {
+      const parsed =
+        typeof event.datosProduccion === "string"
+          ? JSON.parse(event.datosProduccion)
+          : event.datosProduccion;
+      datosProduccionTxt = JSON.stringify(parsed);
+    } catch {
+      datosProduccionTxt = String(event.datosProduccion);
+    }
+  }
+
   const eventInfo = [
     `Título: ${event.titulo}`,
     `Descripción: ${event.descripcion}`,
@@ -179,7 +212,11 @@ eventsAIRouter.post("/:id/generar-brief-ia", authMiddleware, async (req, res) =>
     `Productor: ${(event as { productor?: string | null }).productor ?? "—"}`,
     `Público: ${event.publico === "EXTERNO" ? "Externo" : event.publico === "INTERNO" ? "Interno" : event.publico === "MIXTO" ? "Mixto" : "—"}`,
     `Fecha tentativa: ${event.fechaTentativa.toISOString().slice(0, 10)}`,
+    `Lugar: ${event.lugar ?? "—"}`,
+    `Programa: ${event.programa ?? "—"}`,
+    `Funcionario: ${event.funcionario ?? "—"}`,
     `Estado: ${event.estado}`,
+    `Datos de producción / cobertura: ${datosProduccionTxt}`,
   ].join("\n");
 
   const aprobadas =
@@ -192,7 +229,14 @@ eventsAIRouter.post("/:id/generar-brief-ia", authMiddleware, async (req, res) =>
           )
           .join("\n");
 
-  const prompt = `Eres un redactor institucional. A partir de la información del evento y de las propuestas ya aprobadas, redactá un brief en prosa (párrafo o párrafos) que resuma cómo queda el evento. Incluí explícitamente lo que el evento REQUIERE según los checkboxes (Producción, Institucionales, Cobertura), el público (externo/interno/mixto), dónde se hace, qué se necesita según lo aprobado. Lenguaje claro y formal. En español.
+  const prompt = `Sos un redactor institucional. Redactá ÚNICAMENTE la sinopsis del proyecto en prosa formal (1 a 3 párrafos cortos).
+
+Reglas estrictas:
+- Empezá directo con el contenido. Sin saludos, sin títulos, sin encabezados.
+- NO escribas frases meta como "Aquí tenés", "Aquí tienes", "Propuesta de redacción", "Brief de Evento:", "A continuación".
+- NO uses markdown ni negritas.
+- Incluí, si están disponibles: qué requiere el evento (Producción, Institucionales, Cobertura), público, fecha, lugar y lo aprobado en propuestas.
+- Lenguaje claro, formal y en español.
 
 --- INFORMACIÓN DEL EVENTO ---
 ${eventInfo}
@@ -200,7 +244,7 @@ ${eventInfo}
 --- PROPUESTAS APROBADAS ---
 ${aprobadas}
 
---- BRIEF REDACTADO ---`;
+--- SINOPSIS ---`;
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
@@ -212,7 +256,20 @@ ${aprobadas}
       res.status(502).json({ error: "La IA no devolvió texto" });
       return;
     }
-    res.json({ brief: text.trim() });
+
+    const sinopsis = cleanSinopsis(text);
+    if (!sinopsis) {
+      res.status(502).json({ error: "La IA no devolvió una sinopsis válida" });
+      return;
+    }
+
+    // La sinopsis queda guardada para el DOCX (campo Sinopsis del proyecto)
+    await prisma.event.update({
+      where: { id },
+      data: { resumen: sinopsis },
+    });
+
+    res.json({ brief: sinopsis, saved: true });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     res.status(502).json({

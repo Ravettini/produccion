@@ -553,11 +553,11 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
             </div>
           )}
           <TextArea
-            label="Resumen (opcional)"
+            label="Sinopsis (opcional)"
             value={resumen}
             onChange={(e) => setResumen(e.target.value)}
             rows={3}
-            placeholder="Resumen para el brief…"
+            placeholder="Si la dejás vacía, podés generarla después con IA…"
           />
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">

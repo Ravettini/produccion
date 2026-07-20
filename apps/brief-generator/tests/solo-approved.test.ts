@@ -14,7 +14,8 @@ describe("Estructura brief audiovisual", () => {
     const input = {
       event: {
         titulo: "Evento Test",
-        descripcion: "Sinopsis de prueba",
+        descripcion: "Descripción del formulario",
+        resumen: "Sinopsis de prueba",
         requiere: ["Cobertura"],
         areaSolicitante: "Comunicación Interna",
         usuarioSolicitante: "María García",
@@ -36,9 +37,11 @@ describe("Estructura brief audiovisual", () => {
     expect(xml).toContain("PEDIDO DE PIEZAS DE COMUNICACIÓN");
     expect(xml).toContain("Y/O COBERTURA DE EVENTO");
     expect(xml).toContain("Sinopsis de prueba");
+    expect(xml).not.toContain("Descripción del formulario");
     expect(xml).toContain("Palacio Lezama");
     expect(xml).toContain("22/6/2026");
     expect(xml).toContain("16.00hs");
+    expect(xml).toContain("Arial");
   });
 
   it("no debe incluir información de propuestas REJECTED", async () => {

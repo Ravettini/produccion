@@ -70,10 +70,10 @@ export function EventOverview({
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h2 id="brief-evento" className="text-xl font-semibold text-slate-900">
-            Brief y resumen
+            Brief y sinopsis
           </h2>
           <p className="mt-1 text-sm text-slate-500">
-            La información principal del evento, siempre a mano.
+            Generá la sinopsis con IA y recibí el brief en Word listo para usar.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -206,7 +206,7 @@ export function EventOverview({
 
         <Card>
           <CardHeader
-            subtitle="Texto ejecutivo para compartir"
+            subtitle="Va como «Sinopsis del proyecto» en el DOCX"
             action={
               !editingResumen ? (
                 <Button size="sm" variant="ghost" onClick={onStartEditResumen}>
@@ -215,7 +215,7 @@ export function EventOverview({
               ) : undefined
             }
           >
-            Resumen
+            Sinopsis
           </CardHeader>
           <CardBody>
             {editingResumen ? (
@@ -224,11 +224,11 @@ export function EventOverview({
                   value={resumenDraft}
                   onChange={(e) => onResumenChange(e.target.value)}
                   rows={10}
-                  placeholder="Resumen ejecutivo del evento…"
+                  placeholder="Sinopsis del proyecto…"
                 />
                 <div className="flex flex-wrap gap-2">
                   <Button onClick={onSaveResumen} disabled={savingResumen}>
-                    {savingResumen ? "Guardando…" : "Guardar resumen"}
+                    {savingResumen ? "Guardando…" : "Guardar sinopsis"}
                   </Button>
                   <Button variant="secondary" onClick={onCancelEditResumen}>
                     Cancelar
@@ -242,7 +242,7 @@ export function EventOverview({
             ) : (
               <div className="rounded-xl border border-dashed border-slate-200 p-5 text-center">
                 <p className="text-sm text-slate-500">
-                  Todavía no hay resumen. Podés escribirlo o generarlo con IA.
+                  Todavía no hay sinopsis. Tocá «Generar con IA» para armarla y descargar el brief.
                 </p>
                 <Button
                   className="mt-3"
@@ -250,7 +250,7 @@ export function EventOverview({
                   variant="secondary"
                   onClick={onStartEditResumen}
                 >
-                  Agregar resumen
+                  Escribir sinopsis
                 </Button>
               </div>
             )}

@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { authMiddleware, requireRoles } from "../middleware/auth.js";
-import { buildAutoBriefResumen } from "../lib/buildAutoBrief.js";
 import { canUserSeeEvent, filterEventsForUser } from "../lib/eventVisibility.js";
 
 export const eventsRouter = Router();
@@ -139,34 +138,10 @@ eventsRouter.post("/", authMiddleware, async (req, res) => {
     const u = await prisma.user.findUnique({ where: { id: req.user.id }, select: { name: true } });
     usuarioSolicitante = u?.name ? String(u.name) : null;
   }
-  const dpParsed =
-    datosProduccion != null && typeof datosProduccion === "object"
-      ? datosProduccion
-      : typeof datosProduccion === "string" && datosProduccion.trim() !== ""
-        ? (() => {
-            try {
-              return JSON.parse(datosProduccion);
-            } catch {
-              return undefined;
-            }
-          })()
-        : undefined;
   const resumenFinal =
     resumen !== undefined && resumen !== null && String(resumen).trim() !== ""
       ? String(resumen)
-      : buildAutoBriefResumen({
-          titulo: String(titulo),
-          descripcion: String(descripcion),
-          tipoEvento: String(tipoEvento),
-          areaSolicitante: String(areaSolicitante),
-          fechaTentativa: fechaDate,
-          publico: validPublico,
-          lugar: lugar !== undefined && String(lugar).trim() !== "" ? String(lugar).trim() : null,
-          programa: programa !== undefined && String(programa).trim() !== "" ? String(programa).trim() : null,
-          funcionario: funcionario !== undefined && String(funcionario).trim() !== "" ? String(funcionario).trim() : null,
-          usuarioSolicitante,
-          datosProduccion: dpParsed,
-        });
+      : null;
   const event = await prisma.event.create({
     data: {
       titulo: String(titulo),
@@ -318,36 +293,6 @@ eventsRouter.put("/:id", authMiddleware, async (req, res) => {
       : typeof datosProduccion === "object"
         ? JSON.stringify(datosProduccion)
         : String(datosProduccion);
-  }
-
-  const merged = { ...existing, ...updates };
-  const shouldRefreshBrief =
-    resumen === undefined ||
-    resumen === null ||
-    String(resumen).trim() === "";
-  if (shouldRefreshBrief) {
-    const dpRaw = merged.datosProduccion;
-    let dpParsed: Record<string, unknown> | undefined;
-    if (dpRaw != null) {
-      try {
-        dpParsed = typeof dpRaw === "string" ? JSON.parse(dpRaw) : (dpRaw as Record<string, unknown>);
-      } catch {
-        dpParsed = undefined;
-      }
-    }
-    updates.resumen = buildAutoBriefResumen({
-      titulo: String(merged.titulo),
-      descripcion: String(merged.descripcion),
-      tipoEvento: String(merged.tipoEvento),
-      areaSolicitante: String(merged.areaSolicitante),
-      fechaTentativa: merged.fechaTentativa as Date,
-      publico: (merged.publico as string | null) ?? null,
-      lugar: (merged.lugar as string | null) ?? null,
-      programa: (merged.programa as string | null) ?? null,
-      funcionario: (merged.funcionario as string | null) ?? null,
-      usuarioSolicitante: (merged.usuarioSolicitante as string | null) ?? null,
-      datosProduccion: dpParsed as Record<string, string> | string | null | undefined,
-    });
   }
 
   const event = await prisma.event.update({

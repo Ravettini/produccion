@@ -128,9 +128,21 @@ export default function EventDetail() {
   });
   const generarBrief = useMutation({
     mutationFn: () => generarBriefIA(id!),
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       setBriefGenerado(data.brief);
+      setResumenDraft(data.brief);
+      setEditingResumen(false);
       setShowBriefModal(true);
+      await qc.invalidateQueries({ queryKey: ["event", id] });
+      // Entrega el brief DOCX con la sinopsis recién generada
+      setExportandoDocx(true);
+      try {
+        await exportarBriefDocx(id!, `Brief - ${event?.titulo ?? "Evento"}`);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setExportandoDocx(false);
+      }
     },
   });
   const deleteEventMutation = useMutation({
@@ -527,7 +539,7 @@ export default function EventDetail() {
 
       <Modal
         title="Brief generado con IA"
-        subtitle="Generado a partir del evento y requerimientos aprobados"
+        subtitle="Sinopsis armada y aplicada al brief. El documento Word se descargó automáticamente."
         open={showBriefModal}
         onClose={() => setShowBriefModal(false)}
         size="xl"
@@ -537,7 +549,7 @@ export default function EventDetail() {
             <div className="p-6 space-y-4">
               <div className="bg-sidebar text-white px-5 py-4 rounded-xl flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-cyan-400 flex-shrink-0" aria-hidden />
-                <p className="font-semibold">Brief de evento: {event.titulo}</p>
+                <p className="font-semibold">Sinopsis: {event.titulo}</p>
               </div>
               {briefGenerado
                 .split(/\n\n+/)
@@ -554,21 +566,11 @@ export default function EventDetail() {
               Cerrar
             </Button>
             <Button
-              variant="secondary"
               disabled={exportandoDocx}
               onClick={handleExportDocx}
             >
               <FileDown className="w-4 h-4" aria-hidden />
-              {exportandoDocx ? "Exportando…" : "Exportar como documento de Word"}
-            </Button>
-            <Button
-              onClick={() => {
-                updateResumen.mutate(briefGenerado);
-                setShowBriefModal(false);
-              }}
-              disabled={updateResumen.isPending}
-            >
-              {updateResumen.isPending ? "Guardando…" : "Usar como resumen"}
+              {exportandoDocx ? "Exportando…" : "Volver a descargar DOCX"}
             </Button>
           </div>
         </div>

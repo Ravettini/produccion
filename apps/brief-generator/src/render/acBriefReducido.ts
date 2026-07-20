@@ -1,6 +1,6 @@
 /**
  * Brief reducido para AC (Área de Comunicación / cobertura operativa).
- * Formato corto: datos clave del evento sin el cuestionario audiovisual completo.
+ * Formato corto: solo campos con contenido. Fuente Arial.
  */
 import {
   Document,
@@ -12,9 +12,24 @@ import {
 import type { BriefInput } from "../schemas/index.js";
 import { normalizeInput } from "../normalize/index.js";
 import { filterApproved, type ApprovedProposal } from "../rules/index.js";
-import { buildAudiovisualBriefData } from "../rules/audiovisual.js";
+import { buildAudiovisualBriefData, hasContent } from "../rules/audiovisual.js";
 
 const COLOR = "000000";
+const FONT = "Arial";
+
+function run(
+  text: string,
+  opts: { bold?: boolean; size?: number; italics?: boolean } = {}
+): TextRun {
+  return new TextRun({
+    text,
+    font: FONT,
+    color: COLOR,
+    size: opts.size ?? 22,
+    bold: opts.bold,
+    italics: opts.italics,
+  });
+}
 
 function p(children: TextRun[], opts: Partial<IParagraphOptions> = {}): Paragraph {
   return new Paragraph({
@@ -25,17 +40,13 @@ function p(children: TextRun[], opts: Partial<IParagraphOptions> = {}): Paragrap
 }
 
 function title(text: string, size = 28): Paragraph {
-  return p([new TextRun({ text, bold: true, color: COLOR, size })], {
-    alignment: "center",
-  });
+  return p([run(text, { bold: true, size })], { alignment: "center" });
 }
 
-function line(label: string, value: string): Paragraph {
+function lineIf(label: string, value?: string | null): Paragraph | null {
+  if (!hasContent(value)) return null;
   return p(
-    [
-      new TextRun({ text: `${label} `, bold: true, color: COLOR, size: 22 }),
-      new TextRun({ text: value, color: COLOR, size: 22 }),
-    ],
+    [run(`${label} `, { bold: true }), run(value!.trim())],
     { alignment: "both" }
   );
 }
@@ -60,60 +71,51 @@ export function buildAcBriefReducidoDocument(input: BriefInput): Document {
 
   const data = buildAudiovisualBriefData(event, approved);
   const productor = (event as { productor?: string | null }).productor?.trim();
+  const requiereList = (event as { requiere?: string[] }).requiere;
   const requiere =
-    (event as { requiere?: string[] }).requiere?.join(", ") ||
+    (Array.isArray(requiereList) && requiereList.length > 0
+      ? requiereList.join(", ")
+      : null) ||
     (event as { tipoEvento?: string }).tipoEvento ||
-    "Por confirmar";
-  const tituloDoc =
-    data.nombreProyecto !== "Por confirmar" ? data.nombreProyecto : event.titulo || "Evento";
+    "";
+  const tituloDoc = hasContent(data.nombreProyecto)
+    ? data.nombreProyecto
+    : event.titulo || "Evento";
+
+  const body: (Paragraph | null)[] = [
+    lineIf("Nombre del proyecto:", data.nombreProyecto),
+    lineIf("Fecha:", data.fecha),
+    lineIf("Hora:", data.hora),
+    lineIf("Lugar:", data.lugar),
+    lineIf("Sinopsis:", data.sinopsis),
+    lineIf("Qué requiere:", requiere),
+    lineIf("Contacto DG/área:", data.contactoDg),
+    lineIf("Contacto del lugar:", data.contactoLugar),
+    lineIf("Productor:", productor),
+  ];
 
   const children: FileChild[] = [
     title("BRIEF REDUCIDO — AC", 32),
     title("Área de Comunicación / Cobertura", 22),
     p(
       [
-        new TextRun({
-          text: "Resumen operativo del evento (formato corto).",
+        run("Resumen operativo del evento (formato corto).", {
           italics: true,
-          color: COLOR,
           size: 20,
         }),
       ],
       { alignment: "center", spacing: { before: 120, after: 240 } }
     ),
-    line("Nombre del proyecto:", data.nombreProyecto),
-    line("Fecha:", data.fecha),
-    line("Hora:", data.hora),
-    line("Lugar:", data.lugar),
-    line("Sinopsis:", data.sinopsis),
-    line("Qué requiere:", String(requiere)),
-    line(
-      "Contacto DG/área:",
-      data.contactoDg !== "Por confirmar" ? data.contactoDg : "—"
-    ),
-    line(
-      "Contacto del lugar:",
-      data.contactoLugar !== "Por confirmar" ? data.contactoLugar : "—"
-    ),
-  ];
-
-  if (productor) {
-    children.push(line("Productor:", productor));
-  }
-
-  children.push(
+    ...body.filter((x): x is Paragraph => x != null),
     p(
       [
-        new TextRun({
-          text: "Fecha estimada de entrega (a coordinar con el equipo audiovisual)",
+        run("Fecha estimada de entrega (a coordinar con el equipo audiovisual)", {
           bold: true,
-          color: COLOR,
-          size: 22,
         }),
       ],
       { spacing: { before: 200, after: 0 } }
-    )
-  );
+    ),
+  ];
 
   return new Document({
     sections: [{ children }],

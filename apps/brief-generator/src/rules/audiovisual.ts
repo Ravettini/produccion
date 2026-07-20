@@ -1,8 +1,9 @@
 import type { BriefInput } from "../schemas/index.js";
 import { trimOrNull, formatFechaBriefModelo, formatHoraBriefModelo } from "../normalize/index.js";
-import { resolveValue, resolveLugar, type ApprovedProposal } from "./index.js";
+import { resolveLugar, type ApprovedProposal } from "./index.js";
 
-const POR_CONFIRMAR = "Por confirmar";
+/** Valor vacío: no se muestra en el brief (solo se incluyen respuestas con contenido). */
+const EMPTY = "";
 
 export type AudiovisualBriefData = {
   nombreProyecto: string;
@@ -18,6 +19,11 @@ export type AudiovisualBriefData = {
   contactoDg: string;
   contactoLugar: string;
 };
+
+function hasContent(value?: string | null): boolean {
+  const v = (value ?? "").trim();
+  return v !== "" && v !== "Por confirmar";
+}
 
 function pickField(sources: Record<string, unknown>[], key: string): string | null {
   for (const src of sources) {
@@ -73,23 +79,20 @@ export function buildAudiovisualBriefData(
   const eventDatos = parseEventDatos(event);
   const sources = [eventDatos, ...proposalDatosSources(approved)];
 
-  const titulo = trimOrNull(event.titulo) ?? POR_CONFIRMAR;
+  const titulo = trimOrNull(event.titulo) ?? EMPTY;
   const programa = trimOrNull((event as { programa?: string | null }).programa);
-  const nombreProyecto = programa ? `"${titulo}" ${programa}` : titulo;
+  const nombreProyecto = programa && titulo ? `"${titulo}" ${programa}` : titulo;
 
   const ini = pickField(sources, "horarioComienzo");
   const fin = pickField(sources, "horarioFinalizacion");
   const duracionExplicita = pickField(sources, "coberturaDuracion");
-  const duracion =
-    duracionExplicita ??
-    computeDurationFromHorarios(ini, fin) ??
-    POR_CONFIRMAR;
+  const duracion = duracionExplicita ?? computeDurationFromHorarios(ini, fin) ?? EMPTY;
 
   const formatoBase =
     pickField(sources, "coberturaFormato") ??
     pickField(sources, "comunicacionPieza");
   const orientacion = pickField(sources, "coberturaOrientacion");
-  let formato = formatoBase ?? POR_CONFIRMAR;
+  let formato = formatoBase ?? EMPTY;
   if (formatoBase && orientacion) {
     formato = `${formatoBase} — orientación ${orientacion}`;
   }
@@ -97,7 +100,7 @@ export function buildAudiovisualBriefData(
   const usuario = trimOrNull(event.usuarioSolicitante);
   const area = trimOrNull(event.areaSolicitante);
   const contactoDgExplicito = pickField(sources, "coberturaContactoDg");
-  let contactoDg = POR_CONFIRMAR;
+  let contactoDg = EMPTY;
   if (contactoDgExplicito) {
     contactoDg = contactoDgExplicito;
   } else if (usuario && area) {
@@ -109,43 +112,71 @@ export function buildAudiovisualBriefData(
   }
 
   const lugarEvento = trimOrNull((event as { lugar?: string | null }).lugar);
+  const lugarResolved = lugarEvento ?? resolveLugar(approved);
+  const lugar =
+    hasContent(lugarResolved) && lugarResolved !== "Por confirmar"
+      ? lugarResolved
+      : EMPTY;
+
   const horaIni = pickField(sources, "horarioComienzo");
+
+  // Sinopsis = resumen generado con IA (si no hay, no se inventa con la descripción)
+  const resumen = trimOrNull((event as { resumen?: string | null }).resumen);
 
   return {
     nombreProyecto,
-    fechaEntrega: POR_CONFIRMAR,
-    sinopsis: resolveValue(trimOrNull(event.descripcion)),
-    objetivoComunicacion: resolveValue(
-      pickField(sources, "coberturaObjetivo") ?? pickField(sources, "comunicacionMensajeClave")
-    ),
-    canal: resolveValue(pickField(sources, "comunicacionMedio")),
-    duracion: resolveValue(duracion === POR_CONFIRMAR ? null : duracion),
-    formato: resolveValue(formato === POR_CONFIRMAR ? null : formato),
-    lugar: resolveValue(lugarEvento ?? resolveLugar(approved)),
-    fecha: formatFechaBriefModelo(event.fechaTentativa),
-    hora: horaIni ? `${formatHoraBriefModelo(horaIni)} (Hora de inicio)` : POR_CONFIRMAR,
+    fechaEntrega: EMPTY,
+    sinopsis: resumen ?? EMPTY,
+    objetivoComunicacion:
+      pickField(sources, "coberturaObjetivo") ??
+      pickField(sources, "comunicacionMensajeClave") ??
+      EMPTY,
+    canal: pickField(sources, "comunicacionMedio") ?? EMPTY,
+    duracion,
+    formato,
+    lugar,
+    fecha: event.fechaTentativa ? formatFechaBriefModelo(event.fechaTentativa) : EMPTY,
+    hora: horaIni ? `${formatHoraBriefModelo(horaIni)} (Hora de inicio)` : EMPTY,
     contactoDg,
-    contactoLugar: resolveValue(pickField(sources, "referenteLugarContacto")),
+    contactoLugar: pickField(sources, "referenteLugarContacto") ?? EMPTY,
   };
 }
 
-/** Texto plano del brief audiovisual (resumen automático en la API). */
+export { hasContent };
+
+/** Texto plano del brief: solo líneas con contenido. */
 export function buildAudiovisualBriefText(data: AudiovisualBriefData): string {
-  const lineas = [
+  const lineas: string[] = [
     "BRIEF — PEDIDO DE PIEZAS DE COMUNICACIÓN Y/O COBERTURA DE EVENTO",
     "",
-    `Nombre del proyecto: ${data.nombreProyecto}`,
-    "Fecha estimada de entrega (a coordinar con el equipo audiovisual)",
-    `Sinopsis del proyecto: ${data.sinopsis}`,
-    `¿Qué querés comunicar?: ${data.objetivoComunicacion}`,
-    `¿Por qué canal va a salir?: ${data.canal}`,
-    `Duración aproximada: ${data.duracion}`,
-    `Formato: ${data.formato}`,
-    `Lugar: ${data.lugar}`,
-    `Fecha: ${data.fecha}`,
-    `Hora: ${data.hora}`,
-    `Contacto referente DG/área: ${data.contactoDg}`,
-    `Contacto referente del lugar: ${data.contactoLugar}`,
   ];
+  if (hasContent(data.nombreProyecto)) {
+    lineas.push(`Nombre del proyecto: ${data.nombreProyecto}`);
+  }
+  lineas.push("Fecha estimada de entrega (a coordinar con el equipo audiovisual)");
+  if (hasContent(data.sinopsis)) {
+    lineas.push(`Sinopsis del proyecto: ${data.sinopsis}`);
+  }
+  if (hasContent(data.objetivoComunicacion)) {
+    lineas.push(`¿Qué querés comunicar?: ${data.objetivoComunicacion}`);
+  }
+  if (hasContent(data.canal)) {
+    lineas.push(`¿Por qué canal va a salir?: ${data.canal}`);
+  }
+  if (hasContent(data.duracion)) {
+    lineas.push(`Duración aproximada: ${data.duracion}`);
+  }
+  if (hasContent(data.formato)) {
+    lineas.push(`Formato: ${data.formato}`);
+  }
+  if (hasContent(data.lugar)) lineas.push(`Lugar: ${data.lugar}`);
+  if (hasContent(data.fecha)) lineas.push(`Fecha: ${data.fecha}`);
+  if (hasContent(data.hora)) lineas.push(`Hora: ${data.hora}`);
+  if (hasContent(data.contactoDg)) {
+    lineas.push(`Contacto referente DG/área: ${data.contactoDg}`);
+  }
+  if (hasContent(data.contactoLugar)) {
+    lineas.push(`Contacto referente del lugar: ${data.contactoLugar}`);
+  }
   return lineas.join("\n");
 }
