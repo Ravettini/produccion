@@ -4,7 +4,7 @@ import { ArrowLeft, Sparkles, FileDown } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getEvent, updateEvent, deleteEvent } from "../api/events";
 import { listProposals, createProposal } from "../api/proposals";
-import { generarBriefIA, exportarBriefDocx, exportarBriefAcDocx } from "../api/ai";
+import { generarBriefIA, exportarBriefAcDocx } from "../api/ai";
 import {
   listAttachments,
   uploadAttachment,
@@ -63,7 +63,6 @@ export default function EventDetail() {
   const [resumenDraft, setResumenDraft] = useState("");
   const [showBriefModal, setShowBriefModal] = useState(false);
   const [briefGenerado, setBriefGenerado] = useState("");
-  const [exportandoDocx, setExportandoDocx] = useState(false);
   const [confirmEstado, setConfirmEstado] = useState<EventStatus | null>(null);
   const [motivoCancelacion, setMotivoCancelacion] = useState("");
   const [realizacionAsistentes, setRealizacionAsistentes] = useState<string>("");
@@ -134,14 +133,14 @@ export default function EventDetail() {
       setEditingResumen(false);
       setShowBriefModal(true);
       await qc.invalidateQueries({ queryKey: ["event", id] });
-      // Entrega el brief DOCX con la sinopsis recién generada
-      setExportandoDocx(true);
+      // Entrega el brief AC con la sinopsis recién generada
+      setExportandoAc(true);
       try {
-        await exportarBriefDocx(id!, `Brief - ${event?.titulo ?? "Evento"}`);
+        await exportarBriefAcDocx(id!, `Brief reducido AC - ${event?.titulo ?? "Evento"}`);
       } catch (error) {
         console.error(error);
       } finally {
-        setExportandoDocx(false);
+        setExportandoAc(false);
       }
     },
   });
@@ -152,18 +151,6 @@ export default function EventDetail() {
       navigate("/");
     },
   });
-
-  const handleExportDocx = async () => {
-    setExportandoDocx(true);
-    try {
-      await exportarBriefDocx(id!, `Brief - ${event?.titulo ?? "Evento"}`);
-    } catch (error) {
-      console.error(error);
-      alert((error as Error).message);
-    } finally {
-      setExportandoDocx(false);
-    }
-  };
 
   const handleExportAc = async () => {
     setExportandoAc(true);
@@ -315,8 +302,6 @@ export default function EventDetail() {
         briefError={
           generarBrief.error instanceof Error ? generarBrief.error.message : undefined
         }
-        onExportDocx={handleExportDocx}
-        exportingDocx={exportandoDocx}
         onExportAc={handleExportAc}
         exportingAc={exportandoAc}
       />
@@ -539,7 +524,7 @@ export default function EventDetail() {
 
       <Modal
         title="Brief generado con IA"
-        subtitle="Sinopsis armada y aplicada al brief. El documento Word se descargó automáticamente."
+        subtitle="Sinopsis armada y aplicada. El brief reducido AC se descargó automáticamente."
         open={showBriefModal}
         onClose={() => setShowBriefModal(false)}
         size="xl"
@@ -566,11 +551,11 @@ export default function EventDetail() {
               Cerrar
             </Button>
             <Button
-              disabled={exportandoDocx}
-              onClick={handleExportDocx}
+              disabled={exportandoAc}
+              onClick={handleExportAc}
             >
               <FileDown className="w-4 h-4" aria-hidden />
-              {exportandoDocx ? "Exportando…" : "Volver a descargar DOCX"}
+              {exportandoAc ? "Exportando…" : "Volver a descargar AC"}
             </Button>
           </div>
         </div>

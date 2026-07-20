@@ -15,8 +15,6 @@ interface EventOverviewProps {
   onGenerateBrief: () => void;
   generatingBrief: boolean;
   briefError?: string;
-  onExportDocx: () => void;
-  exportingDocx: boolean;
   onExportAc: () => void;
   exportingAc: boolean;
 }
@@ -51,8 +49,6 @@ export function EventOverview({
   onGenerateBrief,
   generatingBrief,
   briefError,
-  onExportDocx,
-  exportingDocx,
   onExportAc,
   exportingAc,
 }: EventOverviewProps) {
@@ -73,7 +69,7 @@ export function EventOverview({
             Brief y sinopsis
           </h2>
           <p className="mt-1 text-sm text-slate-500">
-            Generá la sinopsis con IA y recibí el brief en Word listo para usar.
+            Generá la sinopsis con IA o descargá el brief reducido AC.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -88,18 +84,10 @@ export function EventOverview({
           <Button
             size="sm"
             variant="secondary"
-            onClick={onExportDocx}
-            disabled={exportingDocx}
-          >
-            <FileDown className="h-4 w-4" aria-hidden />
-            {exportingDocx ? "Exportando…" : "Brief DOCX"}
-          </Button>
-          <Button
-            size="sm"
-            variant="secondary"
             onClick={onExportAc}
             disabled={exportingAc}
           >
+            <FileDown className="h-4 w-4" aria-hidden />
             {exportingAc ? "Exportando…" : "Brief reducido AC"}
           </Button>
         </div>
