@@ -3,6 +3,7 @@
  * Sirve auth, events, proposals y comments.
  */
 import "dotenv/config";
+import "express-async-errors";
 import express from "express";
 import cors from "cors";
 import { authRouter } from "./routes/auth.js";
@@ -61,6 +62,38 @@ app.get("/health", (_req, res) => {
 });
 
 const webRoot = mountWebApp(app) ?? webDist;
+
+// Errores async de rutas: responder 500/503 sin tumbar el proceso
+app.use(
+  (
+    err: unknown,
+    _req: express.Request,
+    res: express.Response,
+    _next: express.NextFunction
+  ) => {
+    const message = err instanceof Error ? err.message : String(err);
+    const code =
+      err && typeof err === "object" && "code" in err
+        ? String((err as { code: unknown }).code)
+        : "";
+    console.error("[api] unhandled route error:", code || message);
+    if (res.headersSent) return;
+    if (code === "P1001") {
+      res.status(503).json({
+        error: "No se puede conectar a la base de datos. Revisá la VPN / DATABASE_URL.",
+      });
+      return;
+    }
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+);
+
+process.on("unhandledRejection", (reason) => {
+  console.error("[api] unhandledRejection:", reason);
+});
+process.on("uncaughtException", (err) => {
+  console.error("[api] uncaughtException:", err);
+});
 
 app.listen(PORT, () => {
   const publicUrl = process.env.PUBLIC_URL || process.env.CLIENT_URL || `http://localhost:${PORT}`;

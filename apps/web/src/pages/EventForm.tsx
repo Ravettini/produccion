@@ -122,7 +122,11 @@ export default function EventForm() {
     onSuccess: (event) => {
       qc.invalidateQueries({ queryKey: ["events"] });
       qc.invalidateQueries({ queryKey: ["attachments", event.id] });
-      navigate(`/events/${event.id}`);
+      navigate(`/events/${event.id}`, {
+        state: event.acreditappWarning
+          ? { acreditappWarning: event.acreditappWarning }
+          : undefined,
+      });
     },
   });
   const update = useMutation({
@@ -135,16 +139,21 @@ export default function EventForm() {
       data: Parameters<typeof updateEvent>[1];
       files?: File[];
     }) => {
-      await updateEvent(i, data);
+      const event = await updateEvent(i, data);
       for (const file of files) {
         await uploadAttachment(i, file);
       }
+      return event;
     },
-    onSuccess: () => {
+    onSuccess: (event) => {
       qc.invalidateQueries({ queryKey: ["events"] });
       qc.invalidateQueries({ queryKey: ["event", id] });
       qc.invalidateQueries({ queryKey: ["attachments", id] });
-      navigate(`/events/${id}`);
+      navigate(`/events/${id}`, {
+        state: event.acreditappWarning
+          ? { acreditappWarning: event.acreditappWarning }
+          : undefined,
+      });
     },
   });
 

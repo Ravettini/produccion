@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { Link, useParams, useNavigate } from "react-router-dom";
+import { Link, useParams, useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, Sparkles, FileDown } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getEvent, updateEvent, deleteEvent } from "../api/events";
+import { getEvent, updateEvent, deleteEvent, syncAcreditappEvent } from "../api/events";
 import { listProposals, createProposal } from "../api/proposals";
 import { generarBriefIA, exportarBriefAcDocx } from "../api/ai";
 import {
@@ -55,6 +55,7 @@ type EventDetailTab =
 export default function EventDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [tab, setTab] = useState<EventDetailTab>("estado");
   const [filterEstado, setFilterEstado] = useState<ProposalStatus | "">("");
@@ -72,6 +73,9 @@ export default function EventDetail() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [exportandoAc, setExportandoAc] = useState(false);
   const [showChangeAlert, setShowChangeAlert] = useState(false);
+  const [acreditappWarning, setAcreditappWarning] = useState<string | undefined>(
+    (location.state as { acreditappWarning?: string } | null)?.acreditappWarning
+  );
 
   const { data: event, isLoading: loadingEvent } = useQuery({
     queryKey: ["event", id],
@@ -85,6 +89,14 @@ export default function EventDetail() {
     setShowChangeAlert(hadChanges);
     markSeen("event", event.id, event.updatedAt);
   }, [event?.id, event?.updatedAt, event?.createdAt]);
+
+  useEffect(() => {
+    const warning = (location.state as { acreditappWarning?: string } | null)?.acreditappWarning;
+    if (warning) {
+      setAcreditappWarning(warning);
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, location.pathname, navigate]);
   const { data: proposals = [], isLoading: loadingProposals } = useQuery({
     queryKey: ["proposals", id],
     queryFn: () => listProposals(id!),
@@ -149,6 +161,14 @@ export default function EventDetail() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["events"] });
       navigate("/");
+    },
+  });
+
+  const syncAcreditapp = useMutation({
+    mutationFn: () => syncAcreditappEvent(id!),
+    onSuccess: () => {
+      setAcreditappWarning(undefined);
+      qc.invalidateQueries({ queryKey: ["event", id] });
     },
   });
 
@@ -304,6 +324,13 @@ export default function EventDetail() {
         }
         onExportAc={handleExportAc}
         exportingAc={exportandoAc}
+        canSyncAcreditapp={canEditEvent(user, event)}
+        onSyncAcreditapp={() => syncAcreditapp.mutate()}
+        syncingAcreditapp={syncAcreditapp.isPending}
+        acreditappWarning={acreditappWarning}
+        acreditappSyncError={
+          syncAcreditapp.error instanceof Error ? syncAcreditapp.error.message : undefined
+        }
       />
 
       <div id="detalle-operativo" className="mb-6 scroll-mt-4">

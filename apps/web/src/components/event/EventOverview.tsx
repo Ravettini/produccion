@@ -17,6 +17,11 @@ interface EventOverviewProps {
   briefError?: string;
   onExportAc: () => void;
   exportingAc: boolean;
+  canSyncAcreditapp?: boolean;
+  onSyncAcreditapp?: () => void;
+  syncingAcreditapp?: boolean;
+  acreditappWarning?: string;
+  acreditappSyncError?: string;
 }
 
 function Detail({
@@ -51,6 +56,11 @@ export function EventOverview({
   briefError,
   onExportAc,
   exportingAc,
+  canSyncAcreditapp,
+  onSyncAcreditapp,
+  syncingAcreditapp,
+  acreditappWarning,
+  acreditappSyncError,
 }: EventOverviewProps) {
   const publicoLabel =
     event.publico === "EXTERNO"
@@ -60,6 +70,9 @@ export function EventOverview({
         : event.publico === "MIXTO"
           ? "Mixto"
           : null;
+
+  const needsAcreditappSync =
+    event.necesitaAcreditacion === true && !event.linkAcreditacionConvocados?.trim();
 
   return (
     <section className="mb-8 space-y-4" aria-labelledby="brief-evento">
@@ -96,6 +109,14 @@ export function EventOverview({
       {(briefError || resumenError) && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {briefError || resumenError}
+        </div>
+      )}
+
+      {(acreditappWarning || acreditappSyncError) && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          {acreditappSyncError ||
+            acreditappWarning ||
+            "El evento se guardó, pero no se pudo crear en Acreditapp. Revisá la configuración o reintentá."}
         </div>
       )}
 
@@ -141,6 +162,26 @@ export function EventOverview({
                   </Detail>
                 )}
               </div>
+
+              {needsAcreditappSync && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50/80 p-4 space-y-3">
+                  <p className="text-sm text-amber-900">
+                    Este evento necesita acreditación pero todavía no tiene link en Acreditapp.
+                  </p>
+                  {canSyncAcreditapp && onSyncAcreditapp && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={onSyncAcreditapp}
+                      disabled={syncingAcreditapp}
+                    >
+                      {syncingAcreditapp
+                        ? "Sincronizando…"
+                        : "Crear / sincronizar en Acreditapp"}
+                    </Button>
+                  )}
+                </div>
+              )}
 
               {event.estado === "CANCELADO" && event.motivoCancelacion && (
                 <div className="rounded-lg border border-red-200 bg-red-50 p-4">

@@ -2,10 +2,37 @@ import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { authMiddleware, requireRoles } from "../middleware/auth.js";
 import { canUserSeeEvent, filterEventsForUser } from "../lib/eventVisibility.js";
+import { ensureAcreditappLink } from "../lib/acreditapp.js";
 
 export const eventsRouter = Router();
 
 const validStatuses = ["PENDIENTE", "EN_RADAR", "EN_ANALISIS", "CONFIRMADO", "CANCELADO", "REALIZADO"];
+
+function toAcreditappEventInput(event: {
+  id: unknown;
+  titulo: unknown;
+  descripcion?: unknown;
+  lugar?: unknown;
+  fechaTentativa?: unknown;
+  necesitaAcreditacion?: unknown;
+  linkAcreditacionConvocados?: unknown;
+}) {
+  return {
+    id: String(event.id),
+    titulo: String(event.titulo),
+    descripcion: event.descripcion != null ? String(event.descripcion) : null,
+    lugar: event.lugar != null && String(event.lugar).trim() !== "" ? String(event.lugar) : null,
+    fechaTentativa:
+      event.fechaTentativa instanceof Date || typeof event.fechaTentativa === "string"
+        ? event.fechaTentativa
+        : null,
+    necesitaAcreditacion: event.necesitaAcreditacion === true,
+    linkAcreditacionConvocados:
+      event.linkAcreditacionConvocados != null && String(event.linkAcreditacionConvocados).trim() !== ""
+        ? String(event.linkAcreditacionConvocados).trim()
+        : null,
+  };
+}
 
 function dayBounds(fecha: Date) {
   const start = new Date(fecha);
@@ -167,7 +194,22 @@ eventsRouter.post("/", authMiddleware, async (req, res) => {
       datosProduccion: datosProduccion != null && typeof datosProduccion === "object" ? JSON.stringify(datosProduccion) : (typeof datosProduccion === "string" && datosProduccion.trim() !== "" ? datosProduccion : null),
     },
   });
-  res.status(201).json(event);
+
+  const sync = await ensureAcreditappLink(toAcreditappEventInput(event));
+  let result = event;
+  const currentLink =
+    event.linkAcreditacionConvocados != null
+      ? String(event.linkAcreditacionConvocados)
+      : "";
+  if (sync.link && sync.link !== currentLink) {
+    result = await prisma.event.update({
+      where: { id: String(event.id) },
+      data: { linkAcreditacionConvocados: sync.link },
+    });
+  }
+  res.status(201).json(
+    sync.warning ? { ...result, acreditappWarning: sync.warning } : result
+  );
 });
 
 /**
@@ -299,7 +341,71 @@ eventsRouter.put("/:id", authMiddleware, async (req, res) => {
     where: { id: req.params.id },
     data: updates as Parameters<typeof prisma.event.update>[0]["data"],
   });
-  res.json(event);
+
+  const sync = await ensureAcreditappLink(toAcreditappEventInput(event));
+  let result = event;
+  const currentLink =
+    event.linkAcreditacionConvocados != null
+      ? String(event.linkAcreditacionConvocados)
+      : "";
+  if (sync.link && sync.link !== currentLink) {
+    result = await prisma.event.update({
+      where: { id: String(event.id) },
+      data: { linkAcreditacionConvocados: sync.link },
+    });
+  }
+  res.json(sync.warning ? { ...result, acreditappWarning: sync.warning } : result);
+});
+
+/**
+ * POST /events/:id/sync-acreditapp - Crear/reintentar evento remoto en Acreditapp.
+ */
+eventsRouter.post("/:id/sync-acreditapp", authMiddleware, async (req, res) => {
+  const event = await prisma.event.findUnique({ where: { id: req.params.id } });
+  if (!event) {
+    res.status(404).json({ error: "Evento no encontrado" });
+    return;
+  }
+  const existingCreatedBy = (event as { createdById?: string | null }).createdById;
+  if (req.user?.role !== "ADMIN" && existingCreatedBy && existingCreatedBy !== req.user?.id) {
+    res.status(403).json({ error: "Solo el creador o un admin puede sincronizar acreditación" });
+    return;
+  }
+  if (event.necesitaAcreditacion !== true) {
+    res.status(400).json({ error: "El evento no tiene acreditación habilitada" });
+    return;
+  }
+  const mapped = toAcreditappEventInput(event as {
+    id: unknown;
+    titulo: unknown;
+    descripcion?: unknown;
+    lugar?: unknown;
+    fechaTentativa?: unknown;
+    necesitaAcreditacion?: unknown;
+    linkAcreditacionConvocados?: unknown;
+  });
+  if (mapped.linkAcreditacionConvocados) {
+    res.json({ linkAcreditacionConvocados: mapped.linkAcreditacionConvocados });
+    return;
+  }
+
+  const sync = await ensureAcreditappLink(mapped);
+  if (sync.link) {
+    const updated = await prisma.event.update({
+      where: { id: String((event as { id: unknown }).id) },
+      data: { linkAcreditacionConvocados: sync.link },
+    });
+    res.json({
+      linkAcreditacionConvocados:
+        (updated as { linkAcreditacionConvocados?: string | null }).linkAcreditacionConvocados != null
+          ? String((updated as { linkAcreditacionConvocados: string | null }).linkAcreditacionConvocados)
+          : sync.link,
+    });
+    return;
+  }
+  res.status(502).json({
+    error: sync.warning ?? "No se pudo crear el evento en Acreditapp",
+  });
 });
 
 /**

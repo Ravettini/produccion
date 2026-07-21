@@ -404,12 +404,18 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
             }
           />
           {necesitaAcreditacion === true && (
-            <Input
-              label="Link a convocados"
-              value={linkAcreditacionConvocados}
-              onChange={(e) => setLinkAcreditacionConvocados(e.target.value)}
-              placeholder="URL del formulario"
-            />
+            <div className="space-y-2">
+              <Input
+                label="Link a Acreditapp (opcional)"
+                value={linkAcreditacionConvocados}
+                onChange={(e) => setLinkAcreditacionConvocados(e.target.value)}
+                placeholder="Se genera solo al guardar si lo dejás vacío"
+              />
+              <p className="text-xs text-slate-500 px-0.5">
+                Si marcás Sí y no cargás un link, al guardar se crea el evento automáticamente en
+                Acreditapp.
+              </p>
+            </div>
           )}
         </div>
       );

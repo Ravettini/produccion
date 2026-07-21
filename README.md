@@ -63,6 +63,16 @@ Cuando quieras usar Supabase en lugar del SQLite local:
 
 En `apps/api`: copiá `.env.example` a `.env`. Opcional: editá `JWT_SECRET`.
 
+Para sincronizar eventos con **Acreditapp** (creación automática cuando “necesita acreditación” = Sí):
+
+```env
+ACREDITAPP_API_BASE=https://acreditapp.helio3.co
+ACREDITAPP_API_KEY=<misma que EXTERNAL_EVENTS_API_KEY en Acreditapp / Coolify>
+ACREDITAPP_PUBLIC_URL=https://acreditapp.helio3.co
+```
+
+En Coolify de Acreditapp tiene que existir `EXTERNAL_EVENTS_API_KEY` (si falta, la API responde 503). Solo para pruebas locales usá `http://127.0.0.1:4001` y `http://localhost:5174`.
+
 ### 2. Instalar dependencias
 
 Desde la raíz del repo:
