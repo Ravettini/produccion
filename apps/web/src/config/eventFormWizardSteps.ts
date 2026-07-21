@@ -69,7 +69,7 @@ const STEP: Record<EventFormStepId, WizardStepDef> = {
     id: "lugar",
     label: "Lugar",
     title: "¿Dónde querés hacerlo?",
-    subtitle: "Elegí una locación sugerida o buscá en el catálogo completo.",
+    subtitle: "Elegí del catálogo, de las sugerencias, o escribí una locación en campo libre.",
   },
   descripcion: {
     id: "descripcion",
@@ -81,7 +81,7 @@ const STEP: Record<EventFormStepId, WizardStepDef> = {
     id: "complementos",
     label: "Extras",
     title: "¿Hay datos adicionales?",
-    subtitle: "Según el tipo de requerimiento: programa, funcionarios, productor u otros.",
+    subtitle: "Según el tipo de requerimiento: programa, funcionarios, referente de Producción u otros.",
   },
   catering: {
     id: "catering",

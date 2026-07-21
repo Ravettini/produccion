@@ -24,7 +24,8 @@ const FIELD_LABELS: Record<string, string> = {
   funcionario: "Funcionario(s)",
   lugar: "Lugar",
   programa: "Programa",
-  productor: "Productor",
+  productor: "Referente de Producción",
+  usuarioSolicitante: "Referente del área solicitante",
   titulo: "Título",
   descripcion: "Descripción",
 };

@@ -136,14 +136,16 @@ export function EventOverview({
                 <Detail label="Requiere">{event.tipoEvento}</Detail>
                 <Detail label="Área solicitante">{event.areaSolicitante}</Detail>
                 {event.usuarioSolicitante && (
-                  <Detail label="Referente">{event.usuarioSolicitante}</Detail>
+                  <Detail label="Referente del área solicitante">{event.usuarioSolicitante}</Detail>
                 )}
                 {publicoLabel && <Detail label="Público">{publicoLabel}</Detail>}
                 {event.programa && <Detail label="Programa">{event.programa}</Detail>}
                 {event.funcionario && (
                   <Detail label="Funcionario(s)">{event.funcionario}</Detail>
                 )}
-                {event.productor && <Detail label="Productor">{event.productor}</Detail>}
+                {event.productor && (
+                  <Detail label="Referente de Producción">{event.productor}</Detail>
+                )}
                 {event.necesitaAcreditacion != null && (
                   <Detail label="Acreditación">
                     {event.necesitaAcreditacion ? "Sí" : "No"}

@@ -875,9 +875,6 @@ function NewProposalForm({
   const [titulo, setTitulo] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [categoria, setCategoria] = useState<ProposalCategory>(categoriesDisponibles[0] ?? "OTRO");
-  const [impacto, setImpacto] = useState<"ALTO" | "MEDIO" | "BAJO">("MEDIO");
-  const [modalidad, setModalidad] = useState<"INTERNO" | "EXTERNO" | "PAGO" | "">("");
-  const [modalidadDetalle, setModalidadDetalle] = useState("");
   const [datosExtra, setDatosExtra] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
   const qc = useQueryClient();
@@ -893,8 +890,6 @@ function NewProposalForm({
       qc.invalidateQueries({ queryKey: ["proposals", eventId] });
       setTitulo("");
       setDescripcion("");
-      setModalidad("");
-      setModalidadDetalle("");
       setDatosExtra({});
       setError("");
     },
@@ -907,27 +902,11 @@ function NewProposalForm({
       setError("Ya existe un requerimiento de este tipo. Editá la tarjeta existente.");
       return;
     }
-    if (!modalidad) {
-      setError("Indicá si el requerimiento es interno, externo o pago.");
-      return;
-    }
-    if ((modalidad === "EXTERNO" || modalidad === "PAGO") && !modalidadDetalle.trim()) {
-      setError("Completá el detalle para requerimientos externos o pagos.");
-      return;
-    }
-    const extra: Record<string, string> = {
-      ...datosExtra,
-      modalidad,
-    };
-    if (modalidad === "EXTERNO" || modalidad === "PAGO") {
-      extra.modalidadDetalle = modalidadDetalle.trim();
-    }
     create.mutate({
       titulo: titulo.trim() || categoryLabels[categoria],
       descripcion,
       categoria,
-      impacto,
-      datosExtra: extra,
+      datosExtra: Object.keys(datosExtra).length > 0 ? datosExtra : undefined,
     });
   };
 
@@ -985,37 +964,6 @@ function NewProposalForm({
             required
             rows={3}
           />
-          <Select
-            label="Impacto"
-            options={[
-              { value: "ALTO", label: "Alto" },
-              { value: "MEDIO", label: "Medio" },
-              { value: "BAJO", label: "Bajo" },
-            ]}
-            value={impacto}
-            onChange={(e) => setImpacto(e.target.value as "ALTO" | "MEDIO" | "BAJO")}
-          />
-          <Select
-            label="Modalidad del requerimiento"
-            options={[
-              { value: "", label: "Seleccionar…" },
-              { value: "INTERNO", label: "Interno" },
-              { value: "EXTERNO", label: "Externo" },
-              { value: "PAGO", label: "Pago" },
-            ]}
-            value={modalidad}
-            onChange={(e) => setModalidad(e.target.value as typeof modalidad)}
-          />
-          {(modalidad === "EXTERNO" || modalidad === "PAGO") && (
-            <TextArea
-              label={modalidad === "PAGO" ? "Detalle del pago / proveedor" : "Detalle del requerimiento externo"}
-              placeholder="Anotá proveedor, presupuesto, contacto u otras precisiones"
-              value={modalidadDetalle}
-              onChange={(e) => setModalidadDetalle(e.target.value)}
-              rows={2}
-              required
-            />
-          )}
           {extraFields.length > 0 && (
             <div className="space-y-3 pt-2 border-t border-slate-200">
               <p className="text-sm font-medium text-slate-600">

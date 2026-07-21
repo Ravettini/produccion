@@ -38,7 +38,7 @@ import { AuditTimeline } from "../components/domain/AuditTimeline";
 import { categoryLabels, categoryColors } from "../utils/labels";
 import { categoryExtraFields } from "../config/proposalCategoryFields";
 import { formatDateShort } from "../utils/formatters";
-import { hasUnseenChanges, markSeen, modalidadLabels } from "../utils/changeAlerts";
+import { hasUnseenChanges, markSeen } from "../utils/changeAlerts";
 
 export default function ProposalDetail() {
   const { id } = useParams<{ id: string }>();
@@ -118,18 +118,6 @@ export default function ProposalDetail() {
   });
   const saveEdit = useMutation({
     mutationFn: () => {
-      const modalidad = (editDatosExtra.modalidad ?? "").trim();
-      if (!modalidad) {
-        return Promise.reject(new Error("Indicá si el requerimiento es interno, externo o pago."));
-      }
-      if (
-        (modalidad === "EXTERNO" || modalidad === "PAGO") &&
-        !(editDatosExtra.modalidadDetalle ?? "").trim()
-      ) {
-        return Promise.reject(
-          new Error("Completá el detalle para requerimientos externos o pagos.")
-        );
-      }
       return updateProposal(id!, {
         titulo: editTitulo,
         descripcion: editDescripcion,
@@ -276,33 +264,6 @@ export default function ProposalDetail() {
                 />
               )
             )}
-            <Select
-              label="Modalidad del requerimiento"
-              options={[
-                { value: "", label: "Seleccionar…" },
-                { value: "INTERNO", label: "Interno" },
-                { value: "EXTERNO", label: "Externo" },
-                { value: "PAGO", label: "Pago" },
-              ]}
-              value={editDatosExtra.modalidad ?? ""}
-              onChange={(e) =>
-                setEditDatosExtra((prev) => ({ ...prev, modalidad: e.target.value }))
-              }
-            />
-            {(editDatosExtra.modalidad === "EXTERNO" || editDatosExtra.modalidad === "PAGO") && (
-              <TextArea
-                label={
-                  editDatosExtra.modalidad === "PAGO"
-                    ? "Detalle del pago / proveedor"
-                    : "Detalle del requerimiento externo"
-                }
-                value={editDatosExtra.modalidadDetalle ?? ""}
-                onChange={(e) =>
-                  setEditDatosExtra((prev) => ({ ...prev, modalidadDetalle: e.target.value }))
-                }
-                rows={2}
-              />
-            )}
             <Input
               label="Motivo del cambio (queda en el historial)"
               value={editReason}
@@ -330,24 +291,6 @@ export default function ProposalDetail() {
         <Badge className={categoryColors[proposal.categoria as ProposalCategory]}>
           {categoryLabels[proposal.categoria as ProposalCategory]}
         </Badge>
-        <StatusBadge kind="impact" value={proposal.impacto} />
-        {(() => {
-          let extra: Record<string, string> = {};
-          try {
-            const raw = proposal.datosExtra;
-            if (raw && typeof raw === "string") extra = JSON.parse(raw) as Record<string, string>;
-            else if (raw && typeof raw === "object") extra = raw as Record<string, string>;
-          } catch {
-            extra = {};
-          }
-          if (!extra.modalidad) return null;
-          return (
-            <span className="inline-flex px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 text-slate-700 ring-1 ring-slate-200 self-center">
-              {modalidadLabels[extra.modalidad] ?? extra.modalidad}
-              {extra.modalidadDetalle ? ` · ${extra.modalidadDetalle}` : ""}
-            </span>
-          );
-        })()}
         {proposal.createdBy && (
           <span className="text-sm text-slate-500 self-center">Por {proposal.createdBy.name}</span>
         )}

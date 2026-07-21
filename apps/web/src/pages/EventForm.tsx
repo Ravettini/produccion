@@ -237,7 +237,7 @@ export default function EventForm() {
         if (!(datosProduccion.horarioFinalizacion ?? "").trim()) return "Indicá el horario de finalización.";
         return null;
       case "lugar":
-        if (!lugar.trim()) return "Seleccioná una locación.";
+        if (!lugar.trim()) return "Indicá una locación (catálogo o campo libre).";
         return null;
       case "requisitos":
         if (!(datosProduccion.requiereMobiliario ?? "").trim()) {

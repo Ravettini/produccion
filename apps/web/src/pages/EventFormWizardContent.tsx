@@ -30,7 +30,7 @@ const REQUISITOS_ESPACIO = [
   { key: "requiereAccesibilidad", label: "Accesibilidad" },
   { key: "requiereTecnica", label: "Equipamiento técnico" },
   { key: "requiereEstacionamiento", label: "Estacionamiento" },
-  { key: "requiereBackstage", label: "Backstage" },
+  { key: "requiereBackstage", label: "Espacio de Back" },
   { key: "requiereMobiliario", label: "Mobiliario" },
 ] as const;
 
@@ -297,7 +297,7 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
       return (
         <div className="space-y-5">
           <SearchableSelect
-            label="Buscar locación"
+            label="Buscar locación en el catálogo"
             placeholder="Buscar en el catálogo…"
             searchPlaceholder="Sede, nombre o dirección…"
             options={[
@@ -311,6 +311,15 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
             onChange={setLugar}
             emptyMessage="Sin resultados"
           />
+          <Input
+            label="O agregá una locación (campo libre)"
+            value={lugar}
+            onChange={(e) => setLugar(e.target.value)}
+            placeholder="Ej: sede propia, domicilio, espacio externo…"
+          />
+          <p className="text-xs text-slate-500 -mt-3">
+            Podés elegir del catálogo o escribir cualquier locación que no figure en la lista.
+          </p>
           <div>
             <h3 className="text-sm font-semibold text-slate-800 mb-2">Sugerencias</h3>
             <p className="text-xs text-slate-500 mb-3">
@@ -342,10 +351,10 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
       return (
         <div className="space-y-4">
           <Input
-            label="Referente del evento (opcional)"
+            label="Referente del área solicitante (opcional)"
             value={usuarioSolicitante}
             onChange={(e) => setUsuarioSolicitante(e.target.value)}
-            placeholder="Nombre de quien solicita"
+            placeholder="Nombre de quien solicita desde el área"
           />
           {opcionesPrograma.length > 0 ? (
             <SearchableSelect
@@ -379,16 +388,16 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
           )}
           {tipoSeleccionados.includes("Producción") && (
             <SearchableSelect
-              label="Productor"
-              placeholder="Seleccionar productor del equipo…"
-              searchPlaceholder="Buscar productor…"
+              label="Referente de Producción"
+              placeholder="Seleccionar referente de Producción…"
+              searchPlaceholder="Buscar…"
               options={[
-                { value: "", label: "— Sin productor —" },
+                { value: "", label: "— Sin referente —" },
                 ...PRODUCTORES_OPTIONS,
               ]}
               value={productor}
               onChange={setProductor}
-              emptyMessage="Ningún productor coincide"
+              emptyMessage="Ningún referente coincide"
             />
           )}
           <Select
@@ -467,28 +476,58 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
     case "cobertura":
       return (
         <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
-          {coberturaBriefFields.map((field) =>
-            field.type === "textarea" ? (
-              <TextArea
-                key={field.key}
-                label={field.label}
-                value={datosProduccion[field.key] ?? ""}
-                onChange={(e) =>
-                  setDatosProduccion((prev) => ({ ...prev, [field.key]: e.target.value }))
-                }
-                rows={2}
-              />
-            ) : field.type === "select" && field.options?.length ? (
-              <Select
-                key={field.key}
-                label={field.label}
-                options={field.options}
-                value={datosProduccion[field.key] ?? ""}
-                onChange={(e) =>
-                  setDatosProduccion((prev) => ({ ...prev, [field.key]: e.target.value }))
-                }
-              />
-            ) : (
+          {coberturaBriefFields.map((field) => {
+            if (field.key === "comunicacionMedio" && field.options?.length) {
+              const selected = (datosProduccion[field.key] ?? "")
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
+              return (
+                <MultiSearchableSelect
+                  key={field.key}
+                  label={field.label}
+                  hint="Podés elegir varios canales."
+                  placeholder="Seleccionar canal(es)…"
+                  searchPlaceholder="Buscar canal…"
+                  options={field.options.filter((o) => o.value)}
+                  value={selected}
+                  onChange={(values) =>
+                    setDatosProduccion((prev) => ({
+                      ...prev,
+                      [field.key]: values.join(", "),
+                    }))
+                  }
+                  emptyMessage="Ningún canal coincide"
+                />
+              );
+            }
+            if (field.type === "textarea") {
+              return (
+                <TextArea
+                  key={field.key}
+                  label={field.label}
+                  value={datosProduccion[field.key] ?? ""}
+                  onChange={(e) =>
+                    setDatosProduccion((prev) => ({ ...prev, [field.key]: e.target.value }))
+                  }
+                  rows={2}
+                />
+              );
+            }
+            if (field.type === "select" && field.options?.length) {
+              return (
+                <Select
+                  key={field.key}
+                  label={field.label}
+                  options={field.options}
+                  value={datosProduccion[field.key] ?? ""}
+                  onChange={(e) =>
+                    setDatosProduccion((prev) => ({ ...prev, [field.key]: e.target.value }))
+                  }
+                />
+              );
+            }
+            return (
               <Input
                 key={field.key}
                 label={field.label}
@@ -497,8 +536,8 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
                   setDatosProduccion((prev) => ({ ...prev, [field.key]: e.target.value }))
                 }
               />
-            )
-          )}
+            );
+          })}
         </div>
       );
 
