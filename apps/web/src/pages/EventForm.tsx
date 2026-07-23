@@ -230,6 +230,25 @@ export default function EventForm() {
       case "catering":
         if (!(datosProduccion.catering ?? "").trim()) return "Indicá si necesitás catering.";
         return null;
+      case "complementos":
+        if (necesitaAcreditacion === true) {
+          if ((datosProduccion.acreditacionMesas ?? "").trim() === "") {
+            return "Indicá si querés sumar mesas en Acreditapp.";
+          }
+          if (datosProduccion.acreditacionMesas === "si") {
+            const n = parseInt(datosProduccion.acreditacionMesaCount ?? "", 10);
+            if (!Number.isFinite(n) || n < 1) {
+              return "Indicá la cantidad de mesas (mínimo 1).";
+            }
+          }
+          if ((datosProduccion.acreditacionNotas ?? "").trim() === "") {
+            return "Indicá si querés sumar notas en Acreditapp.";
+          }
+          if ((datosProduccion.acreditacionSheets ?? "").trim() === "") {
+            return "Indicá si los acreditados van a Google Sheets.";
+          }
+        }
+        return null;
       case "descripcion":
         if (!descripcion.trim()) return "La descripción es obligatoria.";
         return null;

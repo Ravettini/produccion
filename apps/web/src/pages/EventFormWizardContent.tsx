@@ -389,7 +389,7 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
             }
           />
           {necesitaAcreditacion === true && (
-            <div className="space-y-2">
+            <div className="space-y-3">
               <Input
                 label="Link a Acreditapp (opcional)"
                 value={linkAcreditacionConvocados}
@@ -400,6 +400,70 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
                 Si marcás Sí y no cargás un link, al guardar se crea el evento automáticamente en
                 Acreditapp.
               </p>
+              <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 space-y-3">
+                <p className="text-sm font-medium text-slate-800">Opciones en Acreditapp</p>
+                <Select
+                  label="¿Sumar mesas?"
+                  options={[
+                    { value: "", label: "Seleccionar…" },
+                    { value: "si", label: "Sí" },
+                    { value: "no", label: "No" },
+                  ]}
+                  value={datosProduccion.acreditacionMesas ?? ""}
+                  onChange={(e) =>
+                    setDatosProduccion((prev) => ({
+                      ...prev,
+                      acreditacionMesas: e.target.value,
+                    }))
+                  }
+                />
+                {datosProduccion.acreditacionMesas === "si" && (
+                  <Input
+                    label="Cantidad de mesas"
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={datosProduccion.acreditacionMesaCount ?? ""}
+                    onChange={(e) =>
+                      setDatosProduccion((prev) => ({
+                        ...prev,
+                        acreditacionMesaCount: e.target.value,
+                      }))
+                    }
+                    placeholder="Ej: 4"
+                  />
+                )}
+                <Select
+                  label="¿Sumar notas?"
+                  options={[
+                    { value: "", label: "Seleccionar…" },
+                    { value: "si", label: "Sí" },
+                    { value: "no", label: "No" },
+                  ]}
+                  value={datosProduccion.acreditacionNotas ?? ""}
+                  onChange={(e) =>
+                    setDatosProduccion((prev) => ({
+                      ...prev,
+                      acreditacionNotas: e.target.value,
+                    }))
+                  }
+                />
+                <Select
+                  label="¿Enviar acreditados a Google Sheets?"
+                  options={[
+                    { value: "", label: "Seleccionar…" },
+                    { value: "si", label: "Sí" },
+                    { value: "no", label: "No" },
+                  ]}
+                  value={datosProduccion.acreditacionSheets ?? ""}
+                  onChange={(e) =>
+                    setDatosProduccion((prev) => ({
+                      ...prev,
+                      acreditacionSheets: e.target.value,
+                    }))
+                  }
+                />
+              </div>
             </div>
           )}
         </div>

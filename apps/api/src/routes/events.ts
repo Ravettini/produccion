@@ -17,6 +17,7 @@ function toAcreditappEventInput(event: {
   fechaTentativa?: unknown;
   necesitaAcreditacion?: unknown;
   linkAcreditacionConvocados?: unknown;
+  datosProduccion?: unknown;
 }) {
   return {
     id: String(event.id),
@@ -32,6 +33,7 @@ function toAcreditappEventInput(event: {
       event.linkAcreditacionConvocados != null && String(event.linkAcreditacionConvocados).trim() !== ""
         ? String(event.linkAcreditacionConvocados).trim()
         : null,
+    datosProduccion: event.datosProduccion ?? null,
   };
 }
 
@@ -412,6 +414,7 @@ eventsRouter.post("/:id/sync-acreditapp", authMiddleware, async (req, res) => {
     fechaTentativa?: unknown;
     necesitaAcreditacion?: unknown;
     linkAcreditacionConvocados?: unknown;
+    datosProduccion?: unknown;
   });
   if (mapped.linkAcreditacionConvocados) {
     res.json({ linkAcreditacionConvocados: mapped.linkAcreditacionConvocados });

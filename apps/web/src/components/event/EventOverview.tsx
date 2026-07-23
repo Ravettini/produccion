@@ -74,6 +74,15 @@ export function EventOverview({
   const needsAcreditappSync =
     event.necesitaAcreditacion === true && !event.linkAcreditacionConvocados?.trim();
 
+  let dp: Record<string, string> = {};
+  try {
+    const raw = event.datosProduccion;
+    if (raw && typeof raw === "string") dp = JSON.parse(raw) as Record<string, string>;
+    else if (raw && typeof raw === "object") dp = raw as Record<string, string>;
+  } catch {
+    dp = {};
+  }
+
   return (
     <section className="mb-8 space-y-4" aria-labelledby="brief-evento">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -150,6 +159,31 @@ export function EventOverview({
                   <Detail label="Acreditación">
                     {event.necesitaAcreditacion ? "Sí" : "No"}
                   </Detail>
+                )}
+                {event.necesitaAcreditacion === true && (
+                  <>
+                    <Detail label="Mesas">
+                      {dp.acreditacionMesas === "si"
+                        ? `Sí${dp.acreditacionMesaCount ? ` (${dp.acreditacionMesaCount})` : ""}`
+                        : dp.acreditacionMesas === "no"
+                          ? "No"
+                          : "—"}
+                    </Detail>
+                    <Detail label="Notas">
+                      {dp.acreditacionNotas === "si"
+                        ? "Sí"
+                        : dp.acreditacionNotas === "no"
+                          ? "No"
+                          : "—"}
+                    </Detail>
+                    <Detail label="Google Sheets">
+                      {dp.acreditacionSheets === "si"
+                        ? "Sí"
+                        : dp.acreditacionSheets === "no"
+                          ? "No"
+                          : "—"}
+                    </Detail>
+                  </>
                 )}
                 {event.linkAcreditacionConvocados && (
                   <Detail label="Link de acreditación">
