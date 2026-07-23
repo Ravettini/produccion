@@ -57,7 +57,7 @@ export const categoryExtraFields: Record<ProposalCategory, CategoryFieldConfig[]
     // Técnica (incluida en Producción)
     { key: "pantallaLED", label: "Pantalla LED", type: "select", options: SI_NO },
     { key: "pantallaLEDCantidad", label: "Cantidad pantallas LED", type: "number", placeholder: "Ej: 1" },
-    { key: "pantallaRetractil", label: "Pantalla retráctil", type: "select", options: SI_NO },
+    { key: "pantallaRetractil", label: "Pantalla para proyector", type: "select", options: SI_NO },
     { key: "proyector", label: "Proyector", type: "select", options: SI_NO },
     { key: "sonido", label: "Sonido", type: "select", options: SI_NO },
     { key: "microfonos", label: "Micrófonos", type: "select", options: SI_NO },
@@ -141,6 +141,44 @@ export const cateringFields: CategoryFieldConfig[] = [
 ];
 
 /** Campos del brief audiovisual (modelo: piezas de comunicación y/o cobertura) */
+export const COBERTURA_CANALES_BASE: { value: string; label: string }[] = [
+  { value: "Instagram", label: "Instagram" },
+  { value: "LinkedIn", label: "LinkedIn" },
+  { value: "YouTube", label: "YouTube" },
+  { value: "Mailing", label: "Mailing" },
+  { value: "Prensa", label: "Prensa" },
+  { value: "Web institucional", label: "Web institucional" },
+  { value: "Otro", label: "Otro" },
+];
+
+export const INSTAGRAM_CUENTAS: { value: string; label: string }[] = [
+  { value: "Instagram AC", label: "Instagram AC" },
+  { value: "Instagram BADA", label: "Instagram BADA" },
+  { value: "Instagram BA JOVEN", label: "Instagram BA JOVEN" },
+  { value: "Instagram BA BIENESTAR", label: "Instagram BA BIENESTAR" },
+];
+
+export const LINKEDIN_CUENTAS: { value: string; label: string }[] = [
+  { value: "LinkedIn SSCCYRS", label: "LinkedIn SSCCYRS" },
+  { value: "LinkedIn BADA", label: "LinkedIn BADA" },
+];
+
+/** Materiales extra (paso producción) */
+export const MATERIALES_EXTRA_OPTIONS: { value: string; label: string }[] = [
+  { value: "Rotafolios", label: "Rotafolios" },
+  { value: "Cliperas", label: "Cliperas" },
+  { value: "Lapiceras", label: "Lapiceras" },
+  { value: "Marcadores", label: "Marcadores" },
+  { value: "Post it", label: "Post it" },
+  { value: "Hojas A4", label: "Hojas A4" },
+  { value: "Afiche blanco", label: "Afiche blanco" },
+  { value: "Back de prensa", label: "Back de prensa" },
+  { value: "Banner", label: "Banner" },
+  { value: "Pasa slide", label: "Pasa slide" },
+  { value: "Cable HDMI", label: "Cable HDMI" },
+  { value: "Alargues / zapatillas", label: "Alargues / zapatillas" },
+];
+
 export const coberturaBriefFields: CategoryFieldConfig[] = [
   {
     key: "coberturaObjetivo",
@@ -152,22 +190,7 @@ export const coberturaBriefFields: CategoryFieldConfig[] = [
     key: "comunicacionMedio",
     label: "¿Por qué canal va a salir?",
     type: "select",
-    /** Múltiple: se guarda como lista separada por coma */
-    options: [
-      { value: "Instagram", label: "Instagram" },
-      { value: "Instagram AC", label: "Instagram AC" },
-      { value: "Instagram BADA", label: "Instagram BADA" },
-      { value: "Instagram BA JOVEN", label: "Instagram BA JOVEN" },
-      { value: "Instagram BA BIENESTAR", label: "Instagram BA BIENESTAR" },
-      { value: "LinkedIn", label: "LinkedIn" },
-      { value: "LinkedIn SSCCYRS", label: "LinkedIn SSCCYRS" },
-      { value: "LinkedIn BADA", label: "LinkedIn BADA" },
-      { value: "YouTube", label: "YouTube" },
-      { value: "Mailing", label: "Mailing" },
-      { value: "Prensa", label: "Prensa" },
-      { value: "Web institucional", label: "Web institucional" },
-      { value: "Otro", label: "Otro" },
-    ],
+    options: COBERTURA_CANALES_BASE,
   },
   {
     key: "coberturaDuracion",

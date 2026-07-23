@@ -37,8 +37,7 @@ export function Sidebar({
     <aside
       className={cn(
         "w-64 flex-shrink-0 bg-sidebar text-white z-50 flex flex-col",
-        "lg:static lg:translate-x-0",
-        "fixed inset-y-0 left-0 transform transition-transform duration-300 ease-out",
+        "fixed inset-y-0 left-0 h-screen max-h-screen transform transition-transform duration-300 ease-out",
         open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}
     >

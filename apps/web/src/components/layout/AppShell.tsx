@@ -40,7 +40,7 @@ export function AppShell() {
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 lg:pl-64">
         <div className="lg:hidden sticky top-0 z-30 h-14 flex items-center gap-3 px-4 border-b border-slate-200 bg-white/90 backdrop-blur-md">
           <button
             type="button"

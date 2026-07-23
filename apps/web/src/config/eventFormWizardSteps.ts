@@ -31,9 +31,9 @@ const STEP: Record<EventFormStepId, WizardStepDef> = {
   },
   "dg-fecha": {
     id: "dg-fecha",
-    label: "DG y fecha",
+    label: "Área y fecha",
     title: "¿Quién solicita y para qué fecha?",
-    subtitle: "La dirección general y la fecha tentativa del evento.",
+    subtitle: "El área solicitante y la fecha tentativa del evento.",
   },
   tipo: {
     id: "tipo",
@@ -81,7 +81,7 @@ const STEP: Record<EventFormStepId, WizardStepDef> = {
     id: "complementos",
     label: "Extras",
     title: "¿Hay datos adicionales?",
-    subtitle: "Según el tipo de requerimiento: programa, funcionarios, referente de Producción u otros.",
+    subtitle: "Según el tipo de requerimiento: programa, funcionarios u otros.",
   },
   catering: {
     id: "catering",
@@ -104,8 +104,8 @@ const STEP: Record<EventFormStepId, WizardStepDef> = {
   cierre: {
     id: "cierre",
     label: "Cierre",
-    title: "¿Algo más antes de guardar?",
-    subtitle: "Resumen opcional y documentos PDF de apoyo.",
+    title: "Estado del evento",
+    subtitle: "Solo administración puede ajustar el estado al guardar.",
   },
   "estado-extra": {
     id: "estado-extra",
@@ -120,6 +120,8 @@ export function buildWizardSteps(input: {
   tipoSeleccionados: string[];
   isEdit: boolean;
   estado: string;
+  /** Solo admin: paso de estado al final */
+  includeCierre?: boolean;
 }): WizardStepDef[] {
   const tieneProduccion = input.tipoSeleccionados.includes("Producción");
   const tieneCobertura = input.tipoSeleccionados.includes("Cobertura");
@@ -147,7 +149,9 @@ export function buildWizardSteps(input: {
     steps.push(STEP.cobertura);
   }
 
-  steps.push(STEP.cierre);
+  if (input.includeCierre) {
+    steps.push(STEP.cierre);
+  }
 
   if (input.isEdit && (input.estado === "CANCELADO" || input.estado === "REALIZADO")) {
     steps.push({

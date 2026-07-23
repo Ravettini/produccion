@@ -3,6 +3,7 @@ import { prisma } from "../lib/prisma.js";
 import { authMiddleware, requireRoles } from "../middleware/auth.js";
 import { canUserSeeEvent, filterEventsForUser } from "../lib/eventVisibility.js";
 import { ensureAcreditappLink } from "../lib/acreditapp.js";
+import { syncProposalsFromEvent } from "../lib/syncProposalsFromEvent.js";
 
 export const eventsRouter = Router();
 
@@ -195,6 +196,20 @@ eventsRouter.post("/", authMiddleware, async (req, res) => {
     },
   });
 
+  if (req.user?.id) {
+    try {
+      await syncProposalsFromEvent({
+        eventId: String(event.id),
+        userId: req.user.id,
+        tipoEvento: String(event.tipoEvento),
+        lugar: event.lugar,
+        datosProduccion: event.datosProduccion,
+      });
+    } catch (err) {
+      console.error("[events] syncProposalsFromEvent:", err);
+    }
+  }
+
   const sync = await ensureAcreditappLink(toAcreditappEventInput(event));
   let result = event;
   const currentLink =
@@ -341,6 +356,20 @@ eventsRouter.put("/:id", authMiddleware, async (req, res) => {
     where: { id: req.params.id },
     data: updates as Parameters<typeof prisma.event.update>[0]["data"],
   });
+
+  if (req.user?.id) {
+    try {
+      await syncProposalsFromEvent({
+        eventId: String(event.id),
+        userId: req.user.id,
+        tipoEvento: String(event.tipoEvento),
+        lugar: event.lugar,
+        datosProduccion: event.datosProduccion,
+      });
+    } catch (err) {
+      console.error("[events] syncProposalsFromEvent:", err);
+    }
+  }
 
   const sync = await ensureAcreditappLink(toAcreditappEventInput(event));
   let result = event;

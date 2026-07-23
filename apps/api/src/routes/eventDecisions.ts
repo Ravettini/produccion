@@ -256,7 +256,12 @@ eventDecisionsRouter.patch("/:eventId/fields", authMiddleware, async (req, res) 
     return;
   }
 
-  const allowed = ["funcionario", "lugar", "programa"] as const;
+  const allowed = ["funcionario", "lugar", "programa", "productor"] as const;
+  // Referente de Producción: solo rol PRODUCCION o ADMIN
+  if (fields.productor !== undefined && dbUser.role !== "ADMIN" && dbUser.role !== "PRODUCCION") {
+    res.status(403).json({ error: "Solo Producción puede definir el referente de Producción" });
+    return;
+  }
   const updates: Record<string, string | null> = {};
   const changes: { field: string; from: string | null; to: string | null }[] = [];
 

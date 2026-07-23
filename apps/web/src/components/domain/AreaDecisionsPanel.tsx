@@ -11,24 +11,38 @@ import { Button } from "../ui/Button";
 import { Card, CardBody, CardHeader } from "../ui/Card";
 import { Input } from "../ui/Input";
 import { TextArea } from "../ui/TextArea";
+import { SearchableSelect } from "../ui/SearchableSelect";
 import { canSpecialtyEditEventFields } from "../../hooks/usePermissions";
+import { PRODUCTORES_OPTIONS } from "../../config/productores";
 import type { User } from "../../types";
 
 interface AreaDecisionsPanelProps {
   eventId: string;
   user: User | null;
   funcionario?: string | null;
+  productor?: string | null;
+  tieneProduccion?: boolean;
 }
 
-export function AreaDecisionsPanel({ eventId, user, funcionario }: AreaDecisionsPanelProps) {
+export function AreaDecisionsPanel({
+  eventId,
+  user,
+  funcionario,
+  productor,
+  tieneProduccion = false,
+}: AreaDecisionsPanelProps) {
   const qc = useQueryClient();
   const [rejectReason, setRejectReason] = useState("");
   const [rejecting, setRejecting] = useState(false);
   const [adminRejectRole, setAdminRejectRole] = useState<string | null>(null);
   const [funcionarioDraft, setFuncionarioDraft] = useState(funcionario ?? "");
+  const [productorDraft, setProductorDraft] = useState(productor ?? "");
   const [editReason, setEditReason] = useState("");
   const [editingFunc, setEditingFunc] = useState(false);
+  const [editingProd, setEditingProd] = useState(false);
   const isAdmin = user?.role === "ADMIN";
+  const canSetProductor =
+    tieneProduccion && (user?.role === "PRODUCCION" || user?.role === "ADMIN");
 
   const { data, isLoading } = useQuery({
     queryKey: ["area-decisions", eventId],
@@ -65,6 +79,21 @@ export function AreaDecisionsPanel({ eventId, user, funcionario }: AreaDecisions
     },
   });
 
+  const saveProductor = useMutation({
+    mutationFn: () =>
+      patchEventFields(
+        eventId,
+        { productor: productorDraft.trim() || null },
+        editReason.trim() || "Asignó referente de Producción"
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["event", eventId] });
+      qc.invalidateQueries({ queryKey: ["event-audits", eventId] });
+      setEditingProd(false);
+      setEditReason("");
+    },
+  });
+
   if (isLoading || !data) {
     return (
       <Card>
@@ -73,7 +102,7 @@ export function AreaDecisionsPanel({ eventId, user, funcionario }: AreaDecisions
     );
   }
 
-  if (data.requested.length === 0) {
+  if (data.requested.length === 0 && !canSetProductor) {
     return null;
   }
 
@@ -82,6 +111,7 @@ export function AreaDecisionsPanel({ eventId, user, funcionario }: AreaDecisions
 
   return (
     <div className="space-y-4">
+      {data.requested.length > 0 && (
       <Card>
         <CardHeader>Aprobación por áreas solicitadas</CardHeader>
         <CardBody className="space-y-4">
@@ -252,6 +282,75 @@ export function AreaDecisionsPanel({ eventId, user, funcionario }: AreaDecisions
           )}
         </CardBody>
       </Card>
+      )}
+
+      {canSetProductor && (
+        <Card>
+          <CardHeader>Referente de Producción</CardHeader>
+          <CardBody className="space-y-3">
+            <p className="text-sm text-slate-500">
+              Solo el rol Producción define el referente de este evento.
+            </p>
+            {!editingProd ? (
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs text-slate-500">Referente</p>
+                  <p className="text-slate-800">{productor || "— Sin asignar —"}</p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    setProductorDraft(productor ?? "");
+                    setEditingProd(true);
+                  }}
+                >
+                  {productor ? "Cambiar" : "Asignar"}
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <SearchableSelect
+                  label="Referente de Producción"
+                  placeholder="Seleccionar…"
+                  searchPlaceholder="Buscar…"
+                  options={[
+                    { value: "", label: "— Sin referente —" },
+                    ...PRODUCTORES_OPTIONS,
+                  ]}
+                  value={productorDraft}
+                  onChange={setProductorDraft}
+                  emptyMessage="Ningún referente coincide"
+                />
+                <Input
+                  label="Motivo (opcional)"
+                  value={editReason}
+                  onChange={(e) => setEditReason(e.target.value)}
+                />
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    disabled={saveProductor.isPending}
+                    onClick={() => saveProductor.mutate()}
+                  >
+                    Guardar
+                  </Button>
+                  <Button size="sm" variant="secondary" onClick={() => setEditingProd(false)}>
+                    Cancelar
+                  </Button>
+                </div>
+                {saveProductor.error && (
+                  <p className="text-sm text-red-600">
+                    {saveProductor.error instanceof Error
+                      ? saveProductor.error.message
+                      : "Error"}
+                  </p>
+                )}
+              </div>
+            )}
+          </CardBody>
+        </Card>
+      )}
 
       {canEditFields && (
         <Card>

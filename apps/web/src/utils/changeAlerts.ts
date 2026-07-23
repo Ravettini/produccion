@@ -26,24 +26,19 @@ export function markSeen(prefix: "event" | "proposal", id: string, at?: string):
   }
 }
 
-/** Hay cambios si updatedAt es posterior al último visto (o nunca se vio). */
+/** Hay cambios solo si el usuario ya vio el ítem y luego se actualizó. */
 export function hasUnseenChanges(
   prefix: "event" | "proposal",
   id: string,
   updatedAt: string,
-  createdAt?: string
+  _createdAt?: string
 ): boolean {
   const last = getLastSeen(prefix, id);
-  if (!last) {
-    // Primera visita: no marcar "nuevo" si no hubo edición (mismo created/updated)
-    if (createdAt && updatedAt) {
-      const c = new Date(createdAt).getTime();
-      const u = new Date(updatedAt).getTime();
-      if (Number.isFinite(c) && Number.isFinite(u) && Math.abs(u - c) < 2000) return false;
-    }
-    return Boolean(createdAt && updatedAt && createdAt !== updatedAt);
-  }
-  return new Date(updatedAt).getTime() > new Date(last).getTime();
+  if (!last) return false;
+  const u = new Date(updatedAt).getTime();
+  const l = new Date(last).getTime();
+  if (!Number.isFinite(u) || !Number.isFinite(l)) return false;
+  return u > l + 500;
 }
 
 export const modalidadLabels: Record<string, string> = {

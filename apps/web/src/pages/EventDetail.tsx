@@ -509,6 +509,8 @@ export default function EventDetail() {
             eventId={id!}
             user={user}
             funcionario={(event as { funcionario?: string | null }).funcionario}
+            productor={(event as { productor?: string | null }).productor}
+            tieneProduccion={/producci[oó]n/i.test(event.tipoEvento)}
           />
         </div>
       )}

@@ -11,12 +11,23 @@ import { PageHeader } from "../components/layout/PageHeader";
 import { CalendarAgendaList } from "../components/calendar/CalendarAgendaList";
 import { eventStatusLabels, eventStatusColors } from "../utils/labels";
 import { getEventHorario, eventMatchesTipoFilter } from "../utils/eventHelpers";
+import { useAuth } from "../hooks/useAuth";
 
 const FILTROS_TIPO = [
   { id: "produccion", label: "Producción" },
   { id: "institucionales", label: "Institucionales" },
   { id: "cobertura", label: "Cobertura" },
 ] as const;
+
+/** Roles que ven todos los estados en el calendario. */
+const CALENDAR_SEE_ALL_STATUSES = new Set([
+  "ADMIN",
+  "PRODUCCION",
+  "INSTITUCIONALES",
+  "AGENDA",
+  "VALIDADOR",
+  "DIRECTOR_GENERAL",
+]);
 
 const MESES = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -51,6 +62,8 @@ function getCalendarDays(year: number, month: number): (number | null)[] {
 }
 
 export default function Calendar() {
+  const { user } = useAuth();
+  const seeAllStatuses = user?.role != null && CALENDAR_SEE_ALL_STATUSES.has(user.role);
   const today = useMemo(() => new Date(), []);
   const [current, setCurrent] = useState(() => ({
     year: today.getFullYear(),
@@ -76,6 +89,7 @@ export default function Calendar() {
 
   const filteredEvents = useMemo(() => {
     return events.filter((e) => {
+      if (!seeAllStatuses && e.estado !== "CONFIRMADO") return false;
       if (filterEstado && e.estado !== filterEstado) return false;
       if (filterTipos.length > 0 && !filterTipos.some((f) => eventMatchesTipoFilter(e.tipoEvento, f))) {
         return false;
@@ -92,7 +106,7 @@ export default function Calendar() {
       }
       return true;
     });
-  }, [events, filterEstado, filterTipos, filterArea, filterBusqueda]);
+  }, [events, filterEstado, filterTipos, filterArea, filterBusqueda, seeAllStatuses]);
 
   const eventsByDate = useMemo(() => {
     const map: Record<string, Event[]> = {};
@@ -147,19 +161,22 @@ export default function Calendar() {
         />
         <Select
           options={[
-            { value: "", label: "Todos los estados" },
-            ...(Object.entries(eventStatusLabels) as [EventStatus, string][]).map(([v, l]) => ({
-              value: v,
-              label: l,
-            })),
+            { value: "", label: seeAllStatuses ? "Todos los estados" : "Confirmados" },
+            ...(seeAllStatuses
+              ? (Object.entries(eventStatusLabels) as [EventStatus, string][]).map(([v, l]) => ({
+                  value: v,
+                  label: l,
+                }))
+              : [{ value: "CONFIRMADO", label: eventStatusLabels.CONFIRMADO }]),
           ]}
-          value={filterEstado}
+          value={seeAllStatuses ? filterEstado : "CONFIRMADO"}
           onChange={(e) => setFilterEstado((e.target.value || "") as EventStatus)}
           className="w-full sm:w-44"
+          disabled={!seeAllStatuses}
         />
         <Select
           options={[
-            { value: "", label: "Todas las DG" },
+            { value: "", label: "Todas las áreas" },
             ...areasUnicas.map((a) => ({ value: a, label: a })),
           ]}
           value={filterArea}

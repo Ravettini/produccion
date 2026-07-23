@@ -4,19 +4,23 @@ import { TextArea } from "../components/ui/TextArea";
 import { Select } from "../components/ui/Select";
 import { SearchableSelect } from "../components/ui/SearchableSelect";
 import { MultiSearchableSelect } from "../components/ui/MultiSearchableSelect";
-import { Button } from "../components/ui/Button";
 import { ChoiceCards } from "../components/wizard/ChoiceCards";
 import { LocacionesSugeridasPanel } from "../components/domain/LocacionesSugeridasPanel";
 import { DIRECCIONES_GENERALES_OPTIONS } from "../config/direccionesGenerales";
-import { categoryExtraFields, cateringFields, coberturaBriefFields } from "../config/proposalCategoryFields";
+import { categoryExtraFields, cateringFields, coberturaBriefFields, COBERTURA_CANALES_BASE, INSTAGRAM_CUENTAS, LINKEDIN_CUENTAS, MATERIALES_EXTRA_OPTIONS } from "../config/proposalCategoryFields";
 import { getProgramasParaArea } from "../config/programasPorArea";
 import { FUNCIONARIOS_OPTIONS } from "../config/funcionarios";
-import { PRODUCTORES_OPTIONS } from "../config/productores";
 import type { EventFormStepId } from "../config/eventFormWizardSteps";
 import type { LocacionSugerida } from "../config/locaciones2026.types";
 import { eventStatusHints } from "../utils/labels";
 
-const PRODUCCION_FORM_EXCLUDE = new Set(["horarioCitacion", "cantidadPersonas", "lugar"]);
+const PRODUCCION_FORM_EXCLUDE = new Set([
+  "horarioCitacion",
+  "cantidadPersonas",
+  "lugar",
+  "pantallaLEDCantidad",
+  "microfonosCantidad",
+]);
 
 const TIPO_OPCIONES = [
   { value: "Producción", label: "Producción", description: "Técnica, catering, materiales y comunicación." },
@@ -62,17 +66,10 @@ export interface EventFormWizardContentProps {
   setPrograma: (v: string) => void;
   funcionario: string[];
   setFuncionario: (v: string[]) => void;
-  productor: string;
-  setProductor: (v: string) => void;
   necesitaAcreditacion: boolean | "";
   setNecesitaAcreditacion: (v: boolean | "") => void;
   linkAcreditacionConvocados: string;
   setLinkAcreditacionConvocados: (v: string) => void;
-  resumen: string;
-  setResumen: (v: string) => void;
-  archivosPdf: File[];
-  onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  removeArchivo: (i: number) => void;
   estado: EventStatus;
   setEstado: (v: EventStatus) => void;
   estadoOptions: { value: string; label: string }[];
@@ -117,17 +114,10 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
     setPrograma,
     funcionario,
     setFuncionario,
-    productor,
-    setProductor,
     necesitaAcreditacion,
     setNecesitaAcreditacion,
     linkAcreditacionConvocados,
     setLinkAcreditacionConvocados,
-    resumen,
-    setResumen,
-    archivosPdf,
-    onFileChange,
-    removeArchivo,
     estado,
     motivoCancelacion,
     setMotivoCancelacion,
@@ -163,21 +153,21 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
         <div className="space-y-4">
           {userArea && !isAdmin ? (
             <div className="text-center">
-              <p className="text-sm text-slate-500 mb-1">DG solicitante</p>
+              <p className="text-sm text-slate-500 mb-1">Área solicitante</p>
               <p className="font-medium text-slate-900">{userArea}</p>
             </div>
           ) : !userArea && !isAdmin ? (
             <Select
-              label="DG solicitante"
-              options={[{ value: "", label: "Seleccionar DG…" }, ...DIRECCIONES_GENERALES_OPTIONS]}
+              label="Área solicitante"
+              options={[{ value: "", label: "Seleccionar área…" }, ...DIRECCIONES_GENERALES_OPTIONS]}
               value={areaSolicitante}
               onChange={(e) => setAreaSolicitante(e.target.value)}
               required
             />
           ) : (
             <Select
-              label="DG solicitante"
-              options={[{ value: "", label: "Seleccionar DG…" }, ...DIRECCIONES_GENERALES_OPTIONS]}
+              label="Área solicitante"
+              options={[{ value: "", label: "Seleccionar área…" }, ...DIRECCIONES_GENERALES_OPTIONS]}
               value={areaSolicitante}
               onChange={(e) => setAreaSolicitante(e.target.value)}
             />
@@ -371,7 +361,7 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
               onChange={(e) => setPrograma(e.target.value)}
             />
           )}
-          {(tipoSeleccionados.includes("Institucionales")) && (
+          {tipoSeleccionados.includes("Institucionales") && (
             <MultiSearchableSelect
               label="Funcionario(s)"
               hint="Podés seleccionar varios. Quedan como chips y se guardan separados por coma."
@@ -384,20 +374,6 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
               value={funcionario}
               onChange={setFuncionario}
               emptyMessage="Ningún funcionario coincide"
-            />
-          )}
-          {tipoSeleccionados.includes("Producción") && (
-            <SearchableSelect
-              label="Referente de Producción"
-              placeholder="Seleccionar referente de Producción…"
-              searchPlaceholder="Buscar…"
-              options={[
-                { value: "", label: "— Sin referente —" },
-                ...PRODUCTORES_OPTIONS,
-              ]}
-              value={productor}
-              onChange={setProductor}
-              emptyMessage="Ningún referente coincide"
             />
           )}
           <Select
@@ -473,32 +449,98 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
         </div>
       );
 
-    case "cobertura":
+    case "cobertura": {
+      const canales = (datosProduccion.comunicacionMedio ?? "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const hasIg = canales.includes("Instagram");
+      const hasLi = canales.includes("LinkedIn");
+      const igCuentas = (datosProduccion.comunicacionInstagram ?? "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const liCuentas = (datosProduccion.comunicacionLinkedin ?? "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+
       return (
         <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
           {coberturaBriefFields.map((field) => {
-            if (field.key === "comunicacionMedio" && field.options?.length) {
-              const selected = (datosProduccion[field.key] ?? "")
-                .split(",")
-                .map((s) => s.trim())
-                .filter(Boolean);
+            if (field.key === "comunicacionMedio") {
               return (
-                <MultiSearchableSelect
-                  key={field.key}
-                  label={field.label}
-                  hint="Podés elegir varios canales."
-                  placeholder="Seleccionar canal(es)…"
-                  searchPlaceholder="Buscar canal…"
-                  options={field.options.filter((o) => o.value)}
-                  value={selected}
-                  onChange={(values) =>
-                    setDatosProduccion((prev) => ({
-                      ...prev,
-                      [field.key]: values.join(", "),
-                    }))
-                  }
-                  emptyMessage="Ningún canal coincide"
-                />
+                <div key={field.key} className="space-y-3">
+                  <MultiSearchableSelect
+                    label={field.label}
+                    hint="Elegí el o los canales principales."
+                    placeholder="Seleccionar canal(es)…"
+                    searchPlaceholder="Buscar canal…"
+                    options={COBERTURA_CANALES_BASE}
+                    value={canales}
+                    onChange={(values) =>
+                      setDatosProduccion((prev) => ({
+                        ...prev,
+                        comunicacionMedio: values.join(", "),
+                      }))
+                    }
+                    emptyMessage="Ningún canal coincide"
+                  />
+                  {hasIg && (
+                    <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50/80 p-3">
+                      <MultiSearchableSelect
+                        label="Cuentas de Instagram"
+                        placeholder="Elegí cuenta(s)…"
+                        options={INSTAGRAM_CUENTAS}
+                        value={igCuentas}
+                        onChange={(values) =>
+                          setDatosProduccion((prev) => ({
+                            ...prev,
+                            comunicacionInstagram: values.join(", "),
+                          }))
+                        }
+                      />
+                      <Input
+                        label="Instagram — otra cuenta (campo libre)"
+                        value={datosProduccion.comunicacionInstagramOtro ?? ""}
+                        onChange={(e) =>
+                          setDatosProduccion((prev) => ({
+                            ...prev,
+                            comunicacionInstagramOtro: e.target.value,
+                          }))
+                        }
+                        placeholder="Ej: @cuenta_especifica"
+                      />
+                    </div>
+                  )}
+                  {hasLi && (
+                    <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50/80 p-3">
+                      <MultiSearchableSelect
+                        label="Cuentas de LinkedIn"
+                        placeholder="Elegí cuenta(s)…"
+                        options={LINKEDIN_CUENTAS}
+                        value={liCuentas}
+                        onChange={(values) =>
+                          setDatosProduccion((prev) => ({
+                            ...prev,
+                            comunicacionLinkedin: values.join(", "),
+                          }))
+                        }
+                      />
+                      <Input
+                        label="LinkedIn — otra cuenta (campo libre)"
+                        value={datosProduccion.comunicacionLinkedinOtro ?? ""}
+                        onChange={(e) =>
+                          setDatosProduccion((prev) => ({
+                            ...prev,
+                            comunicacionLinkedinOtro: e.target.value,
+                          }))
+                        }
+                        placeholder="Ej: página o perfil"
+                      />
+                    </div>
+                  )}
+                </div>
               );
             }
             if (field.type === "textarea") {
@@ -540,13 +582,19 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
           })}
         </div>
       );
+    }
 
-    case "produccion":
+    case "produccion": {
+      const materiales = (datosProduccion.materialesExtra ?? "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+
       return (
         <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
           {categoryExtraFields.PRODUCCION.filter((f) => !PRODUCCION_FORM_EXCLUDE.has(f.key)).map(
             (field) => (
-              <div key={field.key}>
+              <div key={field.key} className="space-y-2">
                 {field.type === "textarea" ? (
                   <TextArea
                     label={field.label}
@@ -575,16 +623,68 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
                     type={field.type === "number" ? "number" : "text"}
                   />
                 )}
+                {field.key === "pantallaLED" && datosProduccion.pantallaLED === "si" && (
+                  <Input
+                    label="Cantidad pantallas LED"
+                    type="number"
+                    value={datosProduccion.pantallaLEDCantidad ?? ""}
+                    onChange={(e) =>
+                      setDatosProduccion((prev) => ({
+                        ...prev,
+                        pantallaLEDCantidad: e.target.value,
+                      }))
+                    }
+                    placeholder="Ej: 1"
+                  />
+                )}
+                {field.key === "microfonos" && datosProduccion.microfonos === "si" && (
+                  <Input
+                    label="Cantidad de micrófonos"
+                    type="number"
+                    value={datosProduccion.microfonosCantidad ?? ""}
+                    onChange={(e) =>
+                      setDatosProduccion((prev) => ({
+                        ...prev,
+                        microfonosCantidad: e.target.value,
+                      }))
+                    }
+                    placeholder="Ej: 2"
+                  />
+                )}
               </div>
             )
           )}
+          <MultiSearchableSelect
+            label="Materiales extra"
+            hint="Rotafolios, cliperas, cables y otros insumos."
+            placeholder="Seleccionar materiales…"
+            searchPlaceholder="Buscar material…"
+            options={MATERIALES_EXTRA_OPTIONS}
+            value={materiales}
+            onChange={(values) =>
+              setDatosProduccion((prev) => ({
+                ...prev,
+                materialesExtra: values.join(", "),
+              }))
+            }
+            emptyMessage="Ningún material coincide"
+          />
+          <Input
+            label="Otro material (campo libre)"
+            value={datosProduccion.materialesExtraOtro ?? ""}
+            onChange={(e) =>
+              setDatosProduccion((prev) => ({ ...prev, materialesExtraOtro: e.target.value }))
+            }
+            placeholder="Ej: cinta de embalar, etc."
+          />
         </div>
       );
+    }
 
     case "cierre":
       return (
         <div className="space-y-4">
-          {showEstadoSelect && (
+          {showEstadoSelect ? (
             <div className="space-y-1.5">
               <Select
                 label="Estado del evento"
@@ -596,50 +696,12 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
                 <p className="text-xs text-slate-500 px-0.5">{eventStatusHints[estado]}</p>
               )}
             </div>
+          ) : (
+            <p className="text-sm text-slate-600 text-center">
+              Listo para guardar. Los pedidos de producción, catering y cobertura se crearán como
+              requerimientos pendientes de aprobación.
+            </p>
           )}
-          <TextArea
-            label="Sinopsis (opcional)"
-            value={resumen}
-            onChange={(e) => setResumen(e.target.value)}
-            rows={3}
-            placeholder="Si la dejás vacía, podés generarla después con IA…"
-          />
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Documentos PDF (opcional)
-            </label>
-            <label className="cursor-pointer inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300">
-              <input
-                type="file"
-                accept=".pdf,application/pdf"
-                onChange={onFileChange}
-                className="hidden"
-                multiple
-              />
-              <span>Agregar PDF</span>
-            </label>
-            {archivosPdf.length > 0 && (
-              <ul className="mt-2 space-y-1">
-                {archivosPdf.map((f, i) => (
-                  <li
-                    key={`${f.name}-${i}`}
-                    className="flex items-center justify-between gap-2 py-1.5 px-2 rounded bg-slate-50 text-sm"
-                  >
-                    <span className="truncate">📄 {f.name}</span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeArchivo(i)}
-                      className="text-red-600 text-xs shrink-0"
-                    >
-                      Quitar
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
         </div>
       );
 

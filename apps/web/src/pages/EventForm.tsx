@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getEvent, createEvent, updateEvent } from "../api/events";
-import { uploadAttachment } from "../api/attachments";
 import type { EventStatus } from "../types";
 import { useAuth } from "../hooks/useAuth";
 import { Button } from "../components/ui/Button";
@@ -42,13 +41,11 @@ export default function EventForm() {
   const [areaSolicitante, setAreaSolicitante] = useState("");
   const [fechaTentativa, setFechaTentativa] = useState("");
   const [estado, setEstado] = useState<EventStatus>("PENDIENTE");
-  const [resumen, setResumen] = useState("");
   const [publico, setPublico] = useState<"EXTERNO" | "INTERNO" | "MIXTO" | "">("");
   const [usuarioSolicitante, setUsuarioSolicitante] = useState("");
   const [lugar, setLugar] = useState("");
   const [programa, setPrograma] = useState("");
   const [funcionario, setFuncionario] = useState<string[]>([]);
-  const [productor, setProductor] = useState("");
   const [necesitaAcreditacion, setNecesitaAcreditacion] = useState<boolean | "">("");
   const [linkAcreditacionConvocados, setLinkAcreditacionConvocados] = useState("");
   const [datosProduccion, setDatosProduccion] = useState<Record<string, string>>({});
@@ -57,7 +54,6 @@ export default function EventForm() {
   const [motivoCancelacion, setMotivoCancelacion] = useState("");
   const [confirmModal, setConfirmModal] = useState<{ action: "CONFIRMADO" | "CANCELADO" } | null>(null);
   const [stepError, setStepError] = useState("");
-  const [archivosPdf, setArchivosPdf] = useState<File[]>([]);
 
   const { data: existing } = useQuery({
     queryKey: ["event", id],
@@ -85,7 +81,6 @@ export default function EventForm() {
       setAreaSolicitante(existing.areaSolicitante);
       setFechaTentativa(existing.fechaTentativa.slice(0, 10));
       setEstado(existing.estado as EventStatus);
-      setResumen(existing.resumen ?? "");
       setPublico((existing.publico as "EXTERNO" | "INTERNO" | "MIXTO") ?? "");
       setUsuarioSolicitante(existing.usuarioSolicitante ?? "");
       setLugar(existing.lugar ?? "");
@@ -96,7 +91,6 @@ export default function EventForm() {
           .map((s) => s.trim())
           .filter(Boolean)
       );
-      setProductor((existing as { productor?: string | null }).productor ?? "");
       setNecesitaAcreditacion((existing as { necesitaAcreditacion?: boolean | null }).necesitaAcreditacion ?? "");
       setLinkAcreditacionConvocados((existing as { linkAcreditacionConvocados?: string | null }).linkAcreditacionConvocados ?? "");
       const dp = existing.datosProduccion;
@@ -111,17 +105,10 @@ export default function EventForm() {
   }, [existing]);
 
   const create = useMutation({
-    mutationFn: async (data: Parameters<typeof createEvent>[0] & { files?: File[] }) => {
-      const { files = [], ...eventData } = data;
-      const event = await createEvent(eventData);
-      for (const file of files) {
-        await uploadAttachment(event.id, file);
-      }
-      return event;
-    },
+    mutationFn: async (data: Parameters<typeof createEvent>[0]) => createEvent(data),
     onSuccess: (event) => {
       qc.invalidateQueries({ queryKey: ["events"] });
-      qc.invalidateQueries({ queryKey: ["attachments", event.id] });
+      qc.invalidateQueries({ queryKey: ["proposals", event.id] });
       navigate(`/events/${event.id}`, {
         state: event.acreditappWarning
           ? { acreditappWarning: event.acreditappWarning }
@@ -133,22 +120,14 @@ export default function EventForm() {
     mutationFn: async ({
       id: i,
       data,
-      files = [],
     }: {
       id: string;
       data: Parameters<typeof updateEvent>[1];
-      files?: File[];
-    }) => {
-      const event = await updateEvent(i, data);
-      for (const file of files) {
-        await uploadAttachment(i, file);
-      }
-      return event;
-    },
+    }) => updateEvent(i, data),
     onSuccess: (event) => {
       qc.invalidateQueries({ queryKey: ["events"] });
       qc.invalidateQueries({ queryKey: ["event", id] });
-      qc.invalidateQueries({ queryKey: ["attachments", id] });
+      qc.invalidateQueries({ queryKey: ["proposals", id] });
       navigate(`/events/${id}`, {
         state: event.acreditappWarning
           ? { acreditappWarning: event.acreditappWarning }
@@ -165,8 +144,9 @@ export default function EventForm() {
         tipoSeleccionados,
         isEdit: !isNew,
         estado,
+        includeCierre: isAdmin && !isDirectorGeneral,
       }),
-    [tipoSeleccionados, isNew, estado]
+    [tipoSeleccionados, isNew, estado, isAdmin, isDirectorGeneral]
   );
 
   const currentStep = steps[stepIndex] ?? steps[0];
@@ -226,8 +206,8 @@ export default function EventForm() {
         return null;
       case "dg-fecha":
         if (!fechaTentativa) return "Seleccioná una fecha tentativa.";
-        if (isAdmin && !areaSolicitante.trim()) return "Seleccioná la dirección general solicitante.";
-        if (!user?.area && !isAdmin && !areaSolicitante.trim()) return "Seleccioná la dirección general solicitante.";
+        if (isAdmin && !areaSolicitante.trim()) return "Seleccioná el área solicitante.";
+        if (!user?.area && !isAdmin && !areaSolicitante.trim()) return "Seleccioná el área solicitante.";
         return null;
       case "tipo":
         if (tipoEventoValue.length === 0) return "Elegí al menos un tipo de requerimiento.";
@@ -309,7 +289,7 @@ export default function EventForm() {
       return;
     }
     if (isAdmin && !areaSolicitante.trim()) {
-      setStepError("Seleccioná una dirección general solicitante.");
+      setStepError("Seleccioná un área solicitante.");
       return;
     }
     if (tipoEventoValue.length === 0) {
@@ -324,17 +304,14 @@ export default function EventForm() {
         areaSolicitante,
         fechaTentativa: fechaTentativa || new Date().toISOString().slice(0, 10),
         estado: isAdmin ? estado : "PENDIENTE",
-        resumen: resumen.trim() || undefined,
         publico: publico || undefined,
         usuarioSolicitante: usuarioSolicitante.trim() || undefined,
         lugar: lugar.trim() || undefined,
         programa: programa.trim() || undefined,
         funcionario: funcionario.length > 0 ? funcionario.join(", ") : undefined,
-        productor: productor.trim() || undefined,
         necesitaAcreditacion: necesitaAcreditacion === true || necesitaAcreditacion === false ? necesitaAcreditacion : undefined,
         linkAcreditacionConvocados: linkAcreditacionConvocados.trim() || undefined,
         datosProduccion: Object.keys(datosProduccion).length > 0 ? datosProduccion : undefined,
-        files: archivosPdf,
       });
     } else {
       update.mutate({
@@ -346,13 +323,11 @@ export default function EventForm() {
           areaSolicitante,
           fechaTentativa: fechaTentativa || existing!.fechaTentativa,
           estado: isDirectorGeneral ? existing!.estado : isAdmin ? estado : existing!.estado,
-          resumen: resumen.trim() || null,
           publico: publico || null,
           usuarioSolicitante: usuarioSolicitante.trim() || null,
           lugar: lugar.trim() || null,
           programa: programa.trim() || null,
           funcionario: funcionario.length > 0 ? funcionario.join(", ") : null,
-          productor: productor.trim() || null,
           necesitaAcreditacion: necesitaAcreditacion === true || necesitaAcreditacion === false ? necesitaAcreditacion : null,
           linkAcreditacionConvocados: linkAcreditacionConvocados.trim() || null,
           datosProduccion: Object.keys(datosProduccion).length > 0 ? datosProduccion : null,
@@ -360,20 +335,8 @@ export default function EventForm() {
           realizacionImpacto: estado === "REALIZADO" && realizacionImpacto.trim() ? realizacionImpacto.trim() : undefined,
           motivoCancelacion: estado === "CANCELADO" ? (motivoCancelacion.trim() || null) : undefined,
         },
-        files: archivosPdf,
       });
     }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? []);
-    const pdfs = files.filter((f) => f.type === "application/pdf");
-    setArchivosPdf((prev) => [...prev, ...pdfs]);
-    e.target.value = "";
-  };
-
-  const removeArchivo = (index: number) => {
-    setArchivosPdf((prev) => prev.filter((_, i) => i !== index));
   };
 
   const err = create.error || update.error;
@@ -454,17 +417,10 @@ export default function EventForm() {
           setPrograma={setPrograma}
           funcionario={funcionario}
           setFuncionario={setFuncionario}
-          productor={productor}
-          setProductor={setProductor}
           necesitaAcreditacion={necesitaAcreditacion}
           setNecesitaAcreditacion={setNecesitaAcreditacion}
           linkAcreditacionConvocados={linkAcreditacionConvocados}
           setLinkAcreditacionConvocados={setLinkAcreditacionConvocados}
-          resumen={resumen}
-          setResumen={setResumen}
-          archivosPdf={archivosPdf}
-          onFileChange={handleFileChange}
-          removeArchivo={removeArchivo}
           estado={estado}
           setEstado={setEstado}
           estadoOptions={estadoOptions}
