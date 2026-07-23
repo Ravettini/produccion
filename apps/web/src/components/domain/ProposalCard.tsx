@@ -3,8 +3,9 @@ import type { Proposal, ProposalCategory, ProposalStatus } from "../../types";
 import { Badge } from "../ui/Badge";
 import { StatusBadge } from "../ui/StatusBadge";
 import { categoryLabels, categoryColors } from "../../utils/labels";
-import { hasUnseenChanges } from "../../utils/changeAlerts";
+import { hasUnseenChanges, proposalRelevantToRole } from "../../utils/changeAlerts";
 import { cn } from "../../utils/cn";
+import { useAuth } from "../../hooks/useAuth";
 
 interface ProposalCardProps {
   proposal: Proposal;
@@ -26,12 +27,11 @@ export function ProposalCard({
   accent = "neutral",
   className,
 }: ProposalCardProps) {
-  const changed = hasUnseenChanges(
-    "proposal",
-    proposal.id,
-    proposal.updatedAt,
-    proposal.createdAt
-  );
+  const { user } = useAuth();
+  const relevant = proposalRelevantToRole(user?.role, proposal);
+  const changed =
+    relevant &&
+    hasUnseenChanges("proposal", proposal.id, proposal.updatedAt, proposal.createdAt);
 
   const content = (
     <>

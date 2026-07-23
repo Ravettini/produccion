@@ -52,6 +52,14 @@ export interface Event {
   createdAt: string;
   updatedAt: string;
   _count?: { proposals: number };
+  /** Resumen de requerimientos para avisos de cambios por rol */
+  proposals?: {
+    id: string;
+    categoria: ProposalCategory | string;
+    titulo: string;
+    updatedAt: string;
+    createdAt: string;
+  }[];
 }
 
 export interface Proposal {

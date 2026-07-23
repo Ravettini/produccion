@@ -65,6 +65,15 @@ eventsRouter.get("/", authMiddleware, async (req, res) => {
     orderBy: { createdAt: "desc" },
     include: {
       _count: { select: { proposals: true } },
+      proposals: {
+        select: {
+          id: true,
+          categoria: true,
+          titulo: true,
+          updatedAt: true,
+          createdAt: true,
+        },
+      },
     },
   });
   const dbUser = await prisma.user.findUnique({
@@ -205,6 +214,8 @@ eventsRouter.post("/", authMiddleware, async (req, res) => {
         userId: req.user.id,
         tipoEvento: String(event.tipoEvento),
         lugar: event.lugar,
+        funcionario: event.funcionario,
+        programa: event.programa,
         datosProduccion: event.datosProduccion,
       });
     } catch (err) {
@@ -366,6 +377,8 @@ eventsRouter.put("/:id", authMiddleware, async (req, res) => {
         userId: req.user.id,
         tipoEvento: String(event.tipoEvento),
         lugar: event.lugar,
+        funcionario: event.funcionario,
+        programa: event.programa,
         datosProduccion: event.datosProduccion,
       });
     } catch (err) {

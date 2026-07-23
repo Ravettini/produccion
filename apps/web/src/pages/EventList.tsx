@@ -214,7 +214,7 @@ export default function EventList() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {filtered.map((e: Event) => (
-            <EventCard key={e.id} event={e} />
+            <EventCard key={e.id} event={e} userRole={user?.role} />
           ))}
         </div>
       )}

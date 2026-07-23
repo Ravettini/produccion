@@ -307,6 +307,18 @@ eventDecisionsRouter.patch("/:eventId/fields", authMiddleware, async (req, res) 
         },
       });
     }
+    // Avisos por rol: tocar el requerimiento correspondiente
+    const touchCategories = new Set<string>();
+    if (updates.productor !== undefined) touchCategories.add("PRODUCCION");
+    if (updates.funcionario !== undefined || updates.programa !== undefined) {
+      touchCategories.add("AGENDA");
+    }
+    for (const categoria of touchCategories) {
+      await tx.proposal.updateMany({
+        where: { eventId, categoria },
+        data: { updatedAt: new Date() },
+      });
+    }
     return ev;
   });
 

@@ -48,7 +48,7 @@ export const categoryLabels: Record<ProposalCategory, string> = {
   LOGISTICA: "Logística",
   CATERING: "Catering",
   TECNICA: "Técnica",
-  AGENDA: "Agenda",
+  AGENDA: "Institucionales",
   PRODUCCION: "Producción",
   OTRO: "Otro",
 };

@@ -43,7 +43,7 @@ import { EventHealthChecklist } from "../components/event/EventHealthChecklist";
 import { EventOverview } from "../components/event/EventOverview";
 import { AreaDecisionsPanel } from "../components/domain/AreaDecisionsPanel";
 import { EventChangesPanel } from "../components/domain/EventChangesPanel";
-import { hasUnseenChanges, markSeen } from "../utils/changeAlerts";
+import { hasUnseenChanges, markSeen, hasEventUnseenChangesForUser, proposalRelevantToRole } from "../utils/changeAlerts";
 
 type EventDetailTab =
   | "estado"
@@ -84,13 +84,6 @@ export default function EventDetail() {
   });
 
   useEffect(() => {
-    if (!event?.id || !event.updatedAt) return;
-    const hadChanges = hasUnseenChanges("event", event.id, event.updatedAt, event.createdAt);
-    setShowChangeAlert(hadChanges);
-    markSeen("event", event.id, event.updatedAt);
-  }, [event?.id, event?.updatedAt, event?.createdAt]);
-
-  useEffect(() => {
     const warning = (location.state as { acreditappWarning?: string } | null)?.acreditappWarning;
     if (warning) {
       setAcreditappWarning(warning);
@@ -102,6 +95,24 @@ export default function EventDetail() {
     queryFn: () => listProposals(id!),
     enabled: !!id,
   });
+
+  useEffect(() => {
+    if (!event?.id || !event.updatedAt) return;
+    const hadChanges = hasEventUnseenChangesForUser(
+      user?.role,
+      event,
+      proposals.map((p) => ({
+        id: p.id,
+        categoria: p.categoria,
+        titulo: p.titulo,
+        updatedAt: p.updatedAt,
+        createdAt: p.createdAt,
+      }))
+    );
+    setShowChangeAlert(hadChanges);
+    markSeen("event", event.id, event.updatedAt);
+  }, [event?.id, event?.updatedAt, event?.createdAt, proposals, user?.role]);
+
   const { data: attachments = [], isLoading: loadingAttachments } = useQuery({
     queryKey: ["attachments", id],
     queryFn: () => listAttachments(id!),
@@ -279,7 +290,11 @@ export default function EventDetail() {
       </div>
 
       {(showChangeAlert ||
-        proposals.some((p) => hasUnseenChanges("proposal", p.id, p.updatedAt, p.createdAt))) && (
+        proposals.some(
+          (p) =>
+            proposalRelevantToRole(user?.role, p) &&
+            hasUnseenChanges("proposal", p.id, p.updatedAt, p.createdAt)
+        )) && (
         <div
           className="mb-6 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950"
           role="status"
@@ -301,6 +316,7 @@ export default function EventDetail() {
 
       <EventOverview
         event={event}
+        user={user}
         editingResumen={editingResumen}
         resumenDraft={resumenDraft}
         onStartEditResumen={() => {

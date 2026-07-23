@@ -1,9 +1,15 @@
+import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { FileDown, Sparkles } from "lucide-react";
-import type { Event } from "../../types";
+import type { Event, User } from "../../types";
 import { Button, Card, CardBody, CardHeader, TextArea } from "../ui";
+import { SearchableSelect } from "../ui/SearchableSelect";
+import { patchEventFields } from "../../api/eventDecisions";
+import { PRODUCTORES_OPTIONS } from "../../config/productores";
 
 interface EventOverviewProps {
   event: Event;
+  user?: User | null;
   editingResumen: boolean;
   resumenDraft: string;
   onStartEditResumen: () => void;
@@ -43,6 +49,7 @@ function Detail({
 
 export function EventOverview({
   event,
+  user,
   editingResumen,
   resumenDraft,
   onStartEditResumen,
@@ -62,6 +69,30 @@ export function EventOverview({
   acreditappWarning,
   acreditappSyncError,
 }: EventOverviewProps) {
+  const qc = useQueryClient();
+  const [editingProductor, setEditingProductor] = useState(false);
+  const [productorDraft, setProductorDraft] = useState(event.productor ?? "");
+
+  const tieneProduccion = /producci[oó]n/i.test(event.tipoEvento);
+  const canEditProductor =
+    tieneProduccion && (user?.role === "PRODUCCION" || user?.role === "ADMIN");
+
+  const saveProductor = useMutation({
+    mutationFn: () =>
+      patchEventFields(
+        event.id,
+        { productor: productorDraft.trim() || null },
+        "Asignó referente de Producción"
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["event", event.id] });
+      qc.invalidateQueries({ queryKey: ["events"] });
+      qc.invalidateQueries({ queryKey: ["event-audits", event.id] });
+      qc.invalidateQueries({ queryKey: ["proposals", event.id] });
+      setEditingProductor(false);
+    },
+  });
+
   const publicoLabel =
     event.publico === "EXTERNO"
       ? "Externo"
@@ -152,9 +183,6 @@ export function EventOverview({
                 {event.funcionario && (
                   <Detail label="Funcionario(s)">{event.funcionario}</Detail>
                 )}
-                {event.productor && (
-                  <Detail label="Referente de Producción">{event.productor}</Detail>
-                )}
                 {event.necesitaAcreditacion != null && (
                   <Detail label="Acreditación">
                     {event.necesitaAcreditacion ? "Sí" : "No"}
@@ -198,6 +226,76 @@ export function EventOverview({
                   </Detail>
                 )}
               </div>
+
+              {tieneProduccion && (
+                <div className="rounded-lg border border-teal-200 bg-teal-50/50 p-4 space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-teal-800">
+                        Referente de Producción
+                      </p>
+                      {!editingProductor && (
+                        <p className="mt-1 text-sm text-slate-800">
+                          {event.productor?.trim() || "— Sin asignar —"}
+                        </p>
+                      )}
+                    </div>
+                    {canEditProductor && !editingProductor && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => {
+                          setProductorDraft(event.productor ?? "");
+                          setEditingProductor(true);
+                        }}
+                      >
+                        {event.productor ? "Cambiar" : "Asignar"}
+                      </Button>
+                    )}
+                  </div>
+                  {editingProductor && canEditProductor && (
+                    <div className="space-y-3">
+                      <SearchableSelect
+                        label="Referente"
+                        value={productorDraft}
+                        onChange={setProductorDraft}
+                        options={[
+                          { value: "", label: "— Sin referente —" },
+                          ...PRODUCTORES_OPTIONS,
+                        ]}
+                        placeholder="Buscar referente…"
+                        emptyMessage="Ningún referente coincide"
+                      />
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          onClick={() => saveProductor.mutate()}
+                          disabled={saveProductor.isPending}
+                        >
+                          {saveProductor.isPending ? "Guardando…" : "Guardar"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={() => {
+                            setEditingProductor(false);
+                            setProductorDraft(event.productor ?? "");
+                          }}
+                          disabled={saveProductor.isPending}
+                        >
+                          Cancelar
+                        </Button>
+                      </div>
+                      {saveProductor.isError && (
+                        <p className="text-sm text-red-600">
+                          {(saveProductor.error as Error).message ||
+                            "No se pudo guardar el referente."}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {needsAcreditappSync && (
                 <div className="rounded-lg border border-amber-200 bg-amber-50/80 p-4 space-y-3">

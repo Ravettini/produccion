@@ -1,20 +1,21 @@
 import { Link } from "react-router-dom";
 import { Calendar, Clock } from "lucide-react";
-import type { Event, EventStatus } from "../../types";
+import type { Event, EventStatus, Role } from "../../types";
 import { StatusBadge } from "../ui/StatusBadge";
 import { formatDate } from "../../utils/formatters";
 import { getEventHorario } from "../../utils/eventHelpers";
-import { hasUnseenChanges } from "../../utils/changeAlerts";
+import { hasEventUnseenChangesForUser } from "../../utils/changeAlerts";
 import { cn } from "../../utils/cn";
 
 interface EventCardProps {
   event: Event;
+  userRole?: Role | string | null;
   className?: string;
 }
 
-export function EventCard({ event, className }: EventCardProps) {
+export function EventCard({ event, userRole, className }: EventCardProps) {
   const horario = getEventHorario(event);
-  const changed = hasUnseenChanges("event", event.id, event.updatedAt, event.createdAt);
+  const changed = hasEventUnseenChangesForUser(userRole, event, event.proposals ?? []);
 
   return (
     <Link
@@ -56,7 +57,9 @@ export function EventCard({ event, className }: EventCardProps) {
           </dd>
         </div>
         <div className="sm:col-span-2">
-          <dt className="text-xs font-medium text-slate-400 uppercase tracking-wide">DG solicitante</dt>
+          <dt className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+            Área solicitante
+          </dt>
           <dd className="text-slate-700 mt-0.5 truncate" title={event.areaSolicitante}>
             {event.areaSolicitante}
           </dd>

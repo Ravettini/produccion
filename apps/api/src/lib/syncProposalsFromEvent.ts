@@ -39,6 +39,34 @@ function line(label: string, value?: string | null): string | null {
   return `${label}: ${v}`;
 }
 
+function formatMaterialesExtra(dp: Datos): string | null {
+  const items = (dp.materialesExtra ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (items.length === 0) return null;
+
+  let cantidades: Record<string, string> = {};
+  const raw = dp.materialesExtraCantidades?.trim();
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        cantidades = parsed as Record<string, string>;
+      }
+    } catch {
+      cantidades = {};
+    }
+  }
+
+  return items
+    .map((item) => {
+      const qty = cantidades[item]?.trim();
+      return qty ? `${item} × ${qty}` : item;
+    })
+    .join(", ");
+}
+
 function buildProduccionDescription(dp: Datos, lugar?: string | null): string {
   const lines = [
     line("Lugar", lugar),
@@ -55,7 +83,7 @@ function buildProduccionDescription(dp: Datos, lugar?: string | null): string {
     line("Cant. micrófonos", dp.microfonosCantidad),
     line("Equipamiento", dp.equipamiento),
     line("Req. técnicos", dp.requerimientosTecnicos),
-    line("Materiales extra", dp.materialesExtra),
+    line("Materiales extra", formatMaterialesExtra(dp)),
     line("Materiales (otro)", dp.materialesExtraOtro),
     line("WiFi", dp.requiereWifi),
     line("Accesibilidad", dp.requiereAccesibilidad),
@@ -107,6 +135,7 @@ const PROD_EXTRA_KEYS = [
   "equipamiento",
   "requerimientosTecnicos",
   "materialesExtra",
+  "materialesExtraCantidades",
   "materialesExtraOtro",
   "requiereWifi",
   "requiereAccesibilidad",
@@ -213,15 +242,38 @@ async function upsertSubmittedProposal(opts: {
   });
 }
 
+function buildInstitucionalesDescription(opts: {
+  funcionario?: string | null;
+  programa?: string | null;
+  lugar?: string | null;
+  dp: Datos;
+}): string {
+  const lines = [
+    line("Funcionario(s)", opts.funcionario),
+    line("Programa", opts.programa),
+    line("Lugar", opts.lugar),
+    line("Convocatoria", opts.dp.horarioConvocatoria),
+    line("Comienzo", opts.dp.horarioComienzo),
+    line("Finalización", opts.dp.horarioFinalizacion),
+  ].filter(Boolean);
+  return lines.length > 0
+    ? lines.join("\n")
+    : "Solicitud de acompañamiento institucional / agenda.";
+}
+
 export async function syncProposalsFromEvent(opts: {
   eventId: string;
   userId: string;
   tipoEvento: string;
   lugar?: string | null;
+  funcionario?: string | null;
+  programa?: string | null;
   datosProduccion?: unknown;
 }): Promise<void> {
   const dp = parseDatos(opts.datosProduccion);
-  const hasProd = tipoIncludes(opts.tipoEvento, "produccion") || tipoIncludes(opts.tipoEvento, "producción");
+  const hasProd =
+    tipoIncludes(opts.tipoEvento, "produccion") || tipoIncludes(opts.tipoEvento, "producción");
+  const hasInsti = tipoIncludes(opts.tipoEvento, "institucional");
   const hasCobertura =
     tipoIncludes(opts.tipoEvento, "cobertura") || tipoIncludes(opts.tipoEvento, "comunicacion");
   const wantsCatering = dp.catering === "si";
@@ -245,6 +297,27 @@ export async function syncProposalsFromEvent(opts: {
       titulo: "Catering",
       descripcion: buildCateringDescription(dp),
       datosExtra: pick(dp, CATERING_EXTRA_KEYS),
+    });
+  }
+
+  if (hasInsti) {
+    const datosExtra: Datos = {};
+    if (opts.funcionario?.trim()) datosExtra.funcionario = opts.funcionario.trim();
+    if (opts.programa?.trim()) datosExtra.programa = opts.programa.trim();
+    if (opts.lugar?.trim()) datosExtra.lugar = opts.lugar.trim();
+    if (dp.horarioComienzo) datosExtra.horario = `${dp.horarioComienzo}${dp.horarioFinalizacion ? ` a ${dp.horarioFinalizacion}` : ""}`;
+    await upsertSubmittedProposal({
+      eventId: opts.eventId,
+      userId: opts.userId,
+      categoria: "AGENDA",
+      titulo: "Institucionales",
+      descripcion: buildInstitucionalesDescription({
+        funcionario: opts.funcionario,
+        programa: opts.programa,
+        lugar: opts.lugar,
+        dp,
+      }),
+      datosExtra,
     });
   }
 

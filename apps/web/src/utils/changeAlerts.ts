@@ -41,6 +41,67 @@ export function hasUnseenChanges(
   return u > l + 500;
 }
 
+const BROAD_ROLES = new Set([
+  "ADMIN",
+  "DIRECTOR_GENERAL",
+  "VALIDADOR",
+  "ORGANIZACION",
+]);
+
+export type ProposalChangeHint = {
+  id: string;
+  categoria: string;
+  titulo?: string | null;
+  updatedAt: string;
+  createdAt?: string;
+};
+
+/** ¿Este requerimiento le importa al rol? */
+export function proposalRelevantToRole(
+  role: string | undefined | null,
+  proposal: { categoria: string; titulo?: string | null }
+): boolean {
+  if (!role || BROAD_ROLES.has(role)) return true;
+  if (role === "PRODUCCION") {
+    return ["PRODUCCION", "CATERING", "TECNICA", "LOGISTICA"].includes(proposal.categoria);
+  }
+  if (role === "INSTITUCIONALES" || role === "AGENDA") {
+    return proposal.categoria === "AGENDA";
+  }
+  if (role === "COBERTURA") {
+    return (
+      proposal.categoria === "OTRO" &&
+      String(proposal.titulo ?? "")
+        .toLowerCase()
+        .includes("cobertura")
+    );
+  }
+  return true;
+}
+
+/**
+ * Aviso de cambios del evento filtrado por rol:
+ * - Admin / organización: evento o cualquier requerimiento
+ * - Especialidad: solo requerimientos de su área
+ */
+export function hasEventUnseenChangesForUser(
+  role: string | undefined | null,
+  event: { id: string; updatedAt: string; createdAt?: string },
+  proposals: ProposalChangeHint[] = []
+): boolean {
+  const relevant = proposals.filter((p) => proposalRelevantToRole(role, p));
+  const proposalChanged = relevant.some((p) =>
+    hasUnseenChanges("proposal", p.id, p.updatedAt, p.createdAt)
+  );
+  if (proposalChanged) return true;
+
+  if (!role || BROAD_ROLES.has(role)) {
+    return hasUnseenChanges("event", event.id, event.updatedAt, event.createdAt);
+  }
+  // Especialidad: no avisar por updates genéricos del evento (ej. sync Acreditapp)
+  return false;
+}
+
 export const modalidadLabels: Record<string, string> = {
   INTERNO: "Interno",
   EXTERNO: "Externo",

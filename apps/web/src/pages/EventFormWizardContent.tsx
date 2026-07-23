@@ -654,6 +654,29 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
         .map((s) => s.trim())
         .filter(Boolean);
 
+      const parseCantidades = (raw?: string): Record<string, string> => {
+        if (!raw?.trim()) return {};
+        try {
+          const parsed = JSON.parse(raw) as unknown;
+          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            return parsed as Record<string, string>;
+          }
+        } catch {
+          /* ignore */
+        }
+        return {};
+      };
+
+      const materialesCantidades = parseCantidades(datosProduccion.materialesExtraCantidades);
+
+      const setMaterialesCantidades = (next: Record<string, string>) => {
+        setDatosProduccion((prev) => ({
+          ...prev,
+          materialesExtraCantidades:
+            Object.keys(next).length > 0 ? JSON.stringify(next) : "",
+        }));
+      };
+
       return (
         <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
           {categoryExtraFields.PRODUCCION.filter((f) => !PRODUCCION_FORM_EXCLUDE.has(f.key)).map(
@@ -720,19 +743,64 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
           )}
           <MultiSearchableSelect
             label="Materiales extra"
-            hint="Rotafolios, cliperas, cables y otros insumos."
+            hint="Rotafolios, cliperas, cables y otros insumos. Después podés indicar la cantidad de cada uno."
             placeholder="Seleccionar materiales…"
             searchPlaceholder="Buscar material…"
             options={MATERIALES_EXTRA_OPTIONS}
             value={materiales}
             onChange={(values) =>
-              setDatosProduccion((prev) => ({
-                ...prev,
-                materialesExtra: values.join(", "),
-              }))
+              setDatosProduccion((prev) => {
+                const prevCant = parseCantidades(prev.materialesExtraCantidades);
+                const nextCant: Record<string, string> = {};
+                for (const v of values) {
+                  if (prevCant[v]?.trim()) nextCant[v] = prevCant[v];
+                }
+                return {
+                  ...prev,
+                  materialesExtra: values.join(", "),
+                  materialesExtraCantidades:
+                    Object.keys(nextCant).length > 0 ? JSON.stringify(nextCant) : "",
+                };
+              })
             }
             emptyMessage="Ningún material coincide"
           />
+          {materiales.length > 0 && (
+            <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50/80 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Cantidad por material
+              </p>
+              <div className="space-y-2">
+                {materiales.map((item) => {
+                  const label =
+                    MATERIALES_EXTRA_OPTIONS.find((o) => o.value === item)?.label ?? item;
+                  return (
+                    <div
+                      key={item}
+                      className="flex flex-wrap items-center gap-2 sm:gap-3"
+                    >
+                      <span className="min-w-0 flex-1 text-sm text-slate-800">{label}</span>
+                      <div className="w-28 shrink-0">
+                        <Input
+                          type="number"
+                          min={1}
+                          value={materialesCantidades[item] ?? ""}
+                          onChange={(e) => {
+                            const qty = e.target.value.trim();
+                            const next = { ...materialesCantidades };
+                            if (qty) next[item] = qty;
+                            else delete next[item];
+                            setMaterialesCantidades(next);
+                          }}
+                          placeholder="Cant."
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           <Input
             label="Otro material (campo libre)"
             value={datosProduccion.materialesExtraOtro ?? ""}
