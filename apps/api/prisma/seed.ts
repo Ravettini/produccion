@@ -76,6 +76,19 @@ async function main() {
     },
   });
 
+  const fabioHash = await bcrypt.hash("123456", 10);
+  const fabio = await prisma.user.upsert({
+    where: { email: "fabio@gmail.com" },
+    update: { name: "Fabio", role: "ADMIN", area: "Producción", password: fabioHash },
+    create: {
+      email: "fabio@gmail.com",
+      password: fabioHash,
+      name: "Fabio",
+      role: "ADMIN",
+      area: "Producción",
+    },
+  });
+
   const institucionales = await prisma.user.upsert({
     where: { email: "institucionales@gobierno.gob" },
     update: { role: "INSTITUCIONALES", area: "Institucionales" },
@@ -315,6 +328,7 @@ async function main() {
 
   console.log("Seed OK:", {
     admin: admin.email,
+    fabio: fabio.email,
     validador: validador.email,
     organizacion: organizacion.email,
     produccion: produccion.email,
