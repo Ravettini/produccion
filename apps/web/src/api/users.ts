@@ -16,7 +16,7 @@ export async function createUser(data: {
   role: string;
   area?: string | null;
 }): Promise<{ user: User }> {
-  return api<{ user: User }>("/auth/register", {
+  return api<{ user: User }>("/admin/users", {
     method: "POST",
     body: JSON.stringify(data),
   });

@@ -23,13 +23,18 @@ import {
   proposalStatusLabels,
   categoryLabels,
 } from "../utils/labels";
-import { AREAS_OPTIONS } from "../config/areas";
+import { USER_AREA_OPTIONS } from "../config/areas";
 import { formatDateShort } from "../utils/formatters";
 
 const roleOptions = (Object.entries(roleLabels) as [Role, string][]).map(([value, label]) => ({
   value,
   label,
 }));
+
+const areaSelectOptions = [
+  { value: "", label: "— Sin área —" },
+  ...USER_AREA_OPTIONS,
+];
 
 export default function Admin() {
   const { user } = useAuth();
@@ -147,6 +152,122 @@ export default function Admin() {
           </div>
         }
       />
+
+      <div className="mb-10">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold text-slate-900">Usuarios</h2>
+          <Button size="sm" onClick={() => setShowCreate(true)}>
+            <UserPlus className="w-4 h-4" aria-hidden />
+            Nuevo usuario
+          </Button>
+        </div>
+        <Card>
+          {isLoading ? (
+            <CardBody>
+              <div className="py-8 text-center text-slate-600">Cargando usuarios…</div>
+            </CardBody>
+          ) : users.length === 0 ? (
+            <CardBody>
+              <EmptyState
+                title="No hay usuarios"
+                description="Creá el primero desde «Nuevo usuario»."
+                action={
+                  <Button onClick={() => setShowCreate(true)}>Nuevo usuario</Button>
+                }
+              />
+            </CardBody>
+          ) : (
+            <>
+              <div className="md:hidden divide-y divide-slate-100">
+                {users.map((u) => (
+                  <div key={u.id} className="p-4 space-y-3">
+                    <div className="min-w-0">
+                      <p className="font-medium text-slate-900 break-words">{u.name}</p>
+                      <p className="text-sm text-slate-600 break-all">{u.email}</p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <RoleBadge role={u.role as Role} />
+                      {u.area && (
+                        <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full truncate max-w-full">
+                          {u.area}
+                        </span>
+                      )}
+                    </div>
+                    {u.createdAt && (
+                      <p className="text-xs text-slate-500">Alta: {formatDateShort(u.createdAt)}</p>
+                    )}
+                    <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                      <Button variant="ghost" size="sm" onClick={() => openEdit(u)} className="w-full sm:w-auto">
+                        Editar
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setDeleteId(u.id)}
+                        disabled={u.id === user?.id}
+                        className="w-full sm:w-auto text-red-600 hover:text-red-800 hover:bg-red-50"
+                      >
+                        Eliminar
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-100 text-slate-700">
+                    <tr>
+                      <th className="text-left px-3 sm:px-4 py-3 font-medium">Email</th>
+                      <th className="text-left px-3 sm:px-4 py-3 font-medium">Nombre</th>
+                      <th className="text-left px-3 sm:px-4 py-3 font-medium">Rol</th>
+                      <th className="text-left px-3 sm:px-4 py-3 font-medium hidden lg:table-cell">Área</th>
+                      <th className="text-left px-3 sm:px-4 py-3 font-medium hidden md:table-cell">Alta</th>
+                      <th className="text-right px-3 sm:px-4 py-3 font-medium">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {users.map((u) => (
+                      <tr key={u.id} className="hover:bg-slate-50">
+                        <td className="px-3 sm:px-4 py-3 text-slate-800">{u.email}</td>
+                        <td className="px-3 sm:px-4 py-3 text-slate-800">{u.name}</td>
+                        <td className="px-3 sm:px-4 py-3">
+                          <RoleBadge role={u.role as Role} />
+                        </td>
+                        <td className="px-3 sm:px-4 py-3 text-slate-600 text-sm hidden lg:table-cell">
+                          {u.area ?? "—"}
+                        </td>
+                        <td className="px-3 sm:px-4 py-3 text-slate-600 text-xs hidden md:table-cell">
+                          {u.createdAt ? formatDateShort(u.createdAt) : "—"}
+                        </td>
+                        <td className="px-3 sm:px-4 py-3 text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openEdit(u)}
+                            className="mr-2"
+                          >
+                            Editar
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setDeleteId(u.id)}
+                            disabled={u.id === user?.id}
+                            className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                          >
+                            Eliminar
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </Card>
+      </div>
 
       <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
         <Settings className="w-5 h-5 text-slate-400" aria-hidden />
@@ -458,114 +579,6 @@ export default function Admin() {
         </div>
       )}
 
-      <h2 className="text-lg font-semibold text-slate-800 mb-4">Usuarios</h2>
-      <Card>
-        {isLoading ? (
-          <CardBody>
-            <div className="py-8 text-center text-slate-600">Cargando usuarios…</div>
-          </CardBody>
-        ) : users.length === 0 ? (
-          <CardBody>
-            <EmptyState
-              title="No hay usuarios"
-              description="Creá el primero desde «Nuevo usuario»."
-              action={
-                <Button onClick={() => setShowCreate(true)}>Nuevo usuario</Button>
-              }
-            />
-          </CardBody>
-        ) : (
-          <>
-            {/* Vista móvil: cards */}
-            <div className="md:hidden divide-y divide-slate-100">
-              {users.map((u) => (
-                <div key={u.id} className="p-4 space-y-3">
-                  <div className="min-w-0">
-                    <p className="font-medium text-slate-900 break-words">{u.name}</p>
-                    <p className="text-sm text-slate-600 break-all">{u.email}</p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <RoleBadge role={u.role as Role} />
-                    {u.area && (
-                      <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full truncate max-w-full">
-                        {u.area}
-                      </span>
-                    )}
-                  </div>
-                  {u.createdAt && (
-                    <p className="text-xs text-slate-500">Alta: {formatDateShort(u.createdAt)}</p>
-                  )}
-                  <div className="flex flex-col sm:flex-row gap-2 pt-1">
-                    <Button variant="ghost" size="sm" onClick={() => openEdit(u)} className="w-full sm:w-auto">
-                      Editar
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setDeleteId(u.id)}
-                      disabled={u.id === user?.id}
-                      className="w-full sm:w-auto text-red-600 hover:text-red-800 hover:bg-red-50"
-                    >
-                      Eliminar
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Vista desktop: tabla */}
-            <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-100 text-slate-700">
-                <tr>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium">Email</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium">Nombre</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium">Rol</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium hidden lg:table-cell">Área</th>
-                  <th className="text-left px-3 sm:px-4 py-3 font-medium hidden md:table-cell">Alta</th>
-                  <th className="text-right px-3 sm:px-4 py-3 font-medium">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {users.map((u) => (
-                  <tr key={u.id} className="hover:bg-slate-50">
-                    <td className="px-3 sm:px-4 py-3 text-slate-800">{u.email}</td>
-                    <td className="px-3 sm:px-4 py-3 text-slate-800">{u.name}</td>
-                    <td className="px-3 sm:px-4 py-3">
-                      <RoleBadge role={u.role as Role} />
-                    </td>
-                    <td className="px-3 sm:px-4 py-3 text-slate-600 text-sm hidden lg:table-cell">{u.area ?? "—"}</td>
-                    <td className="px-3 sm:px-4 py-3 text-slate-600 text-xs hidden md:table-cell">
-                      {u.createdAt ? formatDateShort(u.createdAt) : "—"}
-                    </td>
-                    <td className="px-3 sm:px-4 py-3 text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openEdit(u)}
-                        className="mr-2"
-                      >
-                        Editar
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setDeleteId(u.id)}
-                        disabled={u.id === user?.id}
-                        className="text-red-600 hover:text-red-800 hover:bg-red-50"
-                      >
-                        Eliminar
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            </div>
-          </>
-        )}
-      </Card>
-
       <Modal title="Nuevo usuario" open={showCreate} onClose={() => setShowCreate(false)}>
         <form
           onSubmit={(e) => {
@@ -574,12 +587,16 @@ export default function Admin() {
           }}
           className="space-y-3"
         >
+          <p className="text-sm text-slate-500">
+            Creá una cuenta con email, contraseña, rol y área. El usuario podrá iniciar sesión de inmediato.
+          </p>
           <Input
             label="Email"
             type="email"
             value={createEmail}
             onChange={(e) => setCreateEmail(e.target.value)}
             required
+            placeholder="usuario@ejemplo.com"
           />
           <Input
             label="Contraseña"
@@ -588,6 +605,7 @@ export default function Admin() {
             onChange={(e) => setCreatePassword(e.target.value)}
             required
             minLength={6}
+            placeholder="Mínimo 6 caracteres"
           />
           <Input
             label="Nombre"
@@ -603,7 +621,7 @@ export default function Admin() {
           />
           <Select
             label="Área (opcional)"
-            options={[{ value: "", label: "— Sin área —" }, ...AREAS_OPTIONS]}
+            options={areaSelectOptions}
             value={createArea}
             onChange={(e) => setCreateArea(e.target.value)}
           />
@@ -644,7 +662,7 @@ export default function Admin() {
             />
             <Select
               label="Área (opcional)"
-              options={[{ value: "", label: "— Sin área —" }, ...AREAS_OPTIONS]}
+              options={areaSelectOptions}
               value={editArea}
               onChange={(e) => setEditArea(e.target.value)}
             />

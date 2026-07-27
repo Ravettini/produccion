@@ -7,18 +7,6 @@ import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { Card, CardBody } from "../components/ui/Card";
 
-const DEMO_ACCOUNTS = [
-  { role: "Admin", email: "admin@gobierno.gob", password: "admin123" },
-  { role: "Organización", email: "organizacion@gobierno.gob", password: "admin123" },
-  { role: "Producción", email: "produccion@gobierno.gob", password: "admin123" },
-  { role: "Institucionales", email: "institucionales@gobierno.gob", password: "admin123" },
-  { role: "Cobertura", email: "cobertura@gobierno.gob", password: "admin123" },
-  { role: "Validador", email: "validador@gobierno.gob", password: "admin123" },
-] as const;
-
-const DEMO_AREA_HINT =
-  "Usuarios por DG (cultura.ciudadana@…, bienestar.ciudadano@…, etc.): contraseña usuario123";
-
 export default function Login() {
   const { user, setUser } = useAuth();
   const navigate = useNavigate();
@@ -42,12 +30,6 @@ export default function Login() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const fillAccount = (account: (typeof DEMO_ACCOUNTS)[number]) => {
-    setEmail(account.email);
-    setPassword(account.password);
-    setError("");
   };
 
   return (
@@ -122,7 +104,10 @@ export default function Login() {
                   autoComplete="current-password"
                 />
                 {error && (
-                  <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-red-700 text-sm" role="alert">
+                  <div
+                    className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-red-700 text-sm"
+                    role="alert"
+                  >
                     {error}
                   </div>
                 )}
@@ -130,29 +115,6 @@ export default function Login() {
                   {loading ? "Ingresando…" : "Ingresar"}
                 </Button>
               </form>
-
-              <div className="mt-6 pt-6 border-t border-slate-100">
-                <p className="text-slate-500 text-xs font-semibold uppercase tracking-wide mb-3">
-                  Credenciales demo — clic para completar
-                </p>
-                <ul className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
-                  {DEMO_ACCOUNTS.map((account) => (
-                    <li key={account.email}>
-                      <button
-                        type="button"
-                        onClick={() => fillAccount(account)}
-                        className="w-full text-left rounded-lg px-3 py-2 text-sm hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-colors"
-                      >
-                        <span className="font-medium text-slate-800">{account.role}</span>
-                        <span className="block text-slate-500 text-xs mt-0.5 truncate">
-                          {account.email} / {account.password}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-                <p className="text-xs text-slate-400 mt-3 leading-relaxed">{DEMO_AREA_HINT}</p>
-              </div>
             </CardBody>
           </Card>
         </div>

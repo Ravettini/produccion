@@ -20,3 +20,13 @@ export const AREAS_OPTIONS: { value: string; label: string }[] = [
   { value: "Autonomía Económica", label: "Autonomía Económica" },
   { value: "Igualdad de Oportunidades", label: "Igualdad de Oportunidades" },
 ];
+
+/** Áreas extras para roles de especialidad / sistema al crear usuarios. */
+export const USER_AREA_OPTIONS: { value: string; label: string }[] = [
+  ...AREAS_OPTIONS,
+  { value: "Producción", label: "Producción" },
+  { value: "Institucionales", label: "Institucionales" },
+  { value: "Cobertura", label: "Cobertura" },
+  { value: "Sistema", label: "Sistema" },
+  { value: "Validador", label: "Validador" },
+];

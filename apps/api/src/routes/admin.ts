@@ -351,6 +351,51 @@ adminRouter.get("/users", async (_req, res) => {
 });
 
 /**
+ * POST /admin/users - Crear usuario.
+ * Body: { email, password, name, role, area? }
+ */
+adminRouter.post("/users", async (req, res) => {
+  const { email, password, name, role, area } = req.body ?? {};
+  if (!email || !password || !name || !role) {
+    res.status(400).json({ error: "email, password, name y role requeridos" });
+    return;
+  }
+  if (!validRoles.includes(String(role))) {
+    res.status(400).json({ error: "role inválido" });
+    return;
+  }
+  if (String(password).trim().length < 6) {
+    res.status(400).json({ error: "La contraseña debe tener al menos 6 caracteres" });
+    return;
+  }
+  const emailNorm = String(email).toLowerCase().trim();
+  const existing = await prisma.user.findUnique({ where: { email: emailNorm } });
+  if (existing) {
+    res.status(409).json({ error: "Ya existe un usuario con ese email" });
+    return;
+  }
+  const hashed = await bcrypt.hash(String(password), 10);
+  const user = await prisma.user.create({
+    data: {
+      email: emailNorm,
+      password: hashed,
+      name: String(name).trim(),
+      role: String(role),
+      area: area !== undefined && String(area).trim() !== "" ? String(area).trim() : null,
+    },
+  });
+  res.status(201).json({
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      area: user.area,
+    },
+  });
+});
+
+/**
  * PUT /admin/users/:id - Actualizar usuario (name, role, area, opcionalmente password).
  * Body: { name?, role?, area?, password? }
  */
