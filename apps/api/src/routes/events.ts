@@ -5,6 +5,12 @@ import { canUserSeeEvent, filterEventsForUser } from "../lib/eventVisibility.js"
 import { buildAreaChecklist, type AreaDecisionRow } from "../lib/areaDecisions.js";
 import { ensureAcreditappLink } from "../lib/acreditapp.js";
 import { syncProposalsFromEvent } from "../lib/syncProposalsFromEvent.js";
+import {
+  civilDateFromStored,
+  dayBoundsFromCivil,
+  parseFechaTentativa,
+  serializeEventFecha,
+} from "../lib/fechaTentativa.js";
 
 export const eventsRouter = Router();
 
@@ -38,27 +44,9 @@ function toAcreditappEventInput(event: {
   };
 }
 
-/**
- * La fecha del evento es un día calendario, no un instante: se guarda siempre a
- * medianoche UTC para que la zona horaria del servidor no corra el día.
- */
-function parseFechaTentativa(value: unknown): Date {
-  const raw = value instanceof Date ? value.toISOString() : String(value ?? "");
-  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (match) return new Date(`${match[1]}-${match[2]}-${match[3]}T00:00:00.000Z`);
-  return new Date(raw);
-}
-
-function dayBounds(fecha: Date) {
-  const start = new Date(fecha);
-  start.setUTCHours(0, 0, 0, 0);
-  const end = new Date(fecha);
-  end.setUTCHours(23, 59, 59, 999);
-  return { start, end };
-}
-
 async function countEventsSameDayDg(areaSolicitante: string, fecha: Date, excludeId?: string) {
-  const { start, end } = dayBounds(fecha);
+  const civil = civilDateFromStored(fecha);
+  const { start, end } = dayBoundsFromCivil(civil);
   return prisma.event.count({
     where: {
       areaSolicitante,
@@ -111,13 +99,15 @@ eventsRouter.get("/", authMiddleware, async (req, res) => {
     list
   );
   res.json(
-    visible.map((event) => ({
-      ...event,
-      areaChecklist: buildAreaChecklist(
-        event.tipoEvento,
-        event.areaDecisions as AreaDecisionRow[]
-      ),
-    }))
+    visible.map((event) =>
+      serializeEventFecha({
+        ...event,
+        areaChecklist: buildAreaChecklist(
+          event.tipoEvento,
+          event.areaDecisions as AreaDecisionRow[]
+        ),
+      })
+    )
   );
 });
 
@@ -156,13 +146,15 @@ eventsRouter.get("/:id", authMiddleware, async (req, res) => {
     res.status(403).json({ error: "No tenés permiso para ver este evento" });
     return;
   }
-  res.json({
-    ...event,
-    areaChecklist: buildAreaChecklist(
-      event.tipoEvento,
-      event.areaDecisions as AreaDecisionRow[]
-    ),
-  });
+  res.json(
+    serializeEventFecha({
+      ...event,
+      areaChecklist: buildAreaChecklist(
+        event.tipoEvento,
+        event.areaDecisions as AreaDecisionRow[]
+      ),
+    })
+  );
 });
 
 /**
@@ -282,8 +274,9 @@ eventsRouter.post("/", authMiddleware, async (req, res) => {
       data: { linkAcreditacionConvocados: sync.link },
     });
   }
+  const payload = serializeEventFecha(result);
   res.status(201).json(
-    sync.warning ? { ...result, acreditappWarning: sync.warning } : result
+    sync.warning ? { ...payload, acreditappWarning: sync.warning } : payload
   );
 });
 
@@ -446,7 +439,8 @@ eventsRouter.put("/:id", authMiddleware, async (req, res) => {
       data: { linkAcreditacionConvocados: sync.link },
     });
   }
-  res.json(sync.warning ? { ...result, acreditappWarning: sync.warning } : result);
+  const payload = serializeEventFecha(result);
+  res.json(sync.warning ? { ...payload, acreditappWarning: sync.warning } : payload);
 });
 
 /**
