@@ -82,7 +82,7 @@ export function EventOverview({
       patchEventFields(
         event.id,
         { productor: productorDraft.trim() || null },
-        "Asignó referente de Producción"
+        "Asignó responsable de Producción"
       ),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["event", event.id] });
@@ -232,7 +232,7 @@ export function EventOverview({
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide text-teal-800">
-                        Referente de Producción
+                        Responsable de Producción
                       </p>
                       {!editingProductor && (
                         <p className="mt-1 text-sm text-slate-800">
@@ -256,15 +256,15 @@ export function EventOverview({
                   {editingProductor && canEditProductor && (
                     <div className="space-y-3">
                       <SearchableSelect
-                        label="Referente"
+                        label="Responsable de Producción"
                         value={productorDraft}
                         onChange={setProductorDraft}
                         options={[
-                          { value: "", label: "— Sin referente —" },
+                          { value: "", label: "— Sin responsable —" },
                           ...PRODUCTORES_OPTIONS,
                         ]}
-                        placeholder="Buscar referente…"
-                        emptyMessage="Ningún referente coincide"
+                        placeholder="Seleccionar responsable…"
+                        emptyMessage="Ningún responsable coincide"
                       />
                       <div className="flex flex-wrap gap-2">
                         <Button
@@ -289,7 +289,7 @@ export function EventOverview({
                       {saveProductor.isError && (
                         <p className="text-sm text-red-600">
                           {(saveProductor.error as Error).message ||
-                            "No se pudo guardar el referente."}
+                            "No se pudo guardar el responsable."}
                         </p>
                       )}
                     </div>

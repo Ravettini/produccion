@@ -86,7 +86,7 @@ export function AreaDecisionsPanel({
       patchEventFields(
         eventId,
         { productor: productorDraft.trim() || null },
-        editReason.trim() || "Asignó referente de Producción"
+        editReason.trim() || "Asignó responsable de Producción"
       ),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["event", eventId] });
@@ -288,15 +288,15 @@ export function AreaDecisionsPanel({
 
       {canSetProductor && (
         <Card>
-          <CardHeader>Referente de Producción</CardHeader>
+          <CardHeader>Responsable de Producción</CardHeader>
           <CardBody className="space-y-3">
             <p className="text-sm text-slate-500">
-              Solo el rol Producción define el referente de este evento.
+              Solo el rol Producción define el responsable de este evento.
             </p>
             {!editingProd ? (
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-xs text-slate-500">Referente</p>
+                  <p className="text-xs text-slate-500">Responsable</p>
                   <p className="text-slate-800">{productor || "— Sin asignar —"}</p>
                 </div>
                 <Button
@@ -313,16 +313,16 @@ export function AreaDecisionsPanel({
             ) : (
               <div className="space-y-2">
                 <SearchableSelect
-                  label="Referente de Producción"
+                  label="Responsable de Producción"
                   placeholder="Seleccionar…"
                   searchPlaceholder="Buscar…"
                   options={[
-                    { value: "", label: "— Sin referente —" },
+                    { value: "", label: "— Sin responsable —" },
                     ...PRODUCTORES_OPTIONS,
                   ]}
                   value={productorDraft}
                   onChange={setProductorDraft}
-                  emptyMessage="Ningún referente coincide"
+                  emptyMessage="Ningún responsable coincide"
                 />
                 <Input
                   label="Motivo (opcional)"
