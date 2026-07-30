@@ -8,6 +8,7 @@ import { Button } from "../components/ui/Button";
 import { Modal } from "../components/ui/Modal";
 import { WizardShell } from "../components/wizard/WizardShell";
 import { eventStatusLabels } from "../utils/labels";
+import { toCivilDateString, todayCivilDate } from "../utils/formatters";
 
 import { opcionesLocacionesSugeridas, criteriosDesdeProduccion, sugerirLocaciones } from "../utils/sugerirLocaciones";
 import { canEditEvent } from "../hooks/usePermissions";
@@ -79,7 +80,7 @@ export default function EventForm() {
       setTipoSeleccionados(conocidos);
       setTipoOtro(otros.join(", "));
       setAreaSolicitante(existing.areaSolicitante);
-      setFechaTentativa(existing.fechaTentativa.slice(0, 10));
+      setFechaTentativa(toCivilDateString(existing.fechaTentativa));
       setEstado(existing.estado as EventStatus);
       setPublico((existing.publico as "EXTERNO" | "INTERNO" | "MIXTO") ?? "");
       setUsuarioSolicitante(existing.usuarioSolicitante ?? "");
@@ -321,7 +322,7 @@ export default function EventForm() {
         descripcion,
         tipoEvento: tipoEventoValue,
         areaSolicitante,
-        fechaTentativa: fechaTentativa || new Date().toISOString().slice(0, 10),
+        fechaTentativa: fechaTentativa || todayCivilDate(),
         estado: isAdmin ? estado : "PENDIENTE",
         publico: publico || undefined,
         usuarioSolicitante: usuarioSolicitante.trim() || undefined,

@@ -16,9 +16,10 @@ import {
 import { PageHeader } from "../components/layout/PageHeader";
 import { EventCard } from "../components/domain/EventCard";
 import { eventStatusLabels } from "../utils/labels";
-import { CheckCircle2, FileStack, Clock, Radar } from "lucide-react";
+import { CheckCircle2, FileStack, Clock, Radar, BellRing } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { canCreateEvent } from "../hooks/usePermissions";
+import { getEventPendingForUser } from "../utils/changeAlerts";
 
 const statusOptions = [
   { value: "", label: "Todos los estados" },
@@ -33,6 +34,7 @@ export default function EventList() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [sortBy, setSortBy] = useState<"date" | "title">("date");
+  const [soloPendientes, setSoloPendientes] = useState(false);
 
   const specialtyHint =
     user?.role === "PRODUCCION"
@@ -56,9 +58,11 @@ export default function EventList() {
       enRadar: events.filter((e) => e.estado === "EN_RADAR").length,
       enAnalisis: events.filter((e) => e.estado === "EN_ANALISIS").length,
       confirmados: events.filter((e) => e.estado === "CONFIRMADO").length,
-      pendientes: events.filter((e) => e.estado === "PENDIENTE").length,
+      requierenAccion: events.filter(
+        (e) => getEventPendingForUser(user?.role, e).requiereAccion
+      ).length,
     };
-  }, [events]);
+  }, [events, user?.role]);
 
   const filtered = useMemo(() => {
     let list = [...events];
@@ -74,6 +78,9 @@ export default function EventList() {
     if (statusFilter) {
       list = list.filter((e) => e.estado === statusFilter);
     }
+    if (soloPendientes) {
+      list = list.filter((e) => getEventPendingForUser(user?.role, e).requiereAccion);
+    }
     list.sort((a, b) => {
       if (sortBy === "date") {
         return new Date(b.fechaTentativa).getTime() - new Date(a.fechaTentativa).getTime();
@@ -81,7 +88,7 @@ export default function EventList() {
       return a.titulo.localeCompare(b.titulo);
     });
     return list;
-  }, [events, search, statusFilter, sortBy]);
+  }, [events, search, statusFilter, sortBy, soloPendientes, user?.role]);
 
   if (isLoading) {
     return (
@@ -159,11 +166,11 @@ export default function EventList() {
           subtitle="Eventos aprobados y listos para realizarse"
         />
         <StatCard
-          label="Pendientes"
-          value={stats.pendientes}
-          icon={Clock}
-          accent="slate"
-          subtitle="Solicitudes nuevas aguardando gestión"
+          label="Requieren tu acción"
+          value={stats.requierenAccion}
+          icon={BellRing}
+          accent="amber"
+          subtitle="Falta tu aprobación o hay requerimientos por validar"
         />
       </div>
 
@@ -192,6 +199,15 @@ export default function EventList() {
           onChange={(e) => setSortBy(e.target.value as "date" | "title")}
           className="w-full sm:w-48"
         />
+        <label className="flex items-center gap-2 text-sm text-slate-600 whitespace-nowrap">
+          <input
+            type="checkbox"
+            checked={soloPendientes}
+            onChange={(e) => setSoloPendientes(e.target.checked)}
+            className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+          />
+          Solo los que requieren mi acción
+        </label>
       </div>
 
       {filtered.length === 0 ? (

@@ -11,6 +11,7 @@ import { PageHeader } from "../components/layout/PageHeader";
 import { CalendarAgendaList } from "../components/calendar/CalendarAgendaList";
 import { eventStatusLabels, eventStatusColors } from "../utils/labels";
 import { getEventHorario, eventMatchesTipoFilter } from "../utils/eventHelpers";
+import { toCivilDateString } from "../utils/formatters";
 import { useAuth } from "../hooks/useAuth";
 
 const FILTROS_TIPO = [
@@ -43,9 +44,7 @@ function dateKey(d: Date): string {
 }
 
 function eventDateKey(fechaTentativa: string): string {
-  const s = String(fechaTentativa).slice(0, 10);
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-  return dateKey(new Date(fechaTentativa));
+  return toCivilDateString(fechaTentativa) || dateKey(new Date(fechaTentativa));
 }
 
 function getCalendarDays(year: number, month: number): (number | null)[] {

@@ -14,6 +14,7 @@ export interface EventAreaDecision {
   user?: { id: string; name: string; role?: string } | null;
   updatedAt?: string;
   createdAt?: string;
+  eventConfirmed?: boolean;
 }
 
 export interface AreaDecisionsResponse {

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { authMiddleware, requireRoles } from "../middleware/auth.js";
 import { canUserSeeEvent, filterEventsForUser } from "../lib/eventVisibility.js";
+import { buildAreaChecklist, type AreaDecisionRow } from "../lib/areaDecisions.js";
 import { ensureAcreditappLink } from "../lib/acreditapp.js";
 import { syncProposalsFromEvent } from "../lib/syncProposalsFromEvent.js";
 
@@ -37,11 +38,22 @@ function toAcreditappEventInput(event: {
   };
 }
 
+/**
+ * La fecha del evento es un día calendario, no un instante: se guarda siempre a
+ * medianoche UTC para que la zona horaria del servidor no corra el día.
+ */
+function parseFechaTentativa(value: unknown): Date {
+  const raw = value instanceof Date ? value.toISOString() : String(value ?? "");
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) return new Date(`${match[1]}-${match[2]}-${match[3]}T00:00:00.000Z`);
+  return new Date(raw);
+}
+
 function dayBounds(fecha: Date) {
   const start = new Date(fecha);
-  start.setHours(0, 0, 0, 0);
+  start.setUTCHours(0, 0, 0, 0);
   const end = new Date(fecha);
-  end.setHours(23, 59, 59, 999);
+  end.setUTCHours(23, 59, 59, 999);
   return { start, end };
 }
 
@@ -70,8 +82,18 @@ eventsRouter.get("/", authMiddleware, async (req, res) => {
           id: true,
           categoria: true,
           titulo: true,
+          estado: true,
           updatedAt: true,
           createdAt: true,
+        },
+      },
+      areaDecisions: {
+        select: {
+          areaRole: true,
+          estado: true,
+          reason: true,
+          updatedAt: true,
+          user: { select: { id: true, name: true, role: true } },
         },
       },
     },
@@ -88,7 +110,15 @@ eventsRouter.get("/", authMiddleware, async (req, res) => {
     { id: dbUser.id, role: dbUser.role, area: dbUser.area },
     list
   );
-  res.json(visible);
+  res.json(
+    visible.map((event) => ({
+      ...event,
+      areaChecklist: buildAreaChecklist(
+        event.tipoEvento,
+        event.areaDecisions as AreaDecisionRow[]
+      ),
+    }))
+  );
 });
 
 /**
@@ -97,7 +127,18 @@ eventsRouter.get("/", authMiddleware, async (req, res) => {
 eventsRouter.get("/:id", authMiddleware, async (req, res) => {
   const event = await prisma.event.findUnique({
     where: { id: req.params.id },
-    include: { _count: { select: { proposals: true } } },
+    include: {
+      _count: { select: { proposals: true } },
+      areaDecisions: {
+        select: {
+          areaRole: true,
+          estado: true,
+          reason: true,
+          updatedAt: true,
+          user: { select: { id: true, name: true, role: true } },
+        },
+      },
+    },
   });
   if (!event) {
     res.status(404).json({ error: "Evento no encontrado" });
@@ -115,7 +156,13 @@ eventsRouter.get("/:id", authMiddleware, async (req, res) => {
     res.status(403).json({ error: "No tenés permiso para ver este evento" });
     return;
   }
-  res.json(event);
+  res.json({
+    ...event,
+    areaChecklist: buildAreaChecklist(
+      event.tipoEvento,
+      event.areaDecisions as AreaDecisionRow[]
+    ),
+  });
 });
 
 /**
@@ -161,7 +208,7 @@ eventsRouter.post("/", authMiddleware, async (req, res) => {
   } else if (status === "CONFIRMADO" && req.user?.role !== "ADMIN") {
     status = "PENDIENTE";
   }
-  const fechaDate = new Date(fechaTentativa);
+  const fechaDate = parseFechaTentativa(fechaTentativa);
   const area = String(areaSolicitante);
   const sameDayCount = await countEventsSameDayDg(area, fechaDate);
   if (sameDayCount >= 2) {
@@ -187,7 +234,7 @@ eventsRouter.post("/", authMiddleware, async (req, res) => {
       descripcion: String(descripcion),
       tipoEvento: String(tipoEvento),
       areaSolicitante: String(areaSolicitante),
-      fechaTentativa: new Date(fechaTentativa),
+      fechaTentativa: fechaDate,
       estado: status,
       createdById: req.user?.id ?? null,
       resumen: resumenFinal,
@@ -282,9 +329,10 @@ eventsRouter.put("/:id", authMiddleware, async (req, res) => {
   if (tipoEvento !== undefined) updates.tipoEvento = String(tipoEvento);
   if (areaSolicitante !== undefined) updates.areaSolicitante = String(areaSolicitante);
   if (fechaTentativa !== undefined) {
-    updates.fechaTentativa = new Date(fechaTentativa);
+    const fechaDate = parseFechaTentativa(fechaTentativa);
+    updates.fechaTentativa = fechaDate;
     const areaCheck = areaSolicitante !== undefined ? String(areaSolicitante) : existing.areaSolicitante;
-    const sameDayCount = await countEventsSameDayDg(areaCheck, new Date(fechaTentativa), req.params.id);
+    const sameDayCount = await countEventsSameDayDg(areaCheck, fechaDate, req.params.id);
     if (sameDayCount >= 2) {
       res.status(400).json({
         error: "Cada dirección general puede cargar como máximo 2 eventos el mismo día.",

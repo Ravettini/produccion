@@ -52,14 +52,29 @@ export interface Event {
   createdAt: string;
   updatedAt: string;
   _count?: { proposals: number };
-  /** Resumen de requerimientos para avisos de cambios por rol */
+  /** Resumen de requerimientos para avisos de cambios y pendientes por rol */
   proposals?: {
     id: string;
     categoria: ProposalCategory | string;
     titulo: string;
+    estado?: ProposalStatus | string;
     updatedAt: string;
     createdAt: string;
   }[];
+  /** Check de aprobación de las áreas involucradas */
+  areaChecklist?: AreaChecklistItem[];
+}
+
+export type AreaDecisionRole = "PRODUCCION" | "INSTITUCIONALES" | "COBERTURA";
+export type AreaDecisionEstado = "PENDING" | "APPROVED" | "REJECTED";
+
+export interface AreaChecklistItem {
+  areaRole: AreaDecisionRole | string;
+  label: string;
+  estado: AreaDecisionEstado | string;
+  reason?: string | null;
+  decidedBy?: string | null;
+  decidedAt?: string | null;
 }
 
 export interface Proposal {

@@ -58,6 +58,8 @@ export function AreaDecisionsPanel({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["area-decisions", eventId] });
       qc.invalidateQueries({ queryKey: ["event-audits", eventId] });
+      qc.invalidateQueries({ queryKey: ["event", eventId] });
+      qc.invalidateQueries({ queryKey: ["events"] });
       setRejecting(false);
       setRejectReason("");
       setAdminRejectRole(null);

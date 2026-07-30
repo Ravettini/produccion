@@ -215,7 +215,13 @@ export async function ensureAcreditappLink(
     let startAt: string | undefined;
     let endAt: string | undefined;
     if (event.fechaTentativa) {
-      const start = new Date(event.fechaTentativa);
+      // El día se manda al mediodía para que ninguna zona horaria lo corra.
+      const raw =
+        event.fechaTentativa instanceof Date
+          ? event.fechaTentativa.toISOString()
+          : String(event.fechaTentativa);
+      const dia = raw.match(/^(\d{4}-\d{2}-\d{2})/)?.[1];
+      const start = dia ? new Date(`${dia}T12:00:00.000Z`) : new Date(raw);
       if (!Number.isNaN(start.getTime())) {
         startAt = start.toISOString();
         endAt = new Date(start.getTime() + 8 * 60 * 60 * 1000).toISOString();

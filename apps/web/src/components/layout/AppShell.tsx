@@ -3,10 +3,12 @@ import { Outlet } from "react-router-dom";
 import { Menu } from "lucide-react";
 import { cn } from "../../utils/cn";
 import { useAuth } from "../../hooks/useAuth";
+import { usePendingActions } from "../../hooks/usePendingActions";
 import { Sidebar } from "./Sidebar";
 
 export function AppShell() {
   const { user, loading, isAdmin, logout } = useAuth();
+  const pending = usePendingActions();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   if (loading) {
@@ -39,6 +41,7 @@ export function AppShell() {
         onLogout={logout}
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
+        pendingCount={pending.eventos}
       />
       <div className="flex-1 flex flex-col min-w-0 lg:pl-64">
         <div className="lg:hidden sticky top-0 z-30 h-14 flex items-center gap-3 px-4 border-b border-slate-200 bg-white/90 backdrop-blur-md">

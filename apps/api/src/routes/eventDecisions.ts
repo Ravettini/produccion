@@ -9,14 +9,9 @@ import {
   normalizeAreaRole,
   type AreaDecisionRole,
 } from "../lib/eventVisibility.js";
+import { AREA_LABELS, buildAreaChecklist, type AreaDecisionRow } from "../lib/areaDecisions.js";
 
 export const eventDecisionsRouter = Router({ mergeParams: true });
-
-const AREA_LABELS: Record<AreaDecisionRole, string> = {
-  PRODUCCION: "Producción",
-  INSTITUCIONALES: "Institucionales",
-  COBERTURA: "Cobertura",
-};
 
 async function loadDbUser(userId: string) {
   return prisma.user.findUnique({
@@ -67,6 +62,7 @@ eventDecisionsRouter.get("/:eventId/area-decisions", authMiddleware, async (req,
       ...d,
       label: AREA_LABELS[d.areaRole as AreaDecisionRole] ?? d.areaRole,
     })),
+    checklist: buildAreaChecklist(event.tipoEvento, decisions as AreaDecisionRow[]),
     myAreaRole: normalizeAreaRole(dbUser.role),
     canDecide: isUserResponsibleForEvent(dbUser, event),
   });
@@ -115,7 +111,8 @@ eventDecisionsRouter.post("/:eventId/area-decisions", authMiddleware, async (req
   }
 
   const reasonStr = reason != null ? String(reason).trim() : null;
-  const updated = await prisma.$transaction(async (tx) => {
+  const requestedAreas = getRequestedAreaRoles(event.tipoEvento);
+  const result = await prisma.$transaction(async (tx) => {
     const row = await tx.eventAreaDecision.upsert({
       where: { eventId_areaRole: { eventId, areaRole } },
       create: {
@@ -142,12 +139,44 @@ eventDecisionsRouter.post("/:eventId/area-decisions", authMiddleware, async (req
         reason: reasonStr,
       },
     });
-    return row;
+
+    const decisions = await tx.eventAreaDecision.findMany({
+      where: { eventId, areaRole: { in: requestedAreas } },
+      select: { areaRole: true, estado: true },
+    });
+    const approvedAreas = new Set(
+      decisions.filter((item) => item.estado === "APPROVED").map((item) => item.areaRole)
+    );
+    const allAreasApproved =
+      requestedAreas.length > 0 &&
+      requestedAreas.every((requestedArea) => approvedAreas.has(requestedArea));
+    const canAutoConfirm = event.estado !== "CANCELADO" && event.estado !== "REALIZADO";
+
+    if (allAreasApproved && canAutoConfirm && event.estado !== "CONFIRMADO") {
+      await tx.event.update({
+        where: { id: eventId },
+        data: { estado: "CONFIRMADO" },
+      });
+      await tx.eventAudit.create({
+        data: {
+          eventId,
+          userId: dbUser.id,
+          action: "EDIT",
+          field: "estado",
+          fromValue: event.estado,
+          toValue: "CONFIRMADO",
+          reason: "Confirmado automáticamente al aprobar todas las áreas involucradas",
+        },
+      });
+    }
+
+    return { row, eventConfirmed: allAreasApproved && canAutoConfirm };
   });
 
   res.json({
-    ...updated,
+    ...result.row,
     label: AREA_LABELS[areaRole],
+    eventConfirmed: result.eventConfirmed,
   });
 });
 

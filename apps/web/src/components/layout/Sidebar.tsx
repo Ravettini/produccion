@@ -23,6 +23,8 @@ interface SidebarProps {
   onLogout: () => void;
   open?: boolean;
   onClose?: () => void;
+  /** Cantidad de eventos que esperan una acción del usuario. */
+  pendingCount?: number;
 }
 
 export function Sidebar({
@@ -32,6 +34,7 @@ export function Sidebar({
   onLogout,
   open = false,
   onClose,
+  pendingCount = 0,
 }: SidebarProps) {
   return (
     <aside
@@ -80,7 +83,15 @@ export function Sidebar({
             }
           >
             <item.icon className="w-5 h-5 flex-shrink-0 opacity-80" aria-hidden />
-            {item.label}
+            <span className="flex-1">{item.label}</span>
+            {item.to === "/" && pendingCount > 0 && (
+              <span
+                className="inline-flex min-w-5 items-center justify-center rounded-full bg-amber-400 px-1.5 text-[11px] font-bold text-slate-900"
+                title={`${pendingCount} evento(s) esperan una acción tuya`}
+              >
+                {pendingCount}
+              </span>
+            )}
           </NavLink>
         ))}
         {isAdmin && (

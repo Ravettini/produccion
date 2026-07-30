@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { getAuthToken } from "../api/client";
 import { me, logout } from "../api/auth";
+import { setChangeAlertsUser } from "../utils/changeAlerts";
 import type { User } from "../types";
 
 interface AuthContextValue {
@@ -29,6 +30,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    setChangeAlertsUser(user?.id ?? null);
+  }, [user?.id]);
 
   return (
     <AuthContext.Provider value={{ user, loading, setUser }}>

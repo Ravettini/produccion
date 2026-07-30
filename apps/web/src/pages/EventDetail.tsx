@@ -38,12 +38,20 @@ import {
   categoryLabels,
 } from "../utils/labels";
 import { categoryExtraFields } from "../config/proposalCategoryFields";
-import { formatDate } from "../utils/formatters";
+import { formatEventDate } from "../utils/formatters";
 import { EventHealthChecklist } from "../components/event/EventHealthChecklist";
 import { EventOverview } from "../components/event/EventOverview";
 import { AreaDecisionsPanel } from "../components/domain/AreaDecisionsPanel";
+import { AreaChecklistChips } from "../components/domain/AreaChecklistChips";
 import { EventChangesPanel } from "../components/domain/EventChangesPanel";
-import { hasUnseenChanges, markSeen, hasEventUnseenChangesForUser, proposalRelevantToRole } from "../utils/changeAlerts";
+import {
+  areaRoleForUser,
+  getEventPendingForUser,
+  hasEventUnseenChangesForUser,
+  hasUnseenChanges,
+  markSeen,
+  proposalRelevantToRole,
+} from "../utils/changeAlerts";
 
 type EventDetailTab =
   | "estado"
@@ -112,6 +120,13 @@ export default function EventDetail() {
     setShowChangeAlert(hadChanges);
     markSeen("event", event.id, event.updatedAt);
   }, [event?.id, event?.updatedAt, event?.createdAt, proposals, user?.role]);
+
+  // Al leer el historial de cambios se dan por vistos los requerimientos.
+  useEffect(() => {
+    if (tab !== "cambios") return;
+    proposals.forEach((p: Proposal) => markSeen("proposal", p.id, p.updatedAt));
+    setShowChangeAlert(false);
+  }, [tab, proposals]);
 
   const { data: attachments = [], isLoading: loadingAttachments } = useQuery({
     queryKey: ["attachments", id],
@@ -225,12 +240,24 @@ export default function EventDetail() {
         : event.publico === "MIXTO"
           ? "Mixto"
           : null;
-  const subtitleParts = [event.areaSolicitante, publicoLabel, formatDate(event.fechaTentativa)].filter(Boolean);
+  const subtitleParts = [event.areaSolicitante, publicoLabel, formatEventDate(event.fechaTentativa)].filter(Boolean);
 
   const handleGoToTab = (targetTab: "estado" | "requerimientos", filterEstado?: ProposalStatus) => {
     setTab(targetTab);
     if (filterEstado !== undefined) setFilterEstado(filterEstado);
   };
+
+  const pending = getEventPendingForUser(user?.role, {
+    proposals: proposals.map((p) => ({
+      id: p.id,
+      categoria: p.categoria,
+      titulo: p.titulo,
+      estado: p.estado,
+      updatedAt: p.updatedAt,
+      createdAt: p.createdAt,
+    })),
+    areaChecklist: event.areaChecklist,
+  });
 
   return (
     <div className="page-container max-w-6xl">
@@ -282,12 +309,68 @@ export default function EventDetail() {
         }
       />
 
-      <div className="flex flex-wrap items-center gap-3 mb-6">
+      <div className="flex flex-wrap items-center gap-3 mb-4">
         <StatusBadge kind="event" value={event.estado as EventStatus} />
         {event._count && (
           <span className="text-sm text-slate-500">{event._count.proposals} requerimientos</span>
         )}
       </div>
+
+      {event.areaChecklist && event.areaChecklist.length > 0 && (
+        <div className="mb-6 flex flex-wrap items-center gap-x-3 gap-y-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+            Involucrados
+          </span>
+          <AreaChecklistChips
+            items={event.areaChecklist}
+            highlightAreaRole={areaRoleForUser(user?.role)}
+          />
+          {pending.areasPendientes > 0 && (
+            <span className="text-xs text-slate-500">
+              {pending.areasPendientes} de {event.areaChecklist.length} sin decidir
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => setTab("aprobaciones")}
+            className="text-xs font-medium text-brand-600 underline"
+          >
+            Ver aprobaciones
+          </button>
+        </div>
+      )}
+
+      {(pending.faltaMiAprobacion || pending.porValidar > 0) && (
+        <div
+          className="mb-6 rounded-xl border border-brand-300 bg-brand-50 px-4 py-3 text-sm text-brand-900"
+          role="status"
+        >
+          <p className="font-medium">
+            {pending.faltaMiAprobacion
+              ? "Tu área todavía no marcó su aprobación en este evento."
+              : `Hay ${pending.porValidar} requerimiento(s) esperando validación.`}
+          </p>
+          <p className="mt-0.5 text-brand-800">
+            {pending.faltaMiAprobacion ? (
+              <button
+                type="button"
+                onClick={() => setTab("aprobaciones")}
+                className="font-medium underline"
+              >
+                Ir a Aprobaciones
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleGoToTab("requerimientos", "SUBMITTED")}
+                className="font-medium underline"
+              >
+                Ver requerimientos enviados
+              </button>
+            )}
+          </p>
+        </div>
+      )}
 
       {(showChangeAlert ||
         proposals.some(
