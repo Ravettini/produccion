@@ -21,6 +21,8 @@ interface EventOverviewProps {
   onGenerateBrief: () => void;
   generatingBrief: boolean;
   briefError?: string;
+  onExportBrief: () => void;
+  exportingBrief: boolean;
   onExportAc: () => void;
   exportingAc: boolean;
   canSyncAcreditapp?: boolean;
@@ -61,6 +63,8 @@ export function EventOverview({
   onGenerateBrief,
   generatingBrief,
   briefError,
+  onExportBrief,
+  exportingBrief,
   onExportAc,
   exportingAc,
   canSyncAcreditapp,
@@ -72,10 +76,13 @@ export function EventOverview({
   const qc = useQueryClient();
   const [editingProductor, setEditingProductor] = useState(false);
   const [productorDraft, setProductorDraft] = useState(event.productor ?? "");
+  const [editingLugar, setEditingLugar] = useState(false);
+  const [lugarDraft, setLugarDraft] = useState(event.lugar ?? "");
 
   const tieneProduccion = /producci[oó]n/i.test(event.tipoEvento);
   const canEditProductor =
     tieneProduccion && (user?.role === "PRODUCCION" || user?.role === "ADMIN");
+  const canConfirmLugar = user?.role === "PRODUCCION" || user?.role === "ADMIN";
 
   const saveProductor = useMutation({
     mutationFn: () =>
@@ -90,6 +97,22 @@ export function EventOverview({
       qc.invalidateQueries({ queryKey: ["event-audits", event.id] });
       qc.invalidateQueries({ queryKey: ["proposals", event.id] });
       setEditingProductor(false);
+    },
+  });
+
+  const saveLugar = useMutation({
+    mutationFn: () =>
+      patchEventFields(
+        event.id,
+        { lugar: lugarDraft.trim() || null },
+        "Confirmó locación del evento"
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["event", event.id] });
+      qc.invalidateQueries({ queryKey: ["events"] });
+      qc.invalidateQueries({ queryKey: ["event-audits", event.id] });
+      qc.invalidateQueries({ queryKey: ["proposals", event.id] });
+      setEditingLugar(false);
     },
   });
 
@@ -114,6 +137,22 @@ export function EventOverview({
     dp = {};
   }
 
+  const locacionesPosibles = (dp.locacionesPosibles ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  // Compat: si no hay candidatas, mostrar el lugar confirmado como única opción.
+  const opcionesLugar = (
+    locacionesPosibles.length > 0
+      ? locacionesPosibles
+      : event.lugar?.trim()
+        ? [event.lugar.trim()]
+        : []
+  ).map((v) => ({ value: v, label: v }));
+  if (event.lugar?.trim() && !opcionesLugar.some((o) => o.value === event.lugar)) {
+    opcionesLugar.push({ value: event.lugar.trim(), label: event.lugar.trim() });
+  }
+
   return (
     <section className="mb-8 space-y-4" aria-labelledby="brief-evento">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -122,7 +161,7 @@ export function EventOverview({
             Brief y sinopsis
           </h2>
           <p className="mt-1 text-sm text-slate-500">
-            Generá la sinopsis con IA o descargá el brief reducido AC.
+            Generá la sinopsis con IA o descargá el brief audiovisual y el reducido AC.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -133,6 +172,15 @@ export function EventOverview({
           >
             <Sparkles className="h-4 w-4" aria-hidden />
             {generatingBrief ? "Generando…" : "Generar con IA"}
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={onExportBrief}
+            disabled={exportingBrief}
+          >
+            <FileDown className="h-4 w-4" aria-hidden />
+            {exportingBrief ? "Exportando…" : "Brief audiovisual"}
           </Button>
           <Button
             size="sm"
@@ -183,6 +231,16 @@ export function EventOverview({
                 {event.funcionario && (
                   <Detail label="Funcionario(s)">{event.funcionario}</Detail>
                 )}
+                {(locacionesPosibles.length > 0 || event.lugar) && (
+                  <Detail label="Locaciones posibles">
+                    {locacionesPosibles.length > 0
+                      ? locacionesPosibles.join(" · ")
+                      : "—"}
+                  </Detail>
+                )}
+                <Detail label="Locación confirmada">
+                  {event.lugar?.trim() || "— Pendiente de Producción —"}
+                </Detail>
                 {event.necesitaAcreditacion != null && (
                   <Detail label="Acreditación">
                     {event.necesitaAcreditacion ? "Sí" : "No"}
@@ -290,6 +348,81 @@ export function EventOverview({
                         <p className="text-sm text-red-600">
                           {(saveProductor.error as Error).message ||
                             "No se pudo guardar el responsable."}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {(opcionesLugar.length > 0 || event.lugar || canConfirmLugar) && (
+                <div className="rounded-lg border border-sky-200 bg-sky-50/50 p-4 space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-sky-800">
+                        Locación confirmada
+                      </p>
+                      {!editingLugar && (
+                        <p className="mt-1 text-sm text-slate-800">
+                          {event.lugar?.trim() || "— Pendiente de confirmación —"}
+                        </p>
+                      )}
+                      {!editingLugar && locacionesPosibles.length > 0 && (
+                        <p className="mt-1 text-xs text-slate-500">
+                          Posibles: {locacionesPosibles.join(" · ")}
+                        </p>
+                      )}
+                    </div>
+                    {canConfirmLugar && !editingLugar && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => {
+                          setLugarDraft(event.lugar ?? locacionesPosibles[0] ?? "");
+                          setEditingLugar(true);
+                        }}
+                      >
+                        {event.lugar ? "Cambiar" : "Confirmar"}
+                      </Button>
+                    )}
+                  </div>
+                  {editingLugar && canConfirmLugar && (
+                    <div className="space-y-3">
+                      <SearchableSelect
+                        label="Cuál quedó"
+                        value={lugarDraft}
+                        onChange={setLugarDraft}
+                        options={[
+                          { value: "", label: "— Sin confirmar —" },
+                          ...opcionesLugar,
+                        ]}
+                        placeholder="Seleccionar locación…"
+                        emptyMessage="Ninguna locación coincide"
+                      />
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          onClick={() => saveLugar.mutate()}
+                          disabled={saveLugar.isPending}
+                        >
+                          {saveLugar.isPending ? "Guardando…" : "Confirmar locación"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={() => {
+                            setEditingLugar(false);
+                            setLugarDraft(event.lugar ?? "");
+                          }}
+                          disabled={saveLugar.isPending}
+                        >
+                          Cancelar
+                        </Button>
+                      </div>
+                      {saveLugar.isError && (
+                        <p className="text-sm text-red-600">
+                          {(saveLugar.error as Error).message ||
+                            "No se pudo confirmar la locación."}
                         </p>
                       )}
                     </div>

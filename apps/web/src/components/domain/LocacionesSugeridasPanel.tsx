@@ -3,19 +3,22 @@ import { cn } from "../../utils/cn";
 
 interface LocacionesSugeridasPanelProps {
   sugerencias: LocacionSugerida[];
-  seleccionado: string;
-  onSeleccionar: (value: string) => void;
+  seleccionados: string[];
+  onToggle: (value: string) => void;
   maxVisible?: number;
+  maxSeleccion?: number;
 }
 
 export function LocacionesSugeridasPanel({
   sugerencias,
-  seleccionado,
-  onSeleccionar,
+  seleccionados,
+  onToggle,
   maxVisible = 12,
+  maxSeleccion = 3,
 }: LocacionesSugeridasPanelProps) {
   const visibles = sugerencias.slice(0, maxVisible);
   const restantes = Math.max(0, sugerencias.length - visibles.length);
+  const atMax = seleccionados.length >= maxSeleccion;
 
   if (visibles.length === 0) {
     return (
@@ -29,17 +32,21 @@ export function LocacionesSugeridasPanel({
     <div className="space-y-2">
       <div className="grid gap-2 sm:grid-cols-2">
         {visibles.map((loc) => {
-          const activo = seleccionado === loc.value;
+          const activo = seleccionados.includes(loc.value);
+          const blocked = atMax && !activo;
           return (
             <button
               key={loc.id}
               type="button"
-              onClick={() => onSeleccionar(loc.value)}
+              disabled={blocked}
+              onClick={() => onToggle(loc.value)}
               className={cn(
                 "text-left rounded-xl border p-3 transition-colors",
                 activo
                   ? "border-brand-500 bg-brand-50 ring-2 ring-brand-200"
-                  : "border-slate-200 bg-white hover:border-brand-300 hover:bg-brand-50/40"
+                  : blocked
+                    ? "border-slate-100 bg-slate-50 opacity-50 cursor-not-allowed"
+                    : "border-slate-200 bg-white hover:border-brand-300 hover:bg-brand-50/40"
               )}
             >
               <p className="font-medium text-sm text-slate-900 leading-snug">

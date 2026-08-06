@@ -44,7 +44,6 @@ export default function EventForm() {
   const [estado, setEstado] = useState<EventStatus>("PENDIENTE");
   const [publico, setPublico] = useState<"EXTERNO" | "INTERNO" | "MIXTO" | "">("");
   const [usuarioSolicitante, setUsuarioSolicitante] = useState("");
-  const [lugar, setLugar] = useState("");
   const [programa, setPrograma] = useState("");
   const [funcionario, setFuncionario] = useState<string[]>([]);
   const [necesitaAcreditacion, setNecesitaAcreditacion] = useState<boolean | "">("");
@@ -84,7 +83,6 @@ export default function EventForm() {
       setEstado(existing.estado as EventStatus);
       setPublico((existing.publico as "EXTERNO" | "INTERNO" | "MIXTO") ?? "");
       setUsuarioSolicitante(existing.usuarioSolicitante ?? "");
-      setLugar(existing.lugar ?? "");
       setPrograma(existing.programa ?? "");
       setFuncionario(
         ((existing as { funcionario?: string | null }).funcionario ?? "")
@@ -97,7 +95,15 @@ export default function EventForm() {
       const dp = existing.datosProduccion;
       if (dp != null) {
         const parsed = typeof dp === "string" ? (() => { try { return JSON.parse(dp); } catch { return {}; } })() : dp;
-        setDatosProduccion(parsed && typeof parsed === "object" ? (parsed as Record<string, string>) : {});
+        const base =
+          parsed && typeof parsed === "object" ? ({ ...(parsed as Record<string, string>) }) : {};
+        // Compat: eventos viejos con un solo lugar confirmado y sin candidatas.
+        if (!(base.locacionesPosibles ?? "").trim() && existing.lugar?.trim()) {
+          base.locacionesPosibles = existing.lugar.trim();
+        }
+        setDatosProduccion(base);
+      } else if (existing.lugar?.trim()) {
+        setDatosProduccion({ locacionesPosibles: existing.lugar.trim() });
       }
       setRealizacionAsistentes((existing as { realizacionAsistentes?: number | null }).realizacionAsistentes != null ? String((existing as { realizacionAsistentes: number }).realizacionAsistentes) : "");
       setRealizacionImpacto((existing as { realizacionImpacto?: string | null }).realizacionImpacto ?? "");
@@ -217,9 +223,15 @@ export default function EventForm() {
         if (!(datosProduccion.horarioComienzo ?? "").trim()) return "Indicá el horario de comienzo.";
         if (!(datosProduccion.horarioFinalizacion ?? "").trim()) return "Indicá el horario de finalización.";
         return null;
-      case "lugar":
-        if (!lugar.trim()) return "Indicá una locación (catálogo o campo libre).";
+      case "lugar": {
+        const posibles = (datosProduccion.locacionesPosibles ?? "")
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        if (posibles.length === 0) return "Indicá al menos una locación posible.";
+        if (posibles.length > 3) return "Podés elegir hasta 3 locaciones posibles.";
         return null;
+      }
       case "requisitos":
         if (!(datosProduccion.requiereMobiliario ?? "").trim()) {
           return "Indicá si necesitás mobiliario (Sí / No / Indistinto).";
@@ -316,6 +328,22 @@ export default function EventForm() {
       setStepError("Seleccioná al menos una opción o completá «Otro»");
       return;
     }
+    const { locacionLibre: _libre, ...dpSinLibre } = datosProduccion;
+    const posibles = (dpSinLibre.locacionesPosibles ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .slice(0, 3);
+    const datosPayload = {
+      ...dpSinLibre,
+      ...(posibles.length > 0 ? { locacionesPosibles: posibles.join(", ") } : {}),
+    };
+    if (!datosPayload.locacionesPosibles) {
+      delete (datosPayload as { locacionesPosibles?: string }).locacionesPosibles;
+    }
+    const datosFinal =
+      Object.keys(datosPayload).length > 0 ? datosPayload : undefined;
+
     if (isNew) {
       create.mutate({
         titulo,
@@ -326,12 +354,13 @@ export default function EventForm() {
         estado: isAdmin ? estado : "PENDIENTE",
         publico: publico || undefined,
         usuarioSolicitante: usuarioSolicitante.trim() || undefined,
-        lugar: lugar.trim() || undefined,
+        // La locación confirmada la define Producción después.
+        lugar: undefined,
         programa: programa.trim() || undefined,
         funcionario: funcionario.length > 0 ? funcionario.join(", ") : undefined,
         necesitaAcreditacion: necesitaAcreditacion === true || necesitaAcreditacion === false ? necesitaAcreditacion : undefined,
         linkAcreditacionConvocados: linkAcreditacionConvocados.trim() || undefined,
-        datosProduccion: Object.keys(datosProduccion).length > 0 ? datosProduccion : undefined,
+        datosProduccion: datosFinal,
       });
     } else {
       update.mutate({
@@ -345,12 +374,13 @@ export default function EventForm() {
           estado: isDirectorGeneral ? existing!.estado : isAdmin ? estado : existing!.estado,
           publico: publico || null,
           usuarioSolicitante: usuarioSolicitante.trim() || null,
-          lugar: lugar.trim() || null,
+          // Conservar la locación ya confirmada por Producción.
+          lugar: existing!.lugar ?? null,
           programa: programa.trim() || null,
           funcionario: funcionario.length > 0 ? funcionario.join(", ") : null,
           necesitaAcreditacion: necesitaAcreditacion === true || necesitaAcreditacion === false ? necesitaAcreditacion : null,
           linkAcreditacionConvocados: linkAcreditacionConvocados.trim() || null,
-          datosProduccion: Object.keys(datosProduccion).length > 0 ? datosProduccion : null,
+          datosProduccion: datosFinal ?? null,
           realizacionAsistentes: estado === "REALIZADO" && realizacionAsistentes.trim() ? parseInt(realizacionAsistentes, 10) : undefined,
           realizacionImpacto: estado === "REALIZADO" && realizacionImpacto.trim() ? realizacionImpacto.trim() : undefined,
           motivoCancelacion: estado === "CANCELADO" ? (motivoCancelacion.trim() || null) : undefined,
@@ -427,8 +457,6 @@ export default function EventForm() {
           setDescripcion={setDescripcion}
           datosProduccion={datosProduccion}
           setDatosProduccion={setDatosProduccion}
-          lugar={lugar}
-          setLugar={setLugar}
           lugaresSugeridos={lugaresSugeridos}
           lugaresOpciones={lugaresOpciones}
           usuarioSolicitante={usuarioSolicitante}

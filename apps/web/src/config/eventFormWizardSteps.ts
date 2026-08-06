@@ -69,7 +69,7 @@ const STEP: Record<EventFormStepId, WizardStepDef> = {
     id: "lugar",
     label: "Lugar",
     title: "¿Dónde querés hacerlo?",
-    subtitle: "Elegí del catálogo, de las sugerencias, o escribí una locación en campo libre.",
+    subtitle: "Elegí hasta 3 locaciones posibles. Después Producción confirma cuál quedó.",
   },
   descripcion: {
     id: "descripcion",

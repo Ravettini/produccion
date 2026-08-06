@@ -10,6 +10,7 @@ import {
   type AreaDecisionRole,
 } from "../lib/eventVisibility.js";
 import { AREA_LABELS, buildAreaChecklist, type AreaDecisionRow } from "../lib/areaDecisions.js";
+import { syncProposalsFromEvent } from "../lib/syncProposalsFromEvent.js";
 
 export const eventDecisionsRouter = Router({ mergeParams: true });
 
@@ -286,9 +287,14 @@ eventDecisionsRouter.patch("/:eventId/fields", authMiddleware, async (req, res) 
   }
 
   const allowed = ["funcionario", "lugar", "programa", "productor"] as const;
-  // Referente de Producción: solo rol PRODUCCION o ADMIN
+  // Responsable de Producción: solo rol PRODUCCION o ADMIN
   if (fields.productor !== undefined && dbUser.role !== "ADMIN" && dbUser.role !== "PRODUCCION") {
-    res.status(403).json({ error: "Solo Producción puede definir el referente de Producción" });
+    res.status(403).json({ error: "Solo Producción puede definir el responsable de Producción" });
+    return;
+  }
+  // Locación confirmada: solo PRODUCCION o ADMIN
+  if (fields.lugar !== undefined && dbUser.role !== "ADMIN" && dbUser.role !== "PRODUCCION") {
+    res.status(403).json({ error: "Solo Producción puede confirmar la locación del evento" });
     return;
   }
   const updates: Record<string, string | null> = {};
@@ -338,7 +344,9 @@ eventDecisionsRouter.patch("/:eventId/fields", authMiddleware, async (req, res) 
     }
     // Avisos por rol: tocar el requerimiento correspondiente
     const touchCategories = new Set<string>();
-    if (updates.productor !== undefined) touchCategories.add("PRODUCCION");
+    if (updates.productor !== undefined || updates.lugar !== undefined) {
+      touchCategories.add("PRODUCCION");
+    }
     if (updates.funcionario !== undefined || updates.programa !== undefined) {
       touchCategories.add("AGENDA");
     }
@@ -350,6 +358,22 @@ eventDecisionsRouter.patch("/:eventId/fields", authMiddleware, async (req, res) 
     }
     return ev;
   });
+
+  if (updates.lugar !== undefined && req.user?.id) {
+    try {
+      await syncProposalsFromEvent({
+        eventId,
+        userId: req.user.id,
+        tipoEvento: String(updated.tipoEvento),
+        lugar: updated.lugar,
+        funcionario: updated.funcionario,
+        programa: updated.programa,
+        datosProduccion: updated.datosProduccion,
+      });
+    } catch (err) {
+      console.error("[eventDecisions] syncProposalsFromEvent after lugar:", err);
+    }
+  }
 
   res.json(updated);
 });

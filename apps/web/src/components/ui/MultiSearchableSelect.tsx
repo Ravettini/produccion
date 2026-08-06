@@ -14,6 +14,8 @@ interface MultiSearchableSelectProps {
   emptyMessage?: string;
   className?: string;
   disabled?: boolean;
+  /** Máximo de ítems seleccionables. */
+  max?: number;
 }
 
 export function MultiSearchableSelect({
@@ -27,6 +29,7 @@ export function MultiSearchableSelect({
   emptyMessage = "Ningún resultado",
   className,
   disabled,
+  max,
 }: MultiSearchableSelectProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -52,11 +55,13 @@ export function MultiSearchableSelect({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const atMax = max != null && value.length >= max;
+
   const toggle = (optValue: string) => {
     if (!optValue) return;
     if (value.includes(optValue)) {
       onChange(value.filter((v) => v !== optValue));
-    } else {
+    } else if (!atMax) {
       onChange([...value, optValue]);
     }
   };
@@ -126,7 +131,10 @@ export function MultiSearchableSelect({
       {open && (
         <div className="absolute z-50 mt-1 w-full max-w-[calc(100vw-2rem)] rounded-lg border border-slate-200 bg-white shadow-lg py-1 max-h-60 flex flex-col">
           <div className="px-3 py-1.5 text-xs text-slate-500 border-b border-slate-100 bg-slate-50">
-            Podés marcar varios. El menú no se cierra al elegir.
+            {max != null
+              ? `Podés marcar hasta ${max}. El menú no se cierra al elegir.`
+              : "Podés marcar varios. El menú no se cierra al elegir."}
+            {atMax ? " Límite alcanzado." : ""}
           </div>
           <div className="p-2 border-b border-slate-100">
             <input
@@ -145,10 +153,12 @@ export function MultiSearchableSelect({
             ) : (
               filtered.map((opt) => {
                 const active = value.includes(opt.value);
+                const blocked = atMax && !active;
                 return (
                   <li key={opt.value}>
                     <button
                       type="button"
+                      disabled={blocked}
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -156,7 +166,8 @@ export function MultiSearchableSelect({
                       }}
                       className={cn(
                         "w-full px-3 py-2 text-left text-sm hover:bg-gov-50 flex items-center gap-2",
-                        active && "bg-gov-100 text-gov-800"
+                        active && "bg-gov-100 text-gov-800",
+                        blocked && "opacity-40 cursor-not-allowed hover:bg-white"
                       )}
                     >
                       <span

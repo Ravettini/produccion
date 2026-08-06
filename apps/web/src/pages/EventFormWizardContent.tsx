@@ -7,7 +7,7 @@ import { MultiSearchableSelect } from "../components/ui/MultiSearchableSelect";
 import { ChoiceCards } from "../components/wizard/ChoiceCards";
 import { LocacionesSugeridasPanel } from "../components/domain/LocacionesSugeridasPanel";
 import { DIRECCIONES_GENERALES_OPTIONS } from "../config/direccionesGenerales";
-import { categoryExtraFields, cateringFields, coberturaBriefFields, COBERTURA_CANALES_BASE, INSTAGRAM_CUENTAS, LINKEDIN_CUENTAS, MATERIALES_EXTRA_OPTIONS } from "../config/proposalCategoryFields";
+import { categoryExtraFields, cateringFields, coberturaBriefFields, COBERTURA_CANALES_BASE, COBERTURA_FORMATO_OPTIONS, INSTAGRAM_CUENTAS, LINKEDIN_CUENTAS, MATERIALES_EXTRA_OPTIONS } from "../config/proposalCategoryFields";
 import { getProgramasParaArea } from "../config/programasPorArea";
 import { FUNCIONARIOS_OPTIONS } from "../config/funcionarios";
 import type { EventFormStepId } from "../config/eventFormWizardSteps";
@@ -56,8 +56,6 @@ export interface EventFormWizardContentProps {
   setDescripcion: (v: string) => void;
   datosProduccion: Record<string, string>;
   setDatosProduccion: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  lugar: string;
-  setLugar: (v: string) => void;
   lugaresSugeridos: LocacionSugerida[];
   lugaresOpciones: { value: string; label: string; codigo?: string }[];
   usuarioSolicitante: string;
@@ -104,8 +102,6 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
     setDescripcion,
     datosProduccion,
     setDatosProduccion,
-    lugar,
-    setLugar,
     lugaresSugeridos,
     lugaresOpciones,
     usuarioSolicitante,
@@ -283,47 +279,88 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
         </div>
       );
 
-    case "lugar":
+    case "lugar": {
+      const locacionesPosibles = (datosProduccion.locacionesPosibles ?? "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const setLocacionesPosibles = (values: string[]) => {
+        const capped = values.slice(0, 3);
+        setDatosProduccion((prev) => ({
+          ...prev,
+          locacionesPosibles: capped.join(", "),
+        }));
+      };
+      const toggleLocacion = (value: string) => {
+        if (locacionesPosibles.includes(value)) {
+          setLocacionesPosibles(locacionesPosibles.filter((v) => v !== value));
+        } else if (locacionesPosibles.length < 3) {
+          setLocacionesPosibles([...locacionesPosibles, value]);
+        }
+      };
+      const libre = datosProduccion.locacionLibre ?? "";
+
       return (
         <div className="space-y-5">
-          <SearchableSelect
-            label="Buscar locación en el catálogo"
-            placeholder="Buscar en el catálogo…"
+          <MultiSearchableSelect
+            label="Posibles locaciones"
+            hint="Elegí hasta 3 opciones. Después Producción confirma cuál quedó."
+            placeholder="Seleccionar locación(es)…"
             searchPlaceholder="Sede, nombre o dirección…"
             options={[
-              { value: "", label: "Seleccionar lugar…" },
               ...lugaresOpciones,
-              ...(lugar && !lugaresOpciones.some((l) => l.value === lugar)
-                ? [{ value: lugar, label: lugar }]
-                : []),
+              ...locacionesPosibles
+                .filter((v) => !lugaresOpciones.some((l) => l.value === v))
+                .map((v) => ({ value: v, label: v })),
             ]}
-            value={lugar}
-            onChange={setLugar}
+            value={locacionesPosibles}
+            onChange={setLocacionesPosibles}
+            max={3}
             emptyMessage="Sin resultados"
           />
-          <Input
-            label="O agregá una locación (campo libre)"
-            value={lugar}
-            onChange={(e) => setLugar(e.target.value)}
-            placeholder="Ej: sede propia, domicilio, espacio externo…"
-          />
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+            <Input
+              label="O agregá una locación (campo libre)"
+              value={libre}
+              onChange={(e) =>
+                setDatosProduccion((prev) => ({ ...prev, locacionLibre: e.target.value }))
+              }
+              placeholder="Ej: sede propia, domicilio, espacio externo…"
+              className="flex-1"
+            />
+            <button
+              type="button"
+              disabled={!libre.trim() || locacionesPosibles.length >= 3 || locacionesPosibles.includes(libre.trim())}
+              onClick={() => {
+                const next = libre.trim();
+                if (!next || locacionesPosibles.length >= 3) return;
+                setLocacionesPosibles([...locacionesPosibles, next]);
+                setDatosProduccion((prev) => ({ ...prev, locacionLibre: "" }));
+              }}
+              className="px-3 py-2 rounded-lg text-sm font-medium bg-slate-900 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-800"
+            >
+              Agregar
+            </button>
+          </div>
           <p className="text-xs text-slate-500 -mt-3">
-            Podés elegir del catálogo o escribir cualquier locación que no figure en la lista.
+            Máximo 3. Podés elegir del catálogo o sumar una locación que no figure en la lista.
           </p>
           <div>
             <h3 className="text-sm font-semibold text-slate-800 mb-2">Sugerencias</h3>
             <p className="text-xs text-slate-500 mb-3">
-              Según cantidad de personas y requisitos del espacio.
+              Según cantidad de personas y requisitos del espacio. Tocá para sumar o quitar.
             </p>
             <LocacionesSugeridasPanel
               sugerencias={lugaresSugeridos}
-              seleccionado={lugar}
-              onSeleccionar={setLugar}
+              seleccionados={locacionesPosibles}
+              onToggle={toggleLocacion}
               maxVisible={8}
+              maxSeleccion={3}
             />
           </div>
         </div>
       );
+    }
 
     case "descripcion":
       return (
@@ -518,6 +555,10 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean);
+      const formatos = (datosProduccion.coberturaFormato ?? "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
       const hasIg = canales.includes("Instagram");
       const hasLi = canales.includes("LinkedIn");
       const igCuentas = (datosProduccion.comunicacionInstagram ?? "")
@@ -605,6 +646,26 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
                     </div>
                   )}
                 </div>
+              );
+            }
+            if (field.key === "coberturaFormato") {
+              return (
+                <MultiSearchableSelect
+                  key={field.key}
+                  label={field.label}
+                  hint="Podés elegir más de un formato."
+                  placeholder="Seleccionar formato(s)…"
+                  searchPlaceholder="Buscar formato…"
+                  options={COBERTURA_FORMATO_OPTIONS}
+                  value={formatos}
+                  onChange={(values) =>
+                    setDatosProduccion((prev) => ({
+                      ...prev,
+                      coberturaFormato: values.join(", "),
+                    }))
+                  }
+                  emptyMessage="Ningún formato coincide"
+                />
               );
             }
             if (field.type === "textarea") {

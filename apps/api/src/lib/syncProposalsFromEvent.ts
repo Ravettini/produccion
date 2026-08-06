@@ -69,7 +69,8 @@ function formatMaterialesExtra(dp: Datos): string | null {
 
 function buildProduccionDescription(dp: Datos, lugar?: string | null): string {
   const lines = [
-    line("Lugar", lugar),
+    line("Locaciones posibles", dp.locacionesPosibles),
+    line("Lugar confirmado", lugar),
     line("Personas", dp.cantidadPersonas),
     line("Convocatoria", dp.horarioConvocatoria),
     line("Comienzo", dp.horarioComienzo),
@@ -121,6 +122,7 @@ function buildCoberturaDescription(dp: Datos): string {
 }
 
 const PROD_EXTRA_KEYS = [
+  "locacionesPosibles",
   "horarioConvocatoria",
   "horarioComienzo",
   "horarioFinalizacion",

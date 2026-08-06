@@ -22,7 +22,7 @@ interface EventChangesPanelProps {
 
 const FIELD_LABELS: Record<string, string> = {
   funcionario: "Funcionario(s)",
-  lugar: "Lugar",
+  lugar: "Locación confirmada",
   programa: "Programa",
   productor: "Responsable de Producción",
   usuarioSolicitante: "Referente del área solicitante",

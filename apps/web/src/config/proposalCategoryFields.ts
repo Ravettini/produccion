@@ -163,6 +163,17 @@ export const LINKEDIN_CUENTAS: { value: string; label: string }[] = [
   { value: "LinkedIn BADA", label: "LinkedIn BADA" },
 ];
 
+/** Formatos audiovisuales (selección múltiple en el wizard de cobertura) */
+export const COBERTURA_FORMATO_OPTIONS: { value: string; label: string }[] = [
+  { value: "Historia", label: "Historia" },
+  { value: "Reel", label: "Reel" },
+  { value: "Carrusel", label: "Carrusel" },
+  { value: "Video", label: "Video" },
+  { value: "Foto", label: "Foto" },
+  { value: "Streaming", label: "Streaming" },
+  { value: "Otro", label: "Otro" },
+];
+
 /** Materiales extra (paso producción) */
 export const MATERIALES_EXTRA_OPTIONS: { value: string; label: string }[] = [
   { value: "Rotafolios", label: "Rotafolios" },
@@ -209,16 +220,7 @@ export const coberturaBriefFields: CategoryFieldConfig[] = [
     key: "coberturaFormato",
     label: "Formato",
     type: "select",
-    options: [
-      { value: "", label: "Seleccionar…" },
-      { value: "Historia", label: "Historia" },
-      { value: "Reel", label: "Reel" },
-      { value: "Carrusel", label: "Carrusel" },
-      { value: "Video", label: "Video" },
-      { value: "Foto", label: "Foto" },
-      { value: "Streaming", label: "Streaming" },
-      { value: "Otro", label: "Otro" },
-    ],
+    options: [{ value: "", label: "Seleccionar…" }, ...COBERTURA_FORMATO_OPTIONS],
   },
   {
     key: "coberturaOrientacion",

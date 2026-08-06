@@ -4,7 +4,7 @@ import { ArrowLeft, Sparkles, FileDown } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getEvent, updateEvent, deleteEvent, syncAcreditappEvent } from "../api/events";
 import { listProposals, createProposal } from "../api/proposals";
-import { generarBriefIA, exportarBriefAcDocx } from "../api/ai";
+import { generarBriefIA, exportarBriefDocx, exportarBriefAcDocx } from "../api/ai";
 import {
   listAttachments,
   uploadAttachment,
@@ -79,6 +79,7 @@ export default function EventDetail() {
   const [realizacionLinkImpacto, setRealizacionLinkImpacto] = useState("");
   const [realizacionPdfFile, setRealizacionPdfFile] = useState<File | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [exportandoBrief, setExportandoBrief] = useState(false);
   const [exportandoAc, setExportandoAc] = useState(false);
   const [showChangeAlert, setShowChangeAlert] = useState(false);
   const [acreditappWarning, setAcreditappWarning] = useState<string | undefined>(
@@ -171,8 +172,16 @@ export default function EventDetail() {
       setEditingResumen(false);
       setShowBriefModal(true);
       await qc.invalidateQueries({ queryKey: ["event", id] });
-      // Entrega el brief AC con la sinopsis recién generada
+      // Entrega el brief audiovisual y el reducido AC con la sinopsis recién generada
+      setExportandoBrief(true);
       setExportandoAc(true);
+      try {
+        await exportarBriefDocx(id!, `Brief audiovisual - ${event?.titulo ?? "Evento"}`);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setExportandoBrief(false);
+      }
       try {
         await exportarBriefAcDocx(id!, `Brief reducido AC - ${event?.titulo ?? "Evento"}`);
       } catch (error) {
@@ -197,6 +206,18 @@ export default function EventDetail() {
       qc.invalidateQueries({ queryKey: ["event", id] });
     },
   });
+
+  const handleExportBrief = async () => {
+    setExportandoBrief(true);
+    try {
+      await exportarBriefDocx(id!, `Brief audiovisual - ${event?.titulo ?? "Evento"}`);
+    } catch (error) {
+      console.error(error);
+      alert((error as Error).message);
+    } finally {
+      setExportandoBrief(false);
+    }
+  };
 
   const handleExportAc = async () => {
     setExportandoAc(true);
@@ -421,6 +442,8 @@ export default function EventDetail() {
         briefError={
           generarBrief.error instanceof Error ? generarBrief.error.message : undefined
         }
+        onExportBrief={handleExportBrief}
+        exportingBrief={exportandoBrief}
         onExportAc={handleExportAc}
         exportingAc={exportandoAc}
         canSyncAcreditapp={canEditEvent(user, event)}
@@ -652,7 +675,7 @@ export default function EventDetail() {
 
       <Modal
         title="Brief generado con IA"
-        subtitle="Sinopsis armada y aplicada. El brief reducido AC se descargó automáticamente."
+        subtitle="Sinopsis armada y aplicada. Se descargaron el brief audiovisual y el reducido AC."
         open={showBriefModal}
         onClose={() => setShowBriefModal(false)}
         size="xl"
@@ -679,11 +702,19 @@ export default function EventDetail() {
               Cerrar
             </Button>
             <Button
+              variant="secondary"
+              disabled={exportandoBrief}
+              onClick={handleExportBrief}
+            >
+              <FileDown className="w-4 h-4" aria-hidden />
+              {exportandoBrief ? "Exportando…" : "Descargar brief"}
+            </Button>
+            <Button
               disabled={exportandoAc}
               onClick={handleExportAc}
             >
               <FileDown className="w-4 h-4" aria-hidden />
-              {exportandoAc ? "Exportando…" : "Volver a descargar AC"}
+              {exportandoAc ? "Exportando…" : "Descargar AC"}
             </Button>
           </div>
         </div>
