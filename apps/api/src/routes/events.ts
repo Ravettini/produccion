@@ -162,7 +162,7 @@ eventsRouter.get("/:id", authMiddleware, async (req, res) => {
  */
 eventsRouter.post("/", authMiddleware, async (req, res) => {
   const role = req.user?.role;
-  if (!role || !["ORGANIZACION", "ADMIN", "DIRECTOR_GENERAL"].includes(role)) {
+  if (!role || !["ORGANIZACION", "ADMIN", "DIRECTOR_GENERAL", "INSTITUCIONALES", "AGENDA"].includes(role)) {
     res.status(403).json({ error: "Tu rol no puede crear eventos. Solo podés gestionar los que te solicitaron." });
     return;
   }

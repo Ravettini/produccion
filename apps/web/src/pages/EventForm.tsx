@@ -34,6 +34,10 @@ export default function EventForm() {
   const qc = useQueryClient();
   const { isAdmin, user } = useAuth();
   const isDirectorGeneral = user?.role === "DIRECTOR_GENERAL";
+  const canPickAnyArea =
+    isAdmin ||
+    user?.role === "INSTITUCIONALES" ||
+    user?.role === "AGENDA";
   const [stepIndex, setStepIndex] = useState(0);
   const [titulo, setTitulo] = useState("");
   const [descripcion, setDescripcion] = useState("");
@@ -213,8 +217,11 @@ export default function EventForm() {
         return null;
       case "dg-fecha":
         if (!fechaTentativa) return "Seleccioná una fecha tentativa.";
-        if (isAdmin && !areaSolicitante.trim()) return "Seleccioná el área solicitante.";
-        if (!user?.area && !isAdmin && !areaSolicitante.trim()) return "Seleccioná el área solicitante.";
+        if (isAdmin || canPickAnyArea) {
+          if (!areaSolicitante.trim()) return "Seleccioná el área solicitante.";
+        } else if (!user?.area && !areaSolicitante.trim()) {
+          return "Seleccioná el área solicitante.";
+        }
         return null;
       case "tipo":
         if (tipoEventoValue.length === 0) return "Elegí al menos un tipo de requerimiento.";
@@ -320,7 +327,7 @@ export default function EventForm() {
       setStepError("Al cancelar el evento es obligatorio indicar el motivo o razón.");
       return;
     }
-    if (isAdmin && !areaSolicitante.trim()) {
+    if ((isAdmin || canPickAnyArea) && !areaSolicitante.trim()) {
       setStepError("Seleccioná un área solicitante.");
       return;
     }
@@ -480,6 +487,7 @@ export default function EventForm() {
           realizacionImpacto={realizacionImpacto}
           setRealizacionImpacto={setRealizacionImpacto}
           isAdmin={isAdmin}
+          canPickAnyArea={canPickAnyArea}
           userArea={user?.area}
           showEstadoSelect={showEstadoSelect}
         />

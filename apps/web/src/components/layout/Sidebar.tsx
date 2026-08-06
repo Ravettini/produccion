@@ -1,6 +1,7 @@
 import { NavLink } from "react-router-dom";
 import {
   CalendarDays,
+  ClipboardList,
   LayoutDashboard,
   LogOut,
   Settings,
@@ -36,6 +37,8 @@ export function Sidebar({
   onClose,
   pendingCount = 0,
 }: SidebarProps) {
+  const showAgenda = ["ADMIN", "INSTITUCIONALES", "AGENDA"].includes(String(userRole ?? ""));
+
   return (
     <aside
       className={cn(
@@ -44,7 +47,6 @@ export function Sidebar({
         open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}
     >
-      {/* Brand */}
       <div className="px-5 py-5 border-b border-sidebar-border flex items-center justify-between">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-10 h-10 rounded-xl bg-brand-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-brand-900/30">
@@ -65,7 +67,6 @@ export function Sidebar({
         </button>
       </div>
 
-      {/* Nav */}
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => (
           <NavLink
@@ -94,6 +95,23 @@ export function Sidebar({
             )}
           </NavLink>
         ))}
+        {showAgenda && (
+          <NavLink
+            to="/agenda"
+            onClick={onClose}
+            className={({ isActive }) =>
+              cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
+                isActive
+                  ? "bg-brand-600/20 text-white ring-1 ring-brand-500/30"
+                  : "text-slate-400 hover:text-white hover:bg-sidebar-hover"
+              )
+            }
+          >
+            <ClipboardList className="w-5 h-5 flex-shrink-0 opacity-80" aria-hidden />
+            Agenda SSCCYRS
+          </NavLink>
+        )}
         {isAdmin && (
           <NavLink
             to="/admin"
@@ -113,7 +131,6 @@ export function Sidebar({
         )}
       </nav>
 
-      {/* User footer */}
       <div className="p-4 border-t border-sidebar-border">
         <div className="rounded-xl bg-sidebar-hover/80 p-3 mb-2">
           <p className="text-sm font-medium text-white truncate">{userName ?? "Usuario"}</p>

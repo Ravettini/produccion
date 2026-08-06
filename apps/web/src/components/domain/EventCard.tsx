@@ -1,15 +1,13 @@
 import { Link } from "react-router-dom";
 import { Calendar, Clock } from "lucide-react";
-import type { Event, EventStatus, Role } from "../../types";
+import type { Event, EventStatus, ProposalStatus, Role } from "../../types";
 import { StatusBadge } from "../ui/StatusBadge";
 import { formatEventDate } from "../../utils/formatters";
 import { getEventHorario } from "../../utils/eventHelpers";
 import {
-  areaRoleForUser,
   getEventPendingForUser,
   hasEventUnseenChangesForUser,
 } from "../../utils/changeAlerts";
-import { AreaChecklistChips } from "./AreaChecklistChips";
 import { cn } from "../../utils/cn";
 
 interface EventCardProps {
@@ -20,9 +18,9 @@ interface EventCardProps {
 
 export function EventCard({ event, userRole, className }: EventCardProps) {
   const horario = getEventHorario(event);
-  const changed = hasEventUnseenChangesForUser(userRole, event, event.proposals ?? []);
+  const proposals = event.proposals ?? [];
+  const changed = hasEventUnseenChangesForUser(userRole, event, proposals);
   const pending = getEventPendingForUser(userRole, event);
-  const miArea = areaRoleForUser(userRole);
 
   return (
     <Link
@@ -39,7 +37,7 @@ export function EventCard({ event, userRole, className }: EventCardProps) {
       )}
     >
       <div className="flex items-start justify-between gap-3 mb-3">
-        <h2 className="font-semibold text-slate-900 group-hover:text-brand-700 transition-colors line-clamp-2 flex-1">
+        <h2 className="font-semibold text-slate-900 group-hover:text-brand-700 transition-colors line-clamp-2 flex-1 break-normal">
           {event.titulo}
         </h2>
         <div className="flex flex-col items-end gap-1 shrink-0">
@@ -87,16 +85,30 @@ export function EventCard({ event, userRole, className }: EventCardProps) {
         </div>
       </dl>
 
-      {event.areaChecklist && event.areaChecklist.length > 0 && (
+      {proposals.length > 0 && (
         <div>
           <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-1.5">
-            Involucrados
+            Requerimientos
           </p>
-          <AreaChecklistChips
-            items={event.areaChecklist}
-            highlightAreaRole={miArea}
-            size="sm"
-          />
+          <ul className="space-y-1.5">
+            {proposals.slice(0, 4).map((p) => (
+              <li key={p.id} className="flex items-center justify-between gap-2 min-w-0">
+                <span className="text-sm text-slate-700 truncate" title={p.titulo}>
+                  {p.titulo}
+                </span>
+                {p.estado && (
+                  <StatusBadge
+                    kind="proposal"
+                    value={p.estado as ProposalStatus}
+                    className="shrink-0 text-[10px] px-1.5 py-0"
+                  />
+                )}
+              </li>
+            ))}
+            {proposals.length > 4 && (
+              <li className="text-xs text-slate-400">+{proposals.length - 4} más</li>
+            )}
+          </ul>
         </div>
       )}
     </Link>

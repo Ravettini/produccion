@@ -79,6 +79,8 @@ export interface EventFormWizardContentProps {
   realizacionImpacto: string;
   setRealizacionImpacto: (v: string) => void;
   isAdmin: boolean;
+  /** Institucionales/admin pueden elegir cualquier DG al cargar eventos. */
+  canPickAnyArea?: boolean;
   userArea?: string | null;
   showEstadoSelect: boolean;
 }
@@ -122,13 +124,15 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
     realizacionImpacto,
     setRealizacionImpacto,
     isAdmin,
+    canPickAnyArea = false,
     userArea,
     showEstadoSelect,
     estadoOptions,
     onEstadoChange,
   } = props;
 
-  const areaParaProgramas = userArea && !isAdmin ? userArea : areaSolicitante.trim();
+  const lockAreaToUser = Boolean(userArea) && !isAdmin && !canPickAnyArea;
+  const areaParaProgramas = lockAreaToUser ? (userArea ?? "").trim() : areaSolicitante.trim();
   const opcionesPrograma = getProgramasParaArea(areaParaProgramas);
 
   switch (stepId) {
@@ -147,25 +151,22 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
     case "dg-fecha":
       return (
         <div className="space-y-4">
-          {userArea && !isAdmin ? (
+          {lockAreaToUser ? (
             <div className="text-center">
               <p className="text-sm text-slate-500 mb-1">Área solicitante</p>
               <p className="font-medium text-slate-900">{userArea}</p>
             </div>
-          ) : !userArea && !isAdmin ? (
-            <Select
-              label="Área solicitante"
-              options={[{ value: "", label: "Seleccionar área…" }, ...DIRECCIONES_GENERALES_OPTIONS]}
-              value={areaSolicitante}
-              onChange={(e) => setAreaSolicitante(e.target.value)}
-              required
-            />
           ) : (
             <Select
               label="Área solicitante"
-              options={[{ value: "", label: "Seleccionar área…" }, ...DIRECCIONES_GENERALES_OPTIONS]}
+              options={[
+                { value: "", label: "Seleccionar área…" },
+                { value: "Institucionales", label: "Institucionales (sin DG / central)" },
+                ...DIRECCIONES_GENERALES_OPTIONS,
+              ]}
               value={areaSolicitante}
               onChange={(e) => setAreaSolicitante(e.target.value)}
+              required
             />
           )}
           <Input

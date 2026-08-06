@@ -73,9 +73,16 @@ export function requireRoles(...roles: string[]) {
 }
 
 /**
- * Puede aprobar/rechazar propuestas: solo ADMIN (confirmar = solo admins).
+ * Roles que pueden aprobar/rechazar propuestas (la categoría se valida en el handler).
  */
-export const canValidate = requireRoles("ADMIN");
+export const canValidate = requireRoles(
+  "ADMIN",
+  "VALIDADOR",
+  "PRODUCCION",
+  "INSTITUCIONALES",
+  "AGENDA",
+  "COBERTURA"
+);
 
 /**
  * Puede crear requerimientos: organización, producción, institucionales/agenda, cobertura y admin.
@@ -88,3 +95,27 @@ export const canCreateProposal = requireRoles(
   "COBERTURA",
   "ADMIN"
 );
+
+/** Categorías que cada rol puede validar. */
+export function rolesAllowedForProposalCategory(
+  role: string,
+  categoria: string,
+  titulo?: string | null
+): boolean {
+  if (role === "ADMIN" || role === "VALIDADOR") return true;
+  if (role === "PRODUCCION") {
+    return ["PRODUCCION", "CATERING", "TECNICA", "LOGISTICA"].includes(categoria);
+  }
+  if (role === "INSTITUCIONALES" || role === "AGENDA") {
+    return categoria === "AGENDA";
+  }
+  if (role === "COBERTURA") {
+    return (
+      categoria === "OTRO" &&
+      String(titulo ?? "")
+        .toLowerCase()
+        .includes("cobertura")
+    );
+  }
+  return false;
+}

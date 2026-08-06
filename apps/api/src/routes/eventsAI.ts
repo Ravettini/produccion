@@ -5,7 +5,11 @@
  */
 import { Router } from "express";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { generateBriefDocx, generateAcBriefReducidoDocx } from "brief-generator";
+import {
+  generateBriefDocx,
+  generateCompletoBriefDocx,
+  generateAcBriefReducidoDocx,
+} from "brief-generator";
 import { prisma } from "../lib/prisma.js";
 import { authMiddleware } from "../middleware/auth.js";
 import { getAIConfig } from "../lib/config.js";
@@ -97,6 +101,30 @@ async function loadEventForBrief(id: string) {
     },
   });
 }
+
+/** GET /events/:id/exportar-brief-completo-docx - Brief estratégico completo */
+eventsAIRouter.get("/:id/exportar-brief-completo-docx", authMiddleware, async (req, res) => {
+  const { id } = req.params;
+  const event = await loadEventForBrief(id);
+  if (!event) {
+    res.status(404).json({ error: "Evento no encontrado" });
+    return;
+  }
+
+  try {
+    const buffer = await generateCompletoBriefDocx(buildBriefInput(event));
+    const filename = `Brief completo - ${event.titulo.replace(/[/\\:*?"<>|]/g, "-")}.docx`;
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+    res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(filename)}"`);
+    res.send(Buffer.from(buffer));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({
+      error: "Error al generar el brief completo",
+      detail: message,
+    });
+  }
+});
 
 /** GET /events/:id/exportar-brief-docx - Devuelve DOCX según modelo BRIEF AUDIOVISUAL */
 eventsAIRouter.get("/:id/exportar-brief-docx", authMiddleware, async (req, res) => {

@@ -186,16 +186,31 @@ async function upsertSubmittedProposal(opts: {
 }): Promise<void> {
   const existingList = await prisma.proposal.findMany({
     where: { eventId: opts.eventId, categoria: opts.categoria },
+    orderBy: { createdAt: "asc" },
   });
-  const existing = existingList[0] as
-    | { id: string; estado: string }
+
+  // Preferir la tarjeta con el mismo título (auto-sync); si no, la primera de la categoría.
+  const sameTitle = existingList.find(
+    (p) => String(p.titulo).trim().toLowerCase() === opts.titulo.trim().toLowerCase()
+  );
+  const existing = (sameTitle ?? existingList[0]) as
+    | { id: string; estado: string; titulo: string }
     | undefined;
 
   const datosExtraStr =
     Object.keys(opts.datosExtra).length > 0 ? JSON.stringify(opts.datosExtra) : null;
 
   if (existing) {
+    // Nunca tocar requerimientos ya decididos.
     if (["APPROVED", "REJECTED", "CANCELLED"].includes(existing.estado)) {
+      return;
+    }
+    // Si hay otra de la misma categoría ya aprobada, no crear ni pisar.
+    const decidedSibling = existingList.find(
+      (p) =>
+        p.id !== existing.id && ["APPROVED", "REJECTED"].includes(String(p.estado))
+    );
+    if (decidedSibling) {
       return;
     }
     await prisma.proposal.update({
@@ -204,6 +219,7 @@ async function upsertSubmittedProposal(opts: {
         titulo: opts.titulo,
         descripcion: opts.descripcion,
         datosExtra: datosExtraStr,
+        // Conservar el estado actual (solo sube DRAFT → SUBMITTED).
         estado: existing.estado === "DRAFT" ? "SUBMITTED" : existing.estado,
       },
     });
@@ -218,6 +234,11 @@ async function upsertSubmittedProposal(opts: {
         },
       });
     }
+    return;
+  }
+
+  // Si ya hay una aprobada/rechazada de esta categoría, no crear duplicado.
+  if (existingList.some((p) => ["APPROVED", "REJECTED"].includes(String(p.estado)))) {
     return;
   }
 

@@ -7,6 +7,7 @@ import EventDetail from "./pages/EventDetail";
 import ProposalDetail from "./pages/ProposalDetail";
 import Admin from "./pages/Admin";
 import Calendar from "./pages/Calendar";
+import AgendaInstitucionales from "./pages/AgendaInstitucionales";
 import { AppShell } from "./components/layout/AppShell";
 import { canCreateEvent } from "./hooks/usePermissions";
 
@@ -44,6 +45,7 @@ function AppRoutes() {
       >
         <Route index element={<EventList />} />
         <Route path="calendar" element={<Calendar />} />
+        <Route path="agenda" element={<AgendaInstitucionales />} />
         <Route path="admin" element={<Admin />} />
         <Route
           path="events/new"

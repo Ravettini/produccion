@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, Sparkles, FileDown } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getEvent, updateEvent, deleteEvent, syncAcreditappEvent } from "../api/events";
 import { listProposals, createProposal } from "../api/proposals";
-import { generarBriefIA, exportarBriefDocx, exportarBriefAcDocx } from "../api/ai";
+import { exportarBriefDocx, exportarBriefCompletoDocx, exportarBriefAcDocx } from "../api/ai";
 import {
   listAttachments,
   uploadAttachment,
@@ -70,8 +70,6 @@ export default function EventDetail() {
   const [filterCategoria, setFilterCategoria] = useState<ProposalCategory | "">("");
   const [editingResumen, setEditingResumen] = useState(false);
   const [resumenDraft, setResumenDraft] = useState("");
-  const [showBriefModal, setShowBriefModal] = useState(false);
-  const [briefGenerado, setBriefGenerado] = useState("");
   const [confirmEstado, setConfirmEstado] = useState<EventStatus | null>(null);
   const [motivoCancelacion, setMotivoCancelacion] = useState("");
   const [realizacionAsistentes, setRealizacionAsistentes] = useState<string>("");
@@ -79,6 +77,7 @@ export default function EventDetail() {
   const [realizacionLinkImpacto, setRealizacionLinkImpacto] = useState("");
   const [realizacionPdfFile, setRealizacionPdfFile] = useState<File | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [exportandoCompleto, setExportandoCompleto] = useState(false);
   const [exportandoBrief, setExportandoBrief] = useState(false);
   const [exportandoAc, setExportandoAc] = useState(false);
   const [showChangeAlert, setShowChangeAlert] = useState(false);
@@ -164,48 +163,17 @@ export default function EventDetail() {
       setRealizacionImpacto("");
     },
   });
-  const generarBrief = useMutation({
-    mutationFn: () => generarBriefIA(id!),
-    onSuccess: async (data) => {
-      setBriefGenerado(data.brief);
-      setResumenDraft(data.brief);
-      setEditingResumen(false);
-      setShowBriefModal(true);
-      await qc.invalidateQueries({ queryKey: ["event", id] });
-      // Entrega el brief audiovisual y el reducido AC con la sinopsis recién generada
-      setExportandoBrief(true);
-      setExportandoAc(true);
-      try {
-        await exportarBriefDocx(id!, `Brief audiovisual - ${event?.titulo ?? "Evento"}`);
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setExportandoBrief(false);
-      }
-      try {
-        await exportarBriefAcDocx(id!, `Brief reducido AC - ${event?.titulo ?? "Evento"}`);
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setExportandoAc(false);
-      }
-    },
-  });
-  const deleteEventMutation = useMutation({
-    mutationFn: () => deleteEvent(id!),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["events"] });
-      navigate("/");
-    },
-  });
-
-  const syncAcreditapp = useMutation({
-    mutationFn: () => syncAcreditappEvent(id!),
-    onSuccess: () => {
-      setAcreditappWarning(undefined);
-      qc.invalidateQueries({ queryKey: ["event", id] });
-    },
-  });
+  const handleExportCompleto = async () => {
+    setExportandoCompleto(true);
+    try {
+      await exportarBriefCompletoDocx(id!, `Brief completo - ${event?.titulo ?? "Evento"}`);
+    } catch (error) {
+      console.error(error);
+      alert((error as Error).message);
+    } finally {
+      setExportandoCompleto(false);
+    }
+  };
 
   const handleExportBrief = async () => {
     setExportandoBrief(true);
@@ -230,6 +198,22 @@ export default function EventDetail() {
       setExportandoAc(false);
     }
   };
+
+  const deleteEventMutation = useMutation({
+    mutationFn: () => deleteEvent(id!),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["events"] });
+      navigate("/");
+    },
+  });
+
+  const syncAcreditapp = useMutation({
+    mutationFn: () => syncAcreditappEvent(id!),
+    onSuccess: () => {
+      setAcreditappWarning(undefined);
+      qc.invalidateQueries({ queryKey: ["event", id] });
+    },
+  });
 
   const handleShowChanges = () => {
     setTab("cambios");
@@ -437,13 +421,20 @@ export default function EventDetail() {
         resumenError={
           updateResumen.error instanceof Error ? updateResumen.error.message : undefined
         }
-        onGenerateBrief={() => generarBrief.mutate()}
-        generatingBrief={generarBrief.isPending}
-        briefError={
-          generarBrief.error instanceof Error ? generarBrief.error.message : undefined
-        }
+        onExportCompleto={handleExportCompleto}
+        exportingCompleto={exportandoCompleto}
         onExportBrief={handleExportBrief}
         exportingBrief={exportandoBrief}
+        showAudiovisualBrief={
+          /cobertura/i.test(event.tipoEvento) ||
+          proposals.some(
+            (p) =>
+              p.categoria === "OTRO" &&
+              String(p.titulo ?? "")
+                .toLowerCase()
+                .includes("cobertura")
+          )
+        }
         onExportAc={handleExportAc}
         exportingAc={exportandoAc}
         canSyncAcreditapp={canEditEvent(user, event)}
@@ -672,53 +663,6 @@ export default function EventDetail() {
           />
         </div>
       )}
-
-      <Modal
-        title="Brief generado con IA"
-        subtitle="Sinopsis armada y aplicada. Se descargaron el brief audiovisual y el reducido AC."
-        open={showBriefModal}
-        onClose={() => setShowBriefModal(false)}
-        size="xl"
-      >
-        <div className="flex flex-col max-h-[70vh]">
-          <div className="flex-1 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50">
-            <div className="p-6 space-y-4">
-              <div className="bg-sidebar text-white px-5 py-4 rounded-xl flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-cyan-400 flex-shrink-0" aria-hidden />
-                <p className="font-semibold">Sinopsis: {event.titulo}</p>
-              </div>
-              {briefGenerado
-                .split(/\n\n+/)
-                .filter(Boolean)
-                .map((paragraph, i) => (
-                  <p key={i} className="text-slate-700 text-[15px] leading-relaxed">
-                    {paragraph}
-                  </p>
-                ))}
-            </div>
-          </div>
-          <div className="stack-actions sm:justify-end pt-4 mt-4 border-t border-slate-100 [&_button]:w-full [&_button]:sm:w-auto">
-            <Button variant="secondary" onClick={() => setShowBriefModal(false)}>
-              Cerrar
-            </Button>
-            <Button
-              variant="secondary"
-              disabled={exportandoBrief}
-              onClick={handleExportBrief}
-            >
-              <FileDown className="w-4 h-4" aria-hidden />
-              {exportandoBrief ? "Exportando…" : "Descargar brief"}
-            </Button>
-            <Button
-              disabled={exportandoAc}
-              onClick={handleExportAc}
-            >
-              <FileDown className="w-4 h-4" aria-hidden />
-              {exportandoAc ? "Exportando…" : "Descargar AC"}
-            </Button>
-          </div>
-        </div>
-      </Modal>
 
       <Modal
         title={confirmEstado === "CANCELADO" ? "Cancelar evento" : confirmEstado === "REALIZADO" ? "Marcar como realizado" : "Confirmar evento"}

@@ -20,11 +20,13 @@ export function PageHeader({
       {breadcrumb && <div className="mb-2">{breadcrumb}</div>}
       <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-start sm:justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight break-words">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight whitespace-normal break-normal">
             {title}
           </h1>
           {subtitle && (
-            <p className="text-slate-500 text-sm sm:text-base mt-1 max-w-2xl break-words">{subtitle}</p>
+            <p className="text-slate-500 text-sm sm:text-base mt-1 max-w-2xl whitespace-normal break-normal">
+              {subtitle}
+            </p>
           )}
         </div>
         {actions && (

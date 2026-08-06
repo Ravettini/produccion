@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { FileDown, Sparkles } from "lucide-react";
+import { FileDown } from "lucide-react";
 import type { Event, User } from "../../types";
 import { Button, Card, CardBody, CardHeader, TextArea } from "../ui";
 import { SearchableSelect } from "../ui/SearchableSelect";
@@ -18,11 +18,11 @@ interface EventOverviewProps {
   onCancelEditResumen: () => void;
   savingResumen: boolean;
   resumenError?: string;
-  onGenerateBrief: () => void;
-  generatingBrief: boolean;
-  briefError?: string;
+  onExportCompleto: () => void;
+  exportingCompleto: boolean;
   onExportBrief: () => void;
   exportingBrief: boolean;
+  showAudiovisualBrief?: boolean;
   onExportAc: () => void;
   exportingAc: boolean;
   canSyncAcreditapp?: boolean;
@@ -60,11 +60,11 @@ export function EventOverview({
   onCancelEditResumen,
   savingResumen,
   resumenError,
-  onGenerateBrief,
-  generatingBrief,
-  briefError,
+  onExportCompleto,
+  exportingCompleto,
   onExportBrief,
   exportingBrief,
+  showAudiovisualBrief = true,
   onExportAc,
   exportingAc,
   canSyncAcreditapp,
@@ -161,27 +161,30 @@ export function EventOverview({
             Brief y sinopsis
           </h2>
           <p className="mt-1 text-sm text-slate-500">
-            Generá la sinopsis con IA o descargá el brief audiovisual y el reducido AC.
+            Descargá el brief completo, el audiovisual (si hay cobertura) y el reducido AC.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button
             size="sm"
-            onClick={onGenerateBrief}
-            disabled={generatingBrief}
-          >
-            <Sparkles className="h-4 w-4" aria-hidden />
-            {generatingBrief ? "Generando…" : "Generar con IA"}
-          </Button>
-          <Button
-            size="sm"
             variant="secondary"
-            onClick={onExportBrief}
-            disabled={exportingBrief}
+            onClick={onExportCompleto}
+            disabled={exportingCompleto}
           >
             <FileDown className="h-4 w-4" aria-hidden />
-            {exportingBrief ? "Exportando…" : "Brief audiovisual"}
+            {exportingCompleto ? "Exportando…" : "Brief Completo"}
           </Button>
+          {showAudiovisualBrief && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={onExportBrief}
+              disabled={exportingBrief}
+            >
+              <FileDown className="h-4 w-4" aria-hidden />
+              {exportingBrief ? "Exportando…" : "Brief audiovisual"}
+            </Button>
+          )}
           <Button
             size="sm"
             variant="secondary"
@@ -194,9 +197,9 @@ export function EventOverview({
         </div>
       </div>
 
-      {(briefError || resumenError) && (
+      {resumenError && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {briefError || resumenError}
+          {resumenError}
         </div>
       )}
 

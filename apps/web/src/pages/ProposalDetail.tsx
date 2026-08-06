@@ -194,7 +194,7 @@ export default function ProposalDetail() {
                 Enviar a validación
               </Button>
             )}
-            {proposal.estado === "SUBMITTED" && canApproveOrRejectProposal(user) && (
+            {proposal.estado === "SUBMITTED" && canApproveOrRejectProposal(user, proposal) && (
               <>
                 <Button variant="success" onClick={() => approve.mutate()} disabled={approve.isPending}>
                   <CheckCircle2 className="w-4 h-4" aria-hidden />

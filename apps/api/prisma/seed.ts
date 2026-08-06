@@ -3,7 +3,10 @@ import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
-/** Áreas sin código (mismo orden que en frontend). Un usuario por área con rol ORGANIZACION (solo crear eventos y propuestas). */
+/**
+ * Un usuario por Dirección General.
+ * Rol correcto: DIRECTOR_GENERAL (antes quedaban mal como ORGANIZACION).
+ */
 const AREAS_USUARIOS: { area: string; email: string; name: string }[] = [
   { area: "Cultura Ciudadana y Responsabilidad Social", email: "cultura.ciudadana@gobierno.gob", name: "Usuario Cultura Ciudadana" },
   { area: "Bienestar Ciudadano", email: "bienestar.ciudadano@gobierno.gob", name: "Usuario Bienestar Ciudadano" },
@@ -113,20 +116,38 @@ async function main() {
     },
   });
 
-  // Un usuario por área (rol ORGANIZACION: solo crear eventos y propuestas)
+  // Un usuario por DG (Director General: carga eventos de su área)
   for (const { area, email, name } of AREAS_USUARIOS) {
     await prisma.user.upsert({
       where: { email },
-      update: { area, name, role: "ORGANIZACION" },
+      update: { area, name, role: "DIRECTOR_GENERAL", password: hashArea },
       create: {
         email,
         password: hashArea,
         name,
-        role: "ORGANIZACION",
+        role: "DIRECTOR_GENERAL",
         area,
       },
     });
   }
+
+  // Nacho / Institucionales: carga eventos cuando no hay DG o las DG no cargan
+  await prisma.user.upsert({
+    where: { email: "nacho@gobierno.gob" },
+    update: {
+      name: "Ignacio Ravettini",
+      role: "INSTITUCIONALES",
+      area: "Institucionales",
+      password: hash,
+    },
+    create: {
+      email: "nacho@gobierno.gob",
+      password: hash,
+      name: "Ignacio Ravettini",
+      role: "INSTITUCIONALES",
+      area: "Institucionales",
+    },
+  });
 
   let evento = await prisma.event.findFirst({
     where: { titulo: "Jornada de Gobierno Abierto 2025" },
@@ -334,7 +355,8 @@ async function main() {
     produccion: produccion.email,
     institucionales: institucionales.email,
     cobertura: cobertura.email,
-    usuariosPorArea: AREAS_USUARIOS.length,
+    nacho: "nacho@gobierno.gob",
+    usuariosPorDg: AREAS_USUARIOS.length,
     passwordAreaUsuarios: PASSWORD_AREA_USUARIOS,
     passwordRolesEspecialidad: "admin123",
     evento: eventId,

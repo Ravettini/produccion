@@ -21,6 +21,28 @@ interface WizardShellProps {
   eyebrow?: string;
 }
 
+function isFocusableField(el: Element): el is HTMLElement {
+  if (!(el instanceof HTMLElement)) return false;
+  if (el.hasAttribute("disabled") || el.getAttribute("aria-disabled") === "true") return false;
+  const tag = el.tagName;
+  if (tag === "TEXTAREA") return true;
+  if (tag === "SELECT") return true;
+  if (tag === "BUTTON") return true;
+  if (tag === "INPUT") {
+    const type = (el as HTMLInputElement).type;
+    return !["hidden", "submit", "button", "reset", "file"].includes(type);
+  }
+  if (el.isContentEditable) return true;
+  return el.tabIndex >= 0;
+}
+
+function focusablesIn(root: HTMLElement): HTMLElement[] {
+  const nodes = root.querySelectorAll(
+    "input:not([type=hidden]):not([disabled]), textarea:not([disabled]), select:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex='-1'])"
+  );
+  return Array.from(nodes).filter(isFocusableField);
+}
+
 export function WizardShell({
   title,
   subtitle,
@@ -41,8 +63,33 @@ export function WizardShell({
 }: WizardShellProps) {
   const progress = totalSteps > 0 ? ((stepIndex + 1) / totalSteps) * 100 : 0;
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== "Enter" || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return;
+    const target = e.target as HTMLElement | null;
+    if (!target) return;
+    // En textarea, Enter inserta salto de línea (salvo que quieran avanzar con Ctrl+Enter — no aplica).
+    if (target.tagName === "TEXTAREA") return;
+    // Botones: dejar el comportamiento nativo (click).
+    if (target.tagName === "BUTTON" || target.getAttribute("role") === "button") return;
+
+    e.preventDefault();
+    const root = e.currentTarget;
+    const fields = focusablesIn(root).filter(
+      (el) => el.tagName !== "BUTTON" && el.getAttribute("role") !== "button"
+    );
+    const idx = fields.indexOf(target);
+    if (idx >= 0 && idx < fields.length - 1) {
+      fields[idx + 1]?.focus();
+      return;
+    }
+    // Último campo del paso → avanzar / guardar
+    if (!canNext || isPending) return;
+    if (isLast) onFinish?.();
+    else onNext?.();
+  };
+
   return (
-    <div className="min-h-full flex flex-col w-full">
+    <div className="min-h-full flex flex-col w-full" onKeyDown={handleKeyDown}>
       <div className="mb-6 sm:mb-8">
         <div className="flex items-center justify-between text-sm font-medium text-slate-600 mb-3">
           <span>

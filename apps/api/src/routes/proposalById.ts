@@ -4,6 +4,7 @@ import {
   authMiddleware,
   canCreateProposal,
   canValidate,
+  rolesAllowedForProposalCategory,
 } from "../middleware/auth.js";
 import {
   canUserSeeEvent,
@@ -225,6 +226,16 @@ proposalByIdRouter.post("/:id/approve", authMiddleware, canValidate, async (req,
     res.status(400).json({ error: "Solo se puede aprobar una propuesta en SUBMITTED" });
     return;
   }
+  if (
+    !rolesAllowedForProposalCategory(
+      req.user!.role,
+      String(proposal.categoria),
+      proposal.titulo
+    )
+  ) {
+    res.status(403).json({ error: "Tu rol no puede aprobar este tipo de requerimiento" });
+    return;
+  }
   await prisma.$transaction([
     prisma.proposal.update({
       where: { id: req.params.id },
@@ -266,6 +277,16 @@ proposalByIdRouter.post("/:id/reject", authMiddleware, canValidate, async (req, 
   }
   if (proposal.estado !== "SUBMITTED") {
     res.status(400).json({ error: "Solo se puede rechazar una propuesta en SUBMITTED" });
+    return;
+  }
+  if (
+    !rolesAllowedForProposalCategory(
+      req.user!.role,
+      String(proposal.categoria),
+      proposal.titulo
+    )
+  ) {
+    res.status(403).json({ error: "Tu rol no puede rechazar este tipo de requerimiento" });
     return;
   }
   const reason = String(decisionReason).trim();
