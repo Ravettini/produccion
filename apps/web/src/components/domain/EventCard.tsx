@@ -7,20 +7,23 @@ import { getEventHorario } from "../../utils/eventHelpers";
 import {
   getEventPendingForUser,
   hasEventUnseenChangesForUser,
+  isDgConvocadaInClient,
 } from "../../utils/changeAlerts";
 import { cn } from "../../utils/cn";
 
 interface EventCardProps {
   event: Event;
   userRole?: Role | string | null;
+  userArea?: string | null;
   className?: string;
 }
 
-export function EventCard({ event, userRole, className }: EventCardProps) {
+export function EventCard({ event, userRole, userArea, className }: EventCardProps) {
   const horario = getEventHorario(event);
   const proposals = event.proposals ?? [];
-  const changed = hasEventUnseenChangesForUser(userRole, event, proposals);
+  const changed = hasEventUnseenChangesForUser(userRole, event, proposals, userArea);
   const pending = getEventPendingForUser(userRole, event);
+  const convocada = isDgConvocadaInClient(event.datosProduccion, userArea);
 
   return (
     <Link
@@ -42,6 +45,11 @@ export function EventCard({ event, userRole, className }: EventCardProps) {
         </h2>
         <div className="flex flex-col items-end gap-1 shrink-0">
           <StatusBadge kind="event" value={event.estado as EventStatus} />
+          {convocada && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide bg-purple-100 text-purple-900">
+              DG convocada
+            </span>
+          )}
           {pending.faltaMiAprobacion && (
             <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide bg-brand-100 text-brand-900">
               Falta tu aprobación

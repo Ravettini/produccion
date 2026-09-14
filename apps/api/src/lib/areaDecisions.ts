@@ -28,14 +28,33 @@ export interface AreaChecklistItem {
   decidedAt: string | null;
 }
 
+export function isAutoConfirmedEvent(event: {
+  tipoEvento?: string | null;
+  areaSolicitante?: string | null;
+}): boolean {
+  if (event.areaSolicitante && /responsabilidad\s+social/i.test(event.areaSolicitante)) {
+    return true;
+  }
+  const tipo = String(event.tipoEvento ?? "");
+  if (/solo\s+informar/i.test(tipo)) {
+    return true;
+  }
+  return false;
+}
+
 /** Una entrada por área solicitada, con PENDING cuando todavía no hay decisión. */
 export function buildAreaChecklist(
   tipoEvento: unknown,
-  decisions: AreaDecisionRow[] = []
+  decisions: AreaDecisionRow[] = [],
+  areaSolicitante?: unknown
 ): AreaChecklistItem[] {
   const tipo = tipoEvento == null ? null : String(tipoEvento);
+  const area = areaSolicitante == null ? null : String(areaSolicitante);
+  if (isAutoConfirmedEvent({ tipoEvento: tipo, areaSolicitante: area })) {
+    return [];
+  }
   const byArea = new Map(decisions.map((d) => [String(d.areaRole), d]));
-  return getRequestedAreaRoles(tipo).map((areaRole) => {
+  return getRequestedAreaRoles(tipo, area).map((areaRole) => {
     const found = byArea.get(areaRole);
     const estado =
       found?.estado === "APPROVED" || found?.estado === "REJECTED" ? found.estado : "PENDING";

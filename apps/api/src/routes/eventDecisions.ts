@@ -21,8 +21,8 @@ async function loadDbUser(userId: string) {
   });
 }
 
-async function ensureDecisionRows(eventId: string, tipoEvento: string) {
-  const requested = getRequestedAreaRoles(tipoEvento);
+async function ensureDecisionRows(eventId: string, tipoEvento: string, areaSolicitante?: string | null) {
+  const requested = getRequestedAreaRoles(tipoEvento, areaSolicitante);
   for (const areaRole of requested) {
     await prisma.eventAreaDecision.upsert({
       where: { eventId_areaRole: { eventId, areaRole } },
@@ -50,7 +50,7 @@ eventDecisionsRouter.get("/:eventId/area-decisions", authMiddleware, async (req,
     return;
   }
 
-  const requested = await ensureDecisionRows(eventId, event.tipoEvento);
+  const requested = await ensureDecisionRows(eventId, event.tipoEvento, event.areaSolicitante);
   const decisions = await prisma.eventAreaDecision.findMany({
     where: { eventId, areaRole: { in: requested } },
     include: { user: { select: { id: true, name: true, role: true } } },
@@ -63,7 +63,7 @@ eventDecisionsRouter.get("/:eventId/area-decisions", authMiddleware, async (req,
       ...d,
       label: AREA_LABELS[d.areaRole as AreaDecisionRole] ?? d.areaRole,
     })),
-    checklist: buildAreaChecklist(event.tipoEvento, decisions as AreaDecisionRow[]),
+    checklist: buildAreaChecklist(event.tipoEvento, decisions as AreaDecisionRow[], event.areaSolicitante),
     myAreaRole: normalizeAreaRole(dbUser.role),
     canDecide: isUserResponsibleForEvent(dbUser, event),
   });

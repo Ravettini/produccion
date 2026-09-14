@@ -3,9 +3,6 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
-  },
   "scripts": {
     "dev": "npm run build --prefix ../brief-generator && tsx watch src/index.ts",
     "build": "prisma generate && tsc --noCheck",

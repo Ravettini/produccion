@@ -1,14 +1,12 @@
 /**
  * POST /events/:id/generar-brief-ia - Genera sinopsis con IA, la guarda y deja listo el brief
  * GET  /events/:id/exportar-brief-docx - Exporta brief DOCX (modelo audiovisual)
- * GET  /events/:id/exportar-brief-ac-docx - Brief reducido para AC
  */
 import { Router } from "express";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import {
   generateBriefDocx,
   generateCompletoBriefDocx,
-  generateAcBriefReducidoDocx,
 } from "brief-generator";
 import { prisma } from "../lib/prisma.js";
 import { authMiddleware } from "../middleware/auth.js";
@@ -114,8 +112,9 @@ eventsAIRouter.get("/:id/exportar-brief-completo-docx", authMiddleware, async (r
   try {
     const buffer = await generateCompletoBriefDocx(buildBriefInput(event));
     const filename = `Brief completo - ${event.titulo.replace(/[/\\:*?"<>|]/g, "-")}.docx`;
+    const asciiFilename = filename.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\x20-\x7E]/g, "_");
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
-    res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(filename)}"`);
+    res.setHeader("Content-Disposition", `attachment; filename="${asciiFilename}"; filename*=UTF-8''${encodeURIComponent(filename)}`);
     res.send(Buffer.from(buffer));
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -138,37 +137,14 @@ eventsAIRouter.get("/:id/exportar-brief-docx", authMiddleware, async (req, res) 
   try {
     const buffer = await generateBriefDocx(buildBriefInput(event));
     const filename = `Brief - ${event.titulo.replace(/[/\\:*?"<>|]/g, "-")}.docx`;
+    const asciiFilename = filename.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\x20-\x7E]/g, "_");
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
-    res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(filename)}"`);
+    res.setHeader("Content-Disposition", `attachment; filename="${asciiFilename}"; filename*=UTF-8''${encodeURIComponent(filename)}`);
     res.send(Buffer.from(buffer));
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     res.status(500).json({
       error: "Error al generar el documento",
-      detail: message,
-    });
-  }
-});
-
-/** GET /events/:id/exportar-brief-ac-docx - Brief reducido para AC */
-eventsAIRouter.get("/:id/exportar-brief-ac-docx", authMiddleware, async (req, res) => {
-  const { id } = req.params;
-  const event = await loadEventForBrief(id);
-  if (!event) {
-    res.status(404).json({ error: "Evento no encontrado" });
-    return;
-  }
-
-  try {
-    const buffer = await generateAcBriefReducidoDocx(buildBriefInput(event));
-    const filename = `Brief reducido AC - ${event.titulo.replace(/[/\\:*?"<>|]/g, "-")}.docx`;
-    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
-    res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(filename)}"`);
-    res.send(Buffer.from(buffer));
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    res.status(500).json({
-      error: "Error al generar el brief reducido AC",
       detail: message,
     });
   }

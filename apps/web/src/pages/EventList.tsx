@@ -33,7 +33,7 @@ export default function EventList() {
   const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [sortBy, setSortBy] = useState<"date" | "title">("date");
+  const [sortBy, setSortBy] = useState<"created" | "date" | "title">("created");
   const [soloPendientes, setSoloPendientes] = useState(false);
 
   const specialtyHint =
@@ -43,8 +43,8 @@ export default function EventList() {
         ? "Mostrás solo eventos que solicitaron requerimiento Institucional."
         : user?.role === "COBERTURA"
           ? "Mostrás solo eventos que solicitaron Cobertura."
-          : user?.role === "ORGANIZACION" && user.area
-            ? `Mostrás eventos de tu área (${user.area}) y los que creaste.`
+          : (user?.role === "DIRECTOR_GENERAL" || user?.role === "ORGANIZACION") && user.area
+            ? `Mostrás eventos de tu área (${user.area}), convocados y los confirmados de las demás DGs.`
             : null;
 
   const { data: events = [], isLoading, error, refetch } = useQuery({
@@ -82,6 +82,9 @@ export default function EventList() {
       list = list.filter((e) => getEventPendingForUser(user?.role, e).requiereAccion);
     }
     list.sort((a, b) => {
+      if (sortBy === "created") {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
       if (sortBy === "date") {
         return new Date(b.fechaTentativa).getTime() - new Date(a.fechaTentativa).getTime();
       }
@@ -192,12 +195,13 @@ export default function EventList() {
         />
         <Select
           options={[
-            { value: "date", label: "Ordenar por fecha" },
+            { value: "created", label: "Orden de llegada (más recientes)" },
+            { value: "date", label: "Ordenar por fecha del evento" },
             { value: "title", label: "Ordenar por título" },
           ]}
           value={sortBy}
-          onChange={(e) => setSortBy(e.target.value as "date" | "title")}
-          className="w-full sm:w-48"
+          onChange={(e) => setSortBy(e.target.value as "created" | "date" | "title")}
+          className="w-full sm:w-56"
         />
         <label className="flex items-center gap-2 text-sm text-slate-600 whitespace-nowrap">
           <input
@@ -230,7 +234,7 @@ export default function EventList() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {filtered.map((e: Event) => (
-            <EventCard key={e.id} event={e} userRole={user?.role} />
+            <EventCard key={e.id} event={e} userRole={user?.role} userArea={user?.area} />
           ))}
         </div>
       )}

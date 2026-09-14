@@ -82,7 +82,7 @@ function createModelStore<T extends Record<string, unknown>>(initial: T[] = []) 
         createdAt: now(),
         updatedAt: now(),
         ...data,
-      } as T;
+      } as unknown as T;
       rows.push(row);
       return row;
     },
@@ -129,26 +129,6 @@ export function createMockPrisma() {
       createdAt: now(),
       updatedAt: now(),
     },
-    {
-      id: "user-organizacion",
-      email: "organizacion@gobierno.gob",
-      password: passwordHash,
-      name: "Usuario Organización",
-      role: "ORGANIZACION",
-      area: "Comunicación Interna",
-      createdAt: now(),
-      updatedAt: now(),
-    },
-    {
-      id: "user-validador",
-      email: "validador@gobierno.gob",
-      password: passwordHash,
-      name: "Validador General",
-      role: "VALIDADOR",
-      area: "Validador",
-      createdAt: now(),
-      updatedAt: now(),
-    },
   ]);
 
   const events = createModelStore([
@@ -173,7 +153,7 @@ export function createMockPrisma() {
       realizacionImpacto: null,
       realizacionLinkImpacto: null,
       datosProduccion: null,
-      createdById: "user-organizacion",
+      createdById: "user-admin",
       createdAt: now(),
       updatedAt: now(),
     },
@@ -198,7 +178,7 @@ export function createMockPrisma() {
       realizacionImpacto: null,
       realizacionLinkImpacto: null,
       datosProduccion: null,
-      createdById: "user-organizacion",
+      createdById: "user-admin",
       createdAt: now(),
       updatedAt: now(),
     },
@@ -214,7 +194,7 @@ export function createMockPrisma() {
       categoria: "LOGISTICA",
       impacto: "ALTO",
       estado: "APPROVED",
-      createdById: "user-organizacion",
+      createdById: "user-admin",
       validatedById: "user-admin",
       decisionReason: null,
       datosExtra: null,
@@ -230,7 +210,7 @@ export function createMockPrisma() {
       categoria: "PRODUCCION",
       impacto: "MEDIO",
       estado: "SUBMITTED",
-      createdById: "user-organizacion",
+      createdById: "user-admin",
       validatedById: null,
       decisionReason: null,
       datosExtra: null,

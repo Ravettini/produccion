@@ -13,6 +13,7 @@ import { FUNCIONARIOS_OPTIONS } from "../config/funcionarios";
 import type { EventFormStepId } from "../config/eventFormWizardSteps";
 import type { LocacionSugerida } from "../config/locaciones2026.types";
 import { eventStatusHints } from "../utils/labels";
+import { parseLocacionesPosibles, joinLocacionesPosibles } from "../utils/sugerirLocaciones";
 
 const PRODUCCION_FORM_EXCLUDE = new Set([
   "horarioCitacion",
@@ -23,6 +24,7 @@ const PRODUCCION_FORM_EXCLUDE = new Set([
 ]);
 
 const TIPO_OPCIONES = [
+  { value: "Solo informar", label: "Solo informar", description: "Carga informativa de agenda sin solicitud de soporte ni áreas." },
   { value: "Producción", label: "Producción", description: "Técnica, catering, materiales y comunicación." },
   { value: "Institucionales", label: "Institucionales", description: "Eventos formales con autoridades y protocolo." },
   { value: "Cobertura", label: "Cobertura", description: "Registro audiovisual, fotográfico o de prensa." },
@@ -148,7 +150,13 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
         />
       );
 
-    case "dg-fecha":
+    case "dg-fecha": {
+      const currentArea = lockAreaToUser ? (userArea ?? "") : areaSolicitante;
+      const rawConvocadas = datosProduccion.dgsConvocadas ?? "";
+      const dgsConvocadas: string[] = rawConvocadas.includes(";;")
+        ? rawConvocadas.split(";;").map((s) => s.trim()).filter(Boolean)
+        : rawConvocadas.split(",").map((s) => s.trim()).filter(Boolean);
+
       return (
         <div className="space-y-4">
           {lockAreaToUser ? (
@@ -169,6 +177,22 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
               required
             />
           )}
+
+          <MultiSearchableSelect
+            label="DGs co-organizadoras / convocadas (opcional)"
+            hint="Si el evento se realiza en conjunto con otras DGs, seleccionalas acá para que puedan verlo y reciban aviso."
+            placeholder="Seleccionar DGs convocadas…"
+            searchPlaceholder="Buscar Dirección General…"
+            options={DIRECCIONES_GENERALES_OPTIONS.filter((d) => d.value !== currentArea)}
+            value={dgsConvocadas}
+            onChange={(values) =>
+              setDatosProduccion((prev) => ({
+                ...prev,
+                dgsConvocadas: values.join(";;"),
+              }))
+            }
+          />
+
           <Input
             label="Fecha tentativa"
             type="date"
@@ -178,6 +202,7 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
           />
         </div>
       );
+    }
 
     case "tipo":
       return (
@@ -202,16 +227,44 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
 
     case "publico":
       return (
-        <ChoiceCards
-          options={[
-            { value: "INTERNO", label: "Interno", description: "Solo personal del gobierno." },
-            { value: "EXTERNO", label: "Externo", description: "Público general o invitados externos." },
-            { value: "MIXTO", label: "Mixto", description: "Combinación de ambos." },
-          ]}
-          value={publico}
-          onChange={(v) => setPublico(v as typeof publico)}
-          columns={1}
-        />
+        <div className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Público objetivo
+            </label>
+            <ChoiceCards
+              options={[
+                { value: "INTERNO", label: "Interno", description: "Solo personal del gobierno." },
+                { value: "EXTERNO", label: "Externo", description: "Público general o invitados externos." },
+                { value: "MIXTO", label: "Mixto", description: "Combinación de ambos." },
+              ]}
+              value={publico}
+              onChange={(v) => setPublico(v as typeof publico)}
+              columns={3}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Modalidad del evento
+            </label>
+            <ChoiceCards
+              options={[
+                { value: "Presencial", label: "Presencial", description: "Actividad física en una locación o sede." },
+                { value: "Virtual", label: "Virtual", description: "Transmisión o videollamada online (Teams, Zoom, etc.)." },
+                { value: "Híbrido", label: "Híbrido", description: "Participación presencial y virtual simultánea." },
+              ]}
+              value={datosProduccion.modalidad || "Presencial"}
+              onChange={(v) =>
+                setDatosProduccion((prev) => ({
+                  ...prev,
+                  modalidad: Array.isArray(v) ? v[0] ?? "Presencial" : v,
+                }))
+              }
+              columns={3}
+            />
+          </div>
+        </div>
       );
 
     case "personas":
@@ -237,11 +290,11 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
               key={key}
               label={label}
               options={[
-                { value: "", label: "Indistinto" },
+                { value: "indistinto", label: "Indistinto" },
                 { value: "si", label: "Sí, obligatorio" },
                 { value: "no", label: "No necesito" },
               ]}
-              value={datosProduccion[key] ?? ""}
+              value={datosProduccion[key] || "indistinto"}
               onChange={(e) =>
                 setDatosProduccion((prev) => ({ ...prev, [key]: e.target.value }))
               }
@@ -281,15 +334,12 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
       );
 
     case "lugar": {
-      const locacionesPosibles = (datosProduccion.locacionesPosibles ?? "")
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
+      const locacionesPosibles = parseLocacionesPosibles(datosProduccion.locacionesPosibles);
       const setLocacionesPosibles = (values: string[]) => {
         const capped = values.slice(0, 3);
         setDatosProduccion((prev) => ({
           ...prev,
-          locacionesPosibles: capped.join(", "),
+          locacionesPosibles: joinLocacionesPosibles(capped),
         }));
       };
       const toggleLocacion = (value: string) => {

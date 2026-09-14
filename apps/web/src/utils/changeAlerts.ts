@@ -108,16 +108,48 @@ export function proposalRelevantToRole(
   return true;
 }
 
+export function isDgConvocadaInClient(
+  datosProduccion: unknown,
+  userArea?: string | null
+): boolean {
+  if (!userArea) return false;
+  let dp = datosProduccion;
+  if (typeof dp === "string") {
+    try {
+      dp = JSON.parse(dp);
+    } catch {
+      return false;
+    }
+  }
+  if (typeof dp === "object" && dp !== null && "dgsConvocadas" in dp) {
+    const raw = (dp as { dgsConvocadas: unknown }).dgsConvocadas;
+    const list: string[] = Array.isArray(raw)
+      ? raw.map(String)
+      : typeof raw === "string"
+        ? (raw.includes(";;") ? raw.split(";;") : raw.split(","))
+        : [];
+    return list.some((c) => c.trim().toLowerCase() === userArea.trim().toLowerCase());
+  }
+  return false;
+}
+
 /**
  * Aviso de cambios del evento filtrado por rol:
  * - Admin / organización: evento o cualquier requerimiento
+ * - DG convocada: aviso prioritario si aún no vio el evento
  * - Especialidad: solo requerimientos de su área
  */
 export function hasEventUnseenChangesForUser(
   role: string | undefined | null,
-  event: { id: string; updatedAt: string; createdAt?: string },
-  proposals: ProposalChangeHint[] = []
+  event: { id: string; updatedAt: string; createdAt?: string; datosProduccion?: unknown },
+  proposals: ProposalChangeHint[] = [],
+  userArea?: string | null
 ): boolean {
+  if (userArea && isDgConvocadaInClient(event.datosProduccion, userArea)) {
+    const last = getLastSeen("event", event.id);
+    if (!last) return true;
+  }
+
   const relevant = proposals.filter((p) => proposalRelevantToRole(role, p));
   const proposalChanged = relevant.some((p) =>
     hasUnseenChanges("proposal", p.id, p.updatedAt, p.createdAt)

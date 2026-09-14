@@ -13,7 +13,6 @@ export type EventVisibilityUser = {
 /** Roles que ven todos los eventos del sistema. */
 export const ROLES_SEE_ALL = new Set([
   "ADMIN",
-  "DIRECTOR_GENERAL",
   "VALIDADOR",
 ]);
 
@@ -49,7 +48,16 @@ export function normalizeAreaRole(role: string): AreaDecisionRole | null {
 }
 
 /** Áreas solicitadas según tipoEvento del evento. */
-export function getRequestedAreaRoles(tipoEvento: string | null | undefined): AreaDecisionRole[] {
+export function getRequestedAreaRoles(
+  tipoEvento: string | null | undefined,
+  areaSolicitante?: string | null | undefined
+): AreaDecisionRole[] {
+  if (areaSolicitante && /responsabilidad\s+social/i.test(areaSolicitante)) {
+    return [];
+  }
+  if (/solo\s+informar/i.test(String(tipoEvento ?? ""))) {
+    return [];
+  }
   const requested: AreaDecisionRole[] = [];
   for (const area of AREA_DECISION_ROLES) {
     const kws = ROLE_TIPO_KEYWORDS[area];
@@ -67,11 +75,11 @@ export function isSpecialtyRole(role: string): boolean {
 /** ¿El rol del usuario es responsable del área solicitada en este evento? */
 export function isUserResponsibleForEvent(
   user: EventVisibilityUser,
-  event: { tipoEvento?: string | null }
+  event: { tipoEvento?: string | null; areaSolicitante?: string | null }
 ): boolean {
   const area = normalizeAreaRole(user.role);
   if (!area) return false;
-  return getRequestedAreaRoles(event.tipoEvento).includes(area);
+  return getRequestedAreaRoles(event.tipoEvento, event.areaSolicitante).includes(area);
 }
 
 export function tipoEventoMatchesKeywords(
@@ -90,11 +98,42 @@ export function getTipoKeywordsForRole(role: string): string[] | null {
   return ROLE_TIPO_KEYWORDS[role] ?? null;
 }
 
+export function getDgsConvocadas(datosProduccion: unknown): string[] {
+  if (!datosProduccion) return [];
+  let dp = datosProduccion;
+  if (typeof dp === "string") {
+    try {
+      dp = JSON.parse(dp);
+    } catch {
+      return [];
+    }
+  }
+  if (typeof dp === "object" && dp !== null && "dgsConvocadas" in dp) {
+    const raw = (dp as { dgsConvocadas: unknown }).dgsConvocadas;
+    if (Array.isArray(raw)) return raw.map(String).map((s) => s.trim()).filter(Boolean);
+    if (typeof raw === "string") {
+      return raw.includes(";;")
+        ? raw.split(";;").map((s) => s.trim()).filter(Boolean)
+        : raw.split(",").map((s) => s.trim()).filter(Boolean);
+    }
+  }
+  return [];
+}
+
+export function isDgConvocada(
+  event: { datosProduccion?: unknown },
+  area?: string | null
+): boolean {
+  if (!area) return false;
+  const convocadas = getDgsConvocadas(event.datosProduccion);
+  return convocadas.some((c) => c.toLowerCase() === area.toLowerCase());
+}
+
 /**
  * ¿El usuario puede ver este evento?
- * - Admin / DG / Validador: todos
+ * - Admin / Validador: todos
+ * - Director General / Organización: eventos creados por él, de su área, convocados o CONFIRMADOS de otras DGs
  * - Producción / Institucionales (Agenda) / Cobertura: solo si tipoEvento los incluye
- * - Organización: eventos de su área o creados por él
  */
 export function canUserSeeEvent(
   user: EventVisibilityUser,
@@ -102,6 +141,8 @@ export function canUserSeeEvent(
     tipoEvento?: string | null;
     areaSolicitante?: string | null;
     createdById?: string | null;
+    estado?: string | null;
+    datosProduccion?: unknown;
   }
 ): boolean {
   if (ROLES_SEE_ALL.has(user.role)) return true;
@@ -111,9 +152,13 @@ export function canUserSeeEvent(
     return tipoEventoMatchesKeywords(event.tipoEvento, keywords);
   }
 
-  if (user.role === "ORGANIZACION") {
+  if (user.role === "DIRECTOR_GENERAL" || user.role === "ORGANIZACION") {
     if (event.createdById && event.createdById === user.id) return true;
-    if (user.area && event.areaSolicitante === user.area) return true;
+    if (user.area && event.areaSolicitante && user.area.toLowerCase() === event.areaSolicitante.toLowerCase()) {
+      return true;
+    }
+    if (user.area && isDgConvocada(event, user.area)) return true;
+    if (event.estado === "CONFIRMADO") return true;
     // Sin área: ve los que creó; si no hay createdById legacy, no restringir por área
     if (!user.area) return true;
     return false;
@@ -127,6 +172,8 @@ export function filterEventsForUser<T extends {
   tipoEvento?: string | null;
   areaSolicitante?: string | null;
   createdById?: string | null;
+  estado?: string | null;
+  datosProduccion?: unknown;
 }>(user: EventVisibilityUser, events: T[]): T[] {
   if (ROLES_SEE_ALL.has(user.role)) return events;
   return events.filter((e) => canUserSeeEvent(user, e));

@@ -43,9 +43,9 @@ const STEP: Record<EventFormStepId, WizardStepDef> = {
   },
   publico: {
     id: "publico",
-    label: "Público",
-    title: "¿A quién está dirigido?",
-    subtitle: "Definí si el evento es interno, externo o mixto.",
+    label: "Público y modalidad",
+    title: "¿A quién está dirigido y cuál es la modalidad?",
+    subtitle: "Definí si el evento es interno, externo o mixto, y si es presencial, virtual o híbrido.",
   },
   personas: {
     id: "personas",
@@ -123,23 +123,37 @@ export function buildWizardSteps(input: {
   /** Solo admin: paso de estado al final */
   includeCierre?: boolean;
 }): WizardStepDef[] {
-  const tieneProduccion = input.tipoSeleccionados.includes("Producción");
-  const tieneCobertura = input.tipoSeleccionados.includes("Cobertura");
+  const isSoloInformar = input.tipoSeleccionados.includes("Solo informar");
+  const tieneProduccion = !isSoloInformar && input.tipoSeleccionados.includes("Producción");
+  const tieneCobertura = !isSoloInformar && input.tipoSeleccionados.includes("Cobertura");
 
   const steps: WizardStepDef[] = [
     STEP.titulo,
     STEP["dg-fecha"],
     STEP.tipo,
     STEP.publico,
-    STEP.personas,
   ];
+
+  if (!isSoloInformar) {
+    steps.push(STEP.personas);
+  }
 
   // Requisitos de espacio (mobiliario/técnica) solo si hay Producción
   if (tieneProduccion) {
     steps.push(STEP.requisitos);
   }
 
-  steps.push(STEP.horarios, STEP.lugar, STEP.descripcion, STEP.complementos);
+  steps.push(STEP.horarios);
+
+  if (!isSoloInformar) {
+    steps.push(STEP.lugar);
+  }
+
+  steps.push(STEP.descripcion);
+
+  if (!isSoloInformar) {
+    steps.push(STEP.complementos);
+  }
 
   if (tieneProduccion) {
     steps.push(STEP.catering, STEP.produccion);

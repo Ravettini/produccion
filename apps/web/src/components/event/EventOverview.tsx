@@ -6,6 +6,7 @@ import { Button, Card, CardBody, CardHeader, TextArea } from "../ui";
 import { SearchableSelect } from "../ui/SearchableSelect";
 import { patchEventFields } from "../../api/eventDecisions";
 import { PRODUCTORES_OPTIONS } from "../../config/productores";
+import { parseLocacionesPosibles } from "../../utils/sugerirLocaciones";
 
 interface EventOverviewProps {
   event: Event;
@@ -23,8 +24,6 @@ interface EventOverviewProps {
   onExportBrief: () => void;
   exportingBrief: boolean;
   showAudiovisualBrief?: boolean;
-  onExportAc: () => void;
-  exportingAc: boolean;
   canSyncAcreditapp?: boolean;
   onSyncAcreditapp?: () => void;
   syncingAcreditapp?: boolean;
@@ -65,8 +64,6 @@ export function EventOverview({
   onExportBrief,
   exportingBrief,
   showAudiovisualBrief = true,
-  onExportAc,
-  exportingAc,
   canSyncAcreditapp,
   onSyncAcreditapp,
   syncingAcreditapp,
@@ -137,10 +134,17 @@ export function EventOverview({
     dp = {};
   }
 
-  const locacionesPosibles = (dp.locacionesPosibles ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const locacionesPosibles = parseLocacionesPosibles(dp.locacionesPosibles);
+
+  let dgsConvocadas: string[] = [];
+  if (dp.dgsConvocadas) {
+    const raw = dp.dgsConvocadas;
+    dgsConvocadas = Array.isArray(raw)
+      ? (raw as string[])
+      : typeof raw === "string"
+        ? (raw.includes(";;") ? raw.split(";;") : raw.split(",")).map((s) => s.trim()).filter(Boolean)
+        : [];
+  }
   // Compat: si no hay candidatas, mostrar el lugar confirmado como única opción.
   const opcionesLugar = (
     locacionesPosibles.length > 0
@@ -185,15 +189,6 @@ export function EventOverview({
               {exportingBrief ? "Exportando…" : "Brief audiovisual"}
             </Button>
           )}
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={onExportAc}
-            disabled={exportingAc}
-          >
-            <FileDown className="h-4 w-4" aria-hidden />
-            {exportingAc ? "Exportando…" : "Brief reducido AC"}
-          </Button>
         </div>
       </div>
 
@@ -226,10 +221,25 @@ export function EventOverview({
               <div className="grid gap-4 sm:grid-cols-2">
                 <Detail label="Requiere">{event.tipoEvento}</Detail>
                 <Detail label="Área solicitante">{event.areaSolicitante}</Detail>
+                {dgsConvocadas.length > 0 && (
+                  <Detail label="DGs co-organizadoras">{dgsConvocadas.join(", ")}</Detail>
+                )}
                 {event.usuarioSolicitante && (
                   <Detail label="Referente del área solicitante">{event.usuarioSolicitante}</Detail>
                 )}
-                {publicoLabel && <Detail label="Público">{publicoLabel}</Detail>}
+                {publicoLabel && (
+                  <Detail label="Público">
+                    {publicoLabel}
+                    {dp.modalidad && (
+                      <span className="ml-1 text-slate-500 font-normal">
+                        ({dp.modalidad})
+                      </span>
+                    )}
+                  </Detail>
+                )}
+                {!publicoLabel && dp.modalidad && (
+                  <Detail label="Modalidad">{dp.modalidad}</Detail>
+                )}
                 {event.programa && <Detail label="Programa">{event.programa}</Detail>}
                 {event.funcionario && (
                   <Detail label="Funcionario(s)">{event.funcionario}</Detail>

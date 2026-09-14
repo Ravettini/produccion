@@ -40,8 +40,3 @@ export async function exportarBriefDocx(eventId: string, filename: string): Prom
 export async function exportarBriefCompletoDocx(eventId: string, filename: string): Promise<void> {
   return downloadBriefDocx(`/events/${eventId}/exportar-brief-completo-docx`, filename);
 }
-
-/** Brief reducido para AC (Área de Comunicación) */
-export async function exportarBriefAcDocx(eventId: string, filename: string): Promise<void> {
-  return downloadBriefDocx(`/events/${eventId}/exportar-brief-ac-docx`, filename);
-}

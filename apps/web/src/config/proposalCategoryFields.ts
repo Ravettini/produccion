@@ -152,7 +152,6 @@ export const COBERTURA_CANALES_BASE: { value: string; label: string }[] = [
 ];
 
 export const INSTAGRAM_CUENTAS: { value: string; label: string }[] = [
-  { value: "Instagram AC", label: "Instagram AC" },
   { value: "Instagram BADA", label: "Instagram BADA" },
   { value: "Instagram BA JOVEN", label: "Instagram BA JOVEN" },
   { value: "Instagram BA BIENESTAR", label: "Instagram BA BIENESTAR" },

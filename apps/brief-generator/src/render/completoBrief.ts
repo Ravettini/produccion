@@ -33,7 +33,7 @@ import {
 const POR_CONFIRMAR = "Por confirmar";
 const NO_DEFINIDO = "No definido";
 
-/** Color institucional del template BRIEF ESTRAT??GICO (verde azulado) */
+/** Color institucional del template BRIEF ESTRATÉGICO (verde azulado) */
 const COLOR_PRINCIPAL = "153244";
 const COLOR_BLANCO = "FFFFFF";
 
@@ -47,11 +47,11 @@ function labelValue(label: string, value: string): Paragraph {
   });
 }
 
-function sectionHeading(emoji: string, title: string): Paragraph {
+function sectionHeading(title: string): Paragraph {
   return new Paragraph({
     children: [
       new TextRun({
-        text: `${emoji} ${title}`,
+        text: title,
         bold: true,
         color: COLOR_PRINCIPAL,
         size: 20,
@@ -97,7 +97,7 @@ function buildDefinicionesAprobadas(byCategory: Map<CategoryKey, ApprovedProposa
     children.push(
       new Paragraph({
         children: [
-          new TextRun({ text: "Sin definiciones a??n.", italics: true, color: COLOR_PRINCIPAL }),
+          new TextRun({ text: "Sin definiciones aún.", italics: true, color: COLOR_PRINCIPAL }),
         ],
       })
     );
@@ -124,7 +124,7 @@ function buildCronogramaTable(rows: Array<{ horario: string; dinamica: string; o
           children: [
             new Paragraph({
               children: [
-                new TextRun({ text: "Din??mica", bold: true, color: COLOR_PRINCIPAL }),
+                new TextRun({ text: "Dinámica", bold: true, color: COLOR_PRINCIPAL }),
               ],
             }),
           ],
@@ -199,7 +199,7 @@ function buildBriefProduccionTable(approved: ApprovedProposal[]): Table {
         new TableCell({
           children: [
             new Paragraph({
-              children: [new TextRun({ text: "??tem", bold: true, color: COLOR_PRINCIPAL })],
+              children: [new TextRun({ text: "Ítem", bold: true, color: COLOR_PRINCIPAL })],
             }),
           ],
           shading: { fill: "E8EEF2" },
@@ -219,7 +219,7 @@ function buildBriefProduccionTable(approved: ApprovedProposal[]): Table {
         new TableCell({
           children: [
             new Paragraph({
-              children: [new TextRun({ text: "T??cnica - Pantalla LED", color: COLOR_PRINCIPAL })],
+              children: [new TextRun({ text: "Técnica - Pantalla LED", color: COLOR_PRINCIPAL })],
             }),
           ],
         }),
@@ -228,7 +228,7 @@ function buildBriefProduccionTable(approved: ApprovedProposal[]): Table {
             new Paragraph({
               children: [
                 new TextRun({
-                  text: tecnicaPantalla.found ? `S??. ${tecnicaPantalla.detail}` : NO_DEFINIDO,
+                  text: tecnicaPantalla.found ? `Sí. ${tecnicaPantalla.detail}` : NO_DEFINIDO,
                   color: COLOR_PRINCIPAL,
                 }),
               ],
@@ -242,7 +242,7 @@ function buildBriefProduccionTable(approved: ApprovedProposal[]): Table {
         new TableCell({
           children: [
             new Paragraph({
-              children: [new TextRun({ text: "T??cnica - Pantalla retr??ctil", color: COLOR_PRINCIPAL })],
+              children: [new TextRun({ text: "Técnica - Pantalla retráctil", color: COLOR_PRINCIPAL })],
             }),
           ],
         }),
@@ -265,7 +265,7 @@ function buildBriefProduccionTable(approved: ApprovedProposal[]): Table {
         new TableCell({
           children: [
             new Paragraph({
-              children: [new TextRun({ text: "T??cnica - Proyector", color: COLOR_PRINCIPAL })],
+              children: [new TextRun({ text: "Técnica - Proyector", color: COLOR_PRINCIPAL })],
             }),
           ],
         }),
@@ -274,7 +274,7 @@ function buildBriefProduccionTable(approved: ApprovedProposal[]): Table {
             new Paragraph({
               children: [
                 new TextRun({
-                  text: tecnicaProyector.found ? `S??. ${tecnicaProyector.detail}` : NO_DEFINIDO,
+                  text: tecnicaProyector.found ? `Sí. ${tecnicaProyector.detail}` : NO_DEFINIDO,
                   color: COLOR_PRINCIPAL,
                 }),
               ],
@@ -288,7 +288,7 @@ function buildBriefProduccionTable(approved: ApprovedProposal[]): Table {
         new TableCell({
           children: [
             new Paragraph({
-              children: [new TextRun({ text: "T??cnica - Sonido", color: COLOR_PRINCIPAL })],
+              children: [new TextRun({ text: "Técnica - Sonido", color: COLOR_PRINCIPAL })],
             }),
           ],
         }),
@@ -297,7 +297,7 @@ function buildBriefProduccionTable(approved: ApprovedProposal[]): Table {
             new Paragraph({
               children: [
                 new TextRun({
-                  text: tecnicaSonido.found ? `S??. ${tecnicaSonido.detail}` : NO_DEFINIDO,
+                  text: tecnicaSonido.found ? `Sí. ${tecnicaSonido.detail}` : NO_DEFINIDO,
                   color: COLOR_PRINCIPAL,
                 }),
               ],
@@ -311,7 +311,7 @@ function buildBriefProduccionTable(approved: ApprovedProposal[]): Table {
         new TableCell({
           children: [
             new Paragraph({
-              children: [new TextRun({ text: "T??cnica - Micr??fonos", color: COLOR_PRINCIPAL })],
+              children: [new TextRun({ text: "Técnica - Micrófonos", color: COLOR_PRINCIPAL })],
             }),
           ],
         }),
@@ -320,7 +320,7 @@ function buildBriefProduccionTable(approved: ApprovedProposal[]): Table {
             new Paragraph({
               children: [
                 new TextRun({
-                  text: microfonosStructured.found ? tecnicaMicro.detail : (tecnicaMicro.found ? `S??. Cantidad: ${microCount}` : NO_DEFINIDO),
+                  text: microfonosStructured.found ? tecnicaMicro.detail : (tecnicaMicro.found ? `Sí. Cantidad: ${microCount}` : NO_DEFINIDO),
                   color: COLOR_PRINCIPAL,
                 }),
               ],
@@ -412,7 +412,7 @@ function buildBriefProduccionTable(approved: ApprovedProposal[]): Table {
             new Paragraph({
               children: [
                 new TextRun({
-                  text: materiales ? "S?? (seg??n propuestas aprobadas)" : NO_DEFINIDO,
+                  text: materiales ? "Sí (según propuestas aprobadas)" : NO_DEFINIDO,
                   color: COLOR_PRINCIPAL,
                 }),
               ],
@@ -426,7 +426,7 @@ function buildBriefProduccionTable(approved: ApprovedProposal[]): Table {
         new TableCell({
           children: [
             new Paragraph({
-              children: [new TextRun({ text: "Artes gr??ficas", color: COLOR_PRINCIPAL })],
+              children: [new TextRun({ text: "Artes gráficas", color: COLOR_PRINCIPAL })],
             }),
           ],
         }),
@@ -435,7 +435,7 @@ function buildBriefProduccionTable(approved: ApprovedProposal[]): Table {
             new Paragraph({
               children: [
                 new TextRun({
-                  text: materiales ? "S?? (seg??n propuestas aprobadas)" : NO_DEFINIDO,
+                  text: materiales ? "Sí (según propuestas aprobadas)" : NO_DEFINIDO,
                   color: COLOR_PRINCIPAL,
                 }),
               ],
@@ -458,7 +458,7 @@ function buildBriefProduccionTable(approved: ApprovedProposal[]): Table {
             new Paragraph({
               children: [
                 new TextRun({
-                  text: pedidosEsp ? "S?? (seg??n propuestas aprobadas)" : NO_DEFINIDO,
+                  text: pedidosEsp ? "Sí (según propuestas aprobadas)" : NO_DEFINIDO,
                   color: COLOR_PRINCIPAL,
                 }),
               ],
@@ -494,7 +494,7 @@ export function buildCompletoBriefDocument(input: BriefInput): Document {
     approved = [synthetic, ...approved];
   }
   const byCategory = groupByCategory(approved);
-  const titulo = resolveValue(event.titulo, "Sin t??tulo");
+  const titulo = resolveValue(event.titulo, "Sin título");
   const fecha = formatFechaEsAR(event.fechaTentativa);
   const publico = formatPublico(event.publico);
   const area = resolveValue(event.areaSolicitante);
@@ -510,11 +510,11 @@ export function buildCompletoBriefDocument(input: BriefInput): Document {
   const cronogramaRows = buildCronogramaRows(approved);
 
   const children: FileChild[] = [
-    // Encabezado: BRIEF ESTRAT??GICO (blanco sobre fondo verde azulado)
+    // Encabezado: BRIEF ESTRATÉGICO (blanco sobre fondo verde azulado)
     new Paragraph({
       children: [
         new TextRun({
-          text: "BRIEF ESTRAT??GICO",
+          text: "BRIEF ESTRATÉGICO",
           bold: true,
           color: COLOR_BLANCO,
           size: 48,
@@ -524,7 +524,7 @@ export function buildCompletoBriefDocument(input: BriefInput): Document {
       alignment: "center" as const,
       spacing: { after: 200 },
     }),
-    // T??tulo de la actividad
+    // Título de la actividad
     new Paragraph({
       children: [
         new TextRun({
@@ -538,34 +538,34 @@ export function buildCompletoBriefDocument(input: BriefInput): Document {
       spacing: { after: 400 },
     }),
 
-    sectionHeading("????", "Datos b??sicos del evento"),
+    sectionHeading("Datos básicos del evento"),
     labelValue("Nombre del evento", titulo),
     labelValue("Fecha tentativa", fecha),
-    labelValue("??rea solicitante", area),
+    labelValue("Área solicitante", area),
     labelValue("Usuario solicitante", resolveValue(event.usuarioSolicitante)),
     labelValue("Referente del evento", referente),
     labelValue("Requiere", requiere),
-    labelValue("P??blico", publico),
+    labelValue("Público", publico),
     labelValue("Lugar", lugar),
     new Paragraph({ text: "", spacing: { after: 200 } }),
 
-    sectionHeading("????", "Sentido estrat??gico del evento"),
+    sectionHeading("Sentido estratégico del evento"),
     new Paragraph({
       children: [new TextRun({ text: resolveValue(event.descripcion), color: COLOR_PRINCIPAL })],
     }),
     new Paragraph({ text: "", spacing: { after: 200 } }),
 
-    sectionHeading("???????????", "Funcionarios clave"),
+    sectionHeading("Funcionarios clave"),
     labelValue("Referente operativo", referente),
     labelValue("Programa", resolveValue((event as { programa?: string | null }).programa)),
     labelValue("Funcionario(s)", resolveValue((event as { funcionario?: string | null }).funcionario)),
     new Paragraph({ text: "", spacing: { after: 200 } }),
 
-    sectionHeading("?????????????", "Participaci??n del p??blico"),
+    sectionHeading("Participación del público"),
     new Paragraph({
       children: [
         new TextRun({
-          text: `P??blico: ${publico}. ${POR_CONFIRMAR}`,
+          text: `Público: ${publico}. ${POR_CONFIRMAR}`,
           color: COLOR_PRINCIPAL,
         }),
       ],
@@ -575,7 +575,7 @@ export function buildCompletoBriefDocument(input: BriefInput): Document {
     new Paragraph({
       children: [
         new TextRun({
-          text: "Definiciones aprobadas por ??rea",
+          text: "Definiciones aprobadas por área",
           bold: true,
           color: COLOR_PRINCIPAL,
           size: 24,
@@ -586,14 +586,14 @@ export function buildCompletoBriefDocument(input: BriefInput): Document {
     ...buildDefinicionesAprobadas(byCategory),
     new Paragraph({ text: "", spacing: { after: 200 } }),
 
-    sectionHeading("???", "Cronograma del evento"),
+    sectionHeading("Cronograma del evento"),
     buildCronogramaTable(cronogramaRows),
     new Paragraph({ text: "", spacing: { after: 200 } }),
 
     new Paragraph({
       children: [
         new TextRun({
-          text: "BRIEF PRODUCCI??N",
+          text: "BRIEF PRODUCCIÓN",
           bold: true,
           color: COLOR_PRINCIPAL,
           size: 24,
@@ -604,7 +604,7 @@ export function buildCompletoBriefDocument(input: BriefInput): Document {
     new Paragraph({
       children: [
         new TextRun({
-          text: "Producci??n incluye: T??cnica, Catering, listado de materiales, artes gr??ficas y pedidos especiales.",
+          text: "Producción incluye: Técnica, Catering, listado de materiales, artes gráficas y pedidos especiales.",
           italics: true,
           color: COLOR_PRINCIPAL,
           size: 20,
@@ -618,7 +618,7 @@ export function buildCompletoBriefDocument(input: BriefInput): Document {
     new Paragraph({
       children: [
         new TextRun({
-          text: "BRIEF PRODUCCI??N - Producci??n tendr?? en cuenta",
+          text: "BRIEF PRODUCCIÓN - Producción tendrá en cuenta",
           bold: true,
           color: COLOR_PRINCIPAL,
           size: 20,
@@ -629,7 +629,7 @@ export function buildCompletoBriefDocument(input: BriefInput): Document {
     new Paragraph({
       children: [
         new TextRun({
-          text: "Notas: Seg??n definiciones aprobadas por ??rea.",
+          text: "Notas: Según definiciones aprobadas por área.",
           italics: true,
           color: COLOR_PRINCIPAL,
         }),
@@ -640,7 +640,7 @@ export function buildCompletoBriefDocument(input: BriefInput): Document {
     new Paragraph({
       children: [
         new TextRun({
-          text: "PEDIDO DE PIEZAS DE COMUNICACI??N",
+          text: "PEDIDO DE PIEZAS DE COMUNICACIÓN",
           bold: true,
           color: COLOR_PRINCIPAL,
           size: 24,
@@ -654,7 +654,7 @@ export function buildCompletoBriefDocument(input: BriefInput): Document {
         new Paragraph({
           children: [
             new TextRun({
-              text: `1. ??Qu?? pieza se necesita? ${com.pieza}.`,
+              text: `1. ¿Qué pieza se necesita? ${com.pieza}.`,
               color: COLOR_PRINCIPAL,
             }),
           ],
@@ -662,7 +662,7 @@ export function buildCompletoBriefDocument(input: BriefInput): Document {
         new Paragraph({
           children: [
             new TextRun({
-              text: `2. ??Para qu?? medio? ${com.medio}.`,
+              text: `2. ¿Para qué medio? ${com.medio}.`,
               color: COLOR_PRINCIPAL,
             }),
           ],
@@ -670,7 +670,7 @@ export function buildCompletoBriefDocument(input: BriefInput): Document {
         new Paragraph({
           children: [
             new TextRun({
-              text: `3. ??Cu??l es el mensaje clave? ${com.mensajeClave}.`,
+              text: `3. ¿Cuál es el mensaje clave? ${com.mensajeClave}.`,
               color: COLOR_PRINCIPAL,
             }),
           ],
@@ -678,7 +678,7 @@ export function buildCompletoBriefDocument(input: BriefInput): Document {
         new Paragraph({
           children: [
             new TextRun({
-              text: `4. ??Hay restricciones de dise??o? ${com.restriccionesDiseno}.`,
+              text: `4. ¿Hay restricciones de diseño? ${com.restriccionesDiseno}.`,
               color: COLOR_PRINCIPAL,
             }),
           ],
@@ -686,7 +686,7 @@ export function buildCompletoBriefDocument(input: BriefInput): Document {
         new Paragraph({
           children: [
             new TextRun({
-              text: `5. ??Plazo de entrega? ${com.plazoEntrega}.`,
+              text: `5. ¿Plazo de entrega? ${com.plazoEntrega}.`,
               color: COLOR_PRINCIPAL,
             }),
           ],
@@ -698,6 +698,6 @@ export function buildCompletoBriefDocument(input: BriefInput): Document {
   return new Document({
     sections: [{ children }],
     title: `Brief - ${titulo}`,
-    creator: "Sistema de Gesti??n de Eventos",
+    creator: "Sistema de Gestión de Eventos",
   });
 }

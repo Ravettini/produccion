@@ -78,8 +78,23 @@ export function canSpecialtyEditEventFields(user: User | null, canDecide: boolea
   return isSpecialtyRole(user) && canDecide;
 }
 
-export function canDeleteEvent(user: User | null): boolean {
-  return user?.role === "ADMIN";
+export function canDeleteEvent(
+  user: User | null,
+  event?: { createdById?: string | null; areaSolicitante?: string | null } | null
+): boolean {
+  if (!user) return false;
+  if (user.role === "ADMIN") return true;
+  if (!event) return false;
+  if (event.createdById && event.createdById === user.id) return true;
+  if (
+    user.area &&
+    event.areaSolicitante &&
+    user.area.toLowerCase() === event.areaSolicitante.toLowerCase() &&
+    (user.role === "DIRECTOR_GENERAL" || user.role === "ORGANIZACION")
+  ) {
+    return true;
+  }
+  return false;
 }
 
 export function canEditProposal(

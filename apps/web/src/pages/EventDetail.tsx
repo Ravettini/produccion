@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getEvent, updateEvent, deleteEvent, syncAcreditappEvent } from "../api/events";
 import { listProposals, createProposal } from "../api/proposals";
-import { exportarBriefDocx, exportarBriefCompletoDocx, exportarBriefAcDocx } from "../api/ai";
+import { exportarBriefDocx, exportarBriefCompletoDocx } from "../api/ai";
 import {
   listAttachments,
   uploadAttachment,
@@ -79,7 +79,6 @@ export default function EventDetail() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [exportandoCompleto, setExportandoCompleto] = useState(false);
   const [exportandoBrief, setExportandoBrief] = useState(false);
-  const [exportandoAc, setExportandoAc] = useState(false);
   const [showChangeAlert, setShowChangeAlert] = useState(false);
   const [acreditappWarning, setAcreditappWarning] = useState<string | undefined>(
     (location.state as { acreditappWarning?: string } | null)?.acreditappWarning
@@ -187,18 +186,6 @@ export default function EventDetail() {
     }
   };
 
-  const handleExportAc = async () => {
-    setExportandoAc(true);
-    try {
-      await exportarBriefAcDocx(id!, `Brief reducido AC - ${event?.titulo ?? "Evento"}`);
-    } catch (error) {
-      console.error(error);
-      alert((error as Error).message);
-    } finally {
-      setExportandoAc(false);
-    }
-  };
-
   const deleteEventMutation = useMutation({
     mutationFn: () => deleteEvent(id!),
     onSuccess: () => {
@@ -245,7 +232,21 @@ export default function EventDetail() {
         : event.publico === "MIXTO"
           ? "Mixto"
           : null;
-  const subtitleParts = [event.areaSolicitante, publicoLabel, formatEventDate(event.fechaTentativa)].filter(Boolean);
+
+  let modalidadLabel: string | null = null;
+  try {
+    const raw = event.datosProduccion;
+    if (raw && typeof raw === "string") {
+      const parsed = JSON.parse(raw);
+      if (parsed.modalidad) modalidadLabel = String(parsed.modalidad);
+    } else if (raw && typeof raw === "object" && "modalidad" in raw) {
+      modalidadLabel = String((raw as { modalidad: string }).modalidad);
+    }
+  } catch {
+    // ignore
+  }
+
+  const subtitleParts = [event.areaSolicitante, publicoLabel, modalidadLabel, formatEventDate(event.fechaTentativa)].filter(Boolean);
 
   const handleGoToTab = (targetTab: "estado" | "requerimientos", filterEstado?: ProposalStatus) => {
     setTab(targetTab);
@@ -300,7 +301,7 @@ export default function EventDetail() {
                 </Button>
               </>
             )}
-            {canDeleteEvent(user) && (
+            {canDeleteEvent(user, event) && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -435,8 +436,6 @@ export default function EventDetail() {
                 .includes("cobertura")
           )
         }
-        onExportAc={handleExportAc}
-        exportingAc={exportandoAc}
         canSyncAcreditapp={canEditEvent(user, event)}
         onSyncAcreditapp={() => syncAcreditapp.mutate()}
         syncingAcreditapp={syncAcreditapp.isPending}

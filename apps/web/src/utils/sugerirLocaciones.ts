@@ -157,3 +157,33 @@ export function criteriosDesdeProduccion(datos: Record<string, string>): Partial
     requiereMobiliario: datos.requiereMobiliario === "si",
   };
 }
+
+export const LOCACIONES_DELIMITER = ";;";
+
+/**
+ * Parsea el campo locacionesPosibles tolerando tanto el nuevo delimitador ';;'
+ * como comas históricas, asegurando que ", CABA" nunca se divida como tag aparte.
+ */
+export function parseLocacionesPosibles(raw?: string | null): string[] {
+  if (!raw || !raw.trim()) return [];
+  const text = raw.trim();
+
+  if (text.includes(LOCACIONES_DELIMITER)) {
+    return text
+      .split(LOCACIONES_DELIMITER)
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+
+  return text
+    .split(/,\s*(?!CABA\b)/i)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+export function joinLocacionesPosibles(locaciones: string[]): string {
+  return locaciones
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .join(LOCACIONES_DELIMITER);
+}

@@ -11,7 +11,7 @@ interface ChoiceCardsProps {
   value: string | string[];
   onChange: (value: string | string[]) => void;
   multiple?: boolean;
-  columns?: 1 | 2;
+  columns?: 1 | 2 | 3;
 }
 
 export function ChoiceCards({
@@ -38,7 +38,11 @@ export function ChoiceCards({
     <div
       className={cn(
         "grid gap-3",
-        columns === 2 ? "sm:grid-cols-2" : "grid-cols-1"
+        columns === 3
+          ? "sm:grid-cols-3"
+          : columns === 2
+            ? "sm:grid-cols-2"
+            : "grid-cols-1"
       )}
     >
       {options.map((opt) => {

@@ -10,13 +10,20 @@ import { WizardShell } from "../components/wizard/WizardShell";
 import { eventStatusLabels } from "../utils/labels";
 import { toCivilDateString, todayCivilDate } from "../utils/formatters";
 
-import { opcionesLocacionesSugeridas, criteriosDesdeProduccion, sugerirLocaciones } from "../utils/sugerirLocaciones";
+import {
+  opcionesLocacionesSugeridas,
+  criteriosDesdeProduccion,
+  sugerirLocaciones,
+  parseLocacionesPosibles,
+  joinLocacionesPosibles,
+} from "../utils/sugerirLocaciones";
 import { canEditEvent } from "../hooks/usePermissions";
 import { buildWizardSteps } from "../config/eventFormWizardSteps";
 import type { EventFormStepId } from "../config/eventFormWizardSteps";
 import { EventFormWizardContent } from "./EventFormWizardContent";
 
 const TIPO_OPCIONES = [
+  { value: "Solo informar", label: "Solo informar", title: "Carga informativa de agenda sin solicitud de soporte ni áreas." },
   { value: "Otro", label: "Otro", title: "Otro tipo de evento (especificar en el campo siguiente)." },
   { value: "Producción", label: "Producción", title: "Incluye técnica (pantallas, sonido), catering, materiales y piezas de comunicación." },
   { value: "Institucionales", label: "Institucionales", title: "Eventos formales con autoridades, protocolo y funcionarios." },
@@ -231,21 +238,14 @@ export default function EventForm() {
         if (!(datosProduccion.horarioFinalizacion ?? "").trim()) return "Indicá el horario de finalización.";
         return null;
       case "lugar": {
-        const posibles = (datosProduccion.locacionesPosibles ?? "")
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean);
+        if (tipoSeleccionados.includes("Solo informar")) return null;
+        if (datosProduccion.modalidad === "Virtual") return null;
+        const posibles = parseLocacionesPosibles(datosProduccion.locacionesPosibles);
         if (posibles.length === 0) return "Indicá al menos una locación posible.";
         if (posibles.length > 3) return "Podés elegir hasta 3 locaciones posibles.";
         return null;
       }
       case "requisitos":
-        if (!(datosProduccion.requiereMobiliario ?? "").trim()) {
-          return "Indicá si necesitás mobiliario (Sí / No / Indistinto).";
-        }
-        if (!(datosProduccion.requiereTecnica ?? "").trim()) {
-          return "Indicá si necesitás técnica (Sí / No / Indistinto).";
-        }
         return null;
       case "catering":
         if (!(datosProduccion.catering ?? "").trim()) return "Indicá si necesitás catering.";
@@ -336,20 +336,20 @@ export default function EventForm() {
       return;
     }
     const { locacionLibre: _libre, ...dpSinLibre } = datosProduccion;
-    const posibles = (dpSinLibre.locacionesPosibles ?? "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean)
-      .slice(0, 3);
+    const posibles = parseLocacionesPosibles(dpSinLibre.locacionesPosibles).slice(0, 3);
     const datosPayload = {
       ...dpSinLibre,
-      ...(posibles.length > 0 ? { locacionesPosibles: posibles.join(", ") } : {}),
+      ...(posibles.length > 0 ? { locacionesPosibles: joinLocacionesPosibles(posibles) } : {}),
     };
     if (!datosPayload.locacionesPosibles) {
       delete (datosPayload as { locacionesPosibles?: string }).locacionesPosibles;
     }
     const datosFinal =
       Object.keys(datosPayload).length > 0 ? datosPayload : undefined;
+
+    const isAutoConfirmed =
+      /responsabilidad\s+social/i.test(areaSolicitante) ||
+      tipoSeleccionados.includes("Solo informar");
 
     if (isNew) {
       create.mutate({
@@ -358,7 +358,7 @@ export default function EventForm() {
         tipoEvento: tipoEventoValue,
         areaSolicitante,
         fechaTentativa: fechaTentativa || todayCivilDate(),
-        estado: isAdmin ? estado : "PENDIENTE",
+        estado: isAutoConfirmed ? "CONFIRMADO" : isAdmin ? estado : "PENDIENTE",
         publico: publico || undefined,
         usuarioSolicitante: usuarioSolicitante.trim() || undefined,
         // La locación confirmada la define Producción después.
@@ -378,7 +378,7 @@ export default function EventForm() {
           tipoEvento: tipoEventoValue,
           areaSolicitante,
           fechaTentativa: fechaTentativa || existing!.fechaTentativa,
-          estado: isDirectorGeneral ? existing!.estado : isAdmin ? estado : existing!.estado,
+          estado: isAutoConfirmed ? "CONFIRMADO" : isDirectorGeneral ? existing!.estado : isAdmin ? estado : existing!.estado,
           publico: publico || null,
           usuarioSolicitante: usuarioSolicitante.trim() || null,
           // Conservar la locación ya confirmada por Producción.

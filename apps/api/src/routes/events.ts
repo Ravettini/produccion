@@ -104,7 +104,8 @@ eventsRouter.get("/", authMiddleware, async (req, res) => {
         ...event,
         areaChecklist: buildAreaChecklist(
           event.tipoEvento,
-          event.areaDecisions as AreaDecisionRow[]
+          event.areaDecisions as AreaDecisionRow[],
+          event.areaSolicitante
         ),
       })
     )
@@ -151,7 +152,8 @@ eventsRouter.get("/:id", authMiddleware, async (req, res) => {
       ...event,
       areaChecklist: buildAreaChecklist(
         event.tipoEvento,
-        event.areaDecisions as AreaDecisionRow[]
+        event.areaDecisions as AreaDecisionRow[],
+        event.areaSolicitante
       ),
     })
   );
@@ -194,8 +196,13 @@ eventsRouter.post("/", authMiddleware, async (req, res) => {
     });
     return;
   }
+  const isAutoConfirmed =
+    /responsabilidad\s+social/i.test(String(areaSolicitante)) ||
+    /solo\s+informar/i.test(String(tipoEvento));
   let status = estado && validStatuses.includes(String(estado)) ? String(estado) : "PENDIENTE";
-  if (req.user?.role !== "ADMIN") {
+  if (isAutoConfirmed) {
+    status = "CONFIRMADO";
+  } else if (req.user?.role !== "ADMIN") {
     status = "PENDIENTE";
   } else if (status === "CONFIRMADO" && req.user?.role !== "ADMIN") {
     status = "PENDIENTE";
@@ -341,12 +348,19 @@ eventsRouter.put("/:id", authMiddleware, async (req, res) => {
       return;
     }
   }
+  const resultingArea = updates.areaSolicitante !== undefined ? String(updates.areaSolicitante) : existing.areaSolicitante;
+  const resultingTipo = updates.tipoEvento !== undefined ? String(updates.tipoEvento) : existing.tipoEvento;
+  const isAutoConfirmed =
+    /responsabilidad\s+social/i.test(String(resultingArea)) ||
+    /solo\s+informar/i.test(String(resultingTipo));
+
   if (estado !== undefined && validStatuses.includes(String(estado))) {
-    if (req.user?.role === "DIRECTOR_GENERAL") {
+    if (isAutoConfirmed && String(estado) === "CONFIRMADO") {
+      updates.estado = "CONFIRMADO";
+    } else if (req.user?.role === "DIRECTOR_GENERAL") {
       res.status(403).json({ error: "El Director General no puede cambiar el estado del evento" });
       return;
-    }
-    if (String(estado) === "CONFIRMADO" && req.user?.role !== "ADMIN") {
+    } else if (String(estado) === "CONFIRMADO" && req.user?.role !== "ADMIN") {
       res.status(403).json({ error: "Solo un administrador puede confirmar el evento" });
       return;
     }
@@ -496,14 +510,29 @@ eventsRouter.post("/:id/sync-acreditapp", authMiddleware, async (req, res) => {
 });
 
 /**
- * DELETE /events/:id - Eliminar evento (solo ADMIN).
+ * DELETE /events/:id - Eliminar evento (ADMIN, o creador / área solicitante con rol DIRECTOR_GENERAL u ORGANIZACION).
  */
-eventsRouter.delete("/:id", authMiddleware, requireRoles("ADMIN"), async (req, res) => {
+eventsRouter.delete("/:id", authMiddleware, async (req, res) => {
   const event = await prisma.event.findUnique({ where: { id: req.params.id } });
   if (!event) {
     res.status(404).json({ error: "Evento no encontrado" });
     return;
   }
+  const user = req.user;
+  const isAdmin = user?.role === "ADMIN";
+  const isCreator = Boolean(event.createdById && event.createdById === user?.id);
+  const isAreaOwner = Boolean(
+    user?.area &&
+    event.areaSolicitante &&
+    user.area.toLowerCase() === event.areaSolicitante.toLowerCase() &&
+    (user.role === "DIRECTOR_GENERAL" || user.role === "ORGANIZACION")
+  );
+
+  if (!isAdmin && !isCreator && !isAreaOwner) {
+    res.status(403).json({ error: "No tenés permiso para eliminar este evento" });
+    return;
+  }
+
   await prisma.event.delete({ where: { id: req.params.id } });
   res.status(204).send();
 });
