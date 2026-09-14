@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Download, Printer } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, ImageDown, Printer } from "lucide-react";
+import { toJpeg } from "html-to-image";
 import { listEvents } from "../api/events";
 import { PageHeader } from "../components/layout/PageHeader";
 import { Button } from "../components/ui/Button";
@@ -102,6 +103,7 @@ function canSeeAgenda(role?: string | null): boolean {
 export default function AgendaInstitucionales() {
   const { user } = useAuth();
   const [weekAnchor, setWeekAnchor] = useState(() => mondayOfWeek(new Date()));
+  const [exportingJpg, setExportingJpg] = useState(false);
 
   const { data: events = [], isLoading } = useQuery({
     queryKey: ["events"],
@@ -132,6 +134,43 @@ export default function AgendaInstitucionales() {
   const year = weekAnchor.getFullYear();
   const sidebarTitle = `AGENDA SSCCYRS - ${mesLabel} ${year}`;
 
+  const handleDownloadJpg = async () => {
+    const node = document.getElementById("agenda-ssccyrs-print");
+    if (!node) return;
+    setExportingJpg(true);
+    try {
+      // Doble pasada: la primera calienta fuentes/estilos y mejora fidelidad de color.
+      await toJpeg(node, {
+        quality: 0.95,
+        pixelRatio: 2,
+        backgroundColor: "#ffffff",
+        cacheBust: true,
+      });
+      const dataUrl = await toJpeg(node, {
+        quality: 0.95,
+        pixelRatio: 2,
+        backgroundColor: "#ffffff",
+        cacheBust: true,
+        style: {
+          overflow: "visible",
+          printColorAdjust: "exact",
+          WebkitPrintColorAdjust: "exact",
+        } as Partial<CSSStyleDeclaration>,
+      });
+      const from = civilFromLocalDate(weekDays[0]!);
+      const to = civilFromLocalDate(weekDays[6]!);
+      const link = document.createElement("a");
+      link.download = `Agenda-SSCCYRS-${from}_${to}.jpg`;
+      link.href = dataUrl;
+      link.click();
+    } catch (error) {
+      console.error(error);
+      alert("No se pudo generar la imagen JPG.");
+    } finally {
+      setExportingJpg(false);
+    }
+  };
+
   if (!canSeeAgenda(user?.role)) {
     return (
       <div className="page-container">
@@ -144,7 +183,7 @@ export default function AgendaInstitucionales() {
     <div className="page-container max-w-[1400px]">
       <PageHeader
         title="Agenda semanal SSCCYRS"
-        subtitle="Vista semanal de todos los eventos (impresión / descarga). Solo lectura salvo los que te corresponden."
+        subtitle="Vista semanal de todos los eventos. Descarga en JPG a color o PDF."
         actions={
           <div className="flex flex-wrap gap-2 print:hidden">
             <Button
@@ -170,13 +209,21 @@ export default function AgendaInstitucionales() {
               Semana siguiente
               <ChevronRight className="w-4 h-4" aria-hidden />
             </Button>
+            <Button
+              size="sm"
+              onClick={() => void handleDownloadJpg()}
+              disabled={exportingJpg || isLoading}
+            >
+              <ImageDown className="w-4 h-4" aria-hidden />
+              {exportingJpg ? "Generando JPG…" : "Descargar JPG"}
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => window.print()}>
+              <Download className="w-4 h-4" aria-hidden />
+              PDF
+            </Button>
             <Button size="sm" variant="secondary" onClick={() => window.print()}>
               <Printer className="w-4 h-4" aria-hidden />
               Imprimir
-            </Button>
-            <Button size="sm" onClick={() => window.print()}>
-              <Download className="w-4 h-4" aria-hidden />
-              Descargar / PDF
             </Button>
           </div>
         }
@@ -191,6 +238,11 @@ export default function AgendaInstitucionales() {
             "bg-white border border-slate-200 shadow-sm overflow-hidden",
             "print:shadow-none print:border-0"
           )}
+          style={{
+            // Fuerza fondos de color en captura e impresión
+            WebkitPrintColorAdjust: "exact",
+            printColorAdjust: "exact",
+          }}
         >
           <div className="flex min-h-[520px]">
             {/* Sidebar vertical */}
@@ -275,13 +327,19 @@ export default function AgendaInstitucionales() {
       )}
 
       <p className="mt-3 text-xs text-slate-400 print:hidden">
-        Tip: usá «Descargar / PDF» y elegí «Guardar como PDF» en el diálogo de impresión. Los
-        eventos confirmados se resaltan en amarillo.
+        Tip: «Descargar JPG» genera la agenda a color. «PDF» abre el diálogo de impresión (elegí
+        «Guardar como PDF» y activá «Gráficos de fondo» si hace falta). Los confirmados van en
+        amarillo.
       </p>
 
       <style>{`
         @media print {
           @page { size: landscape; margin: 8mm; }
+          html, body {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+          }
           body * { visibility: hidden !important; }
           #agenda-ssccyrs-print, #agenda-ssccyrs-print * { visibility: visible !important; }
           #agenda-ssccyrs-print {
@@ -289,6 +347,14 @@ export default function AgendaInstitucionales() {
             left: 0;
             top: 0;
             width: 100%;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+          }
+          #agenda-ssccyrs-print .bg-\\[\\#7BA8B0\\],
+          #agenda-ssccyrs-print .bg-amber-300 {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
           .print\\:hidden { display: none !important; }
         }
