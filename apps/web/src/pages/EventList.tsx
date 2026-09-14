@@ -40,7 +40,7 @@ export default function EventList() {
     user?.role === "PRODUCCION"
       ? "Mostrás solo eventos que solicitaron requerimiento de Producción."
       : user?.role === "INSTITUCIONALES" || user?.role === "AGENDA"
-        ? "Mostrás solo eventos que solicitaron requerimiento Institucional."
+        ? "Ves todos los eventos (Agenda/calendario). Solo podés actuar en los que te solicitaron Institucionales."
         : user?.role === "COBERTURA"
           ? "Mostrás solo eventos que solicitaron Cobertura."
           : (user?.role === "DIRECTOR_GENERAL" || user?.role === "ORGANIZACION") && user.area

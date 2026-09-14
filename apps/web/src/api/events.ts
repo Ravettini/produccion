@@ -35,6 +35,13 @@ export async function deleteEvent(id: string): Promise<void> {
   return api(`/events/${id}`, { method: "DELETE" });
 }
 
+/** Duplicar un evento existente (copia operativa sin decisiones ni acreditación previa). */
+export async function cloneEvent(id: string): Promise<EventWithAcreditappWarning> {
+  return api<EventWithAcreditappWarning>(`/events/${id}/clone`, {
+    method: "POST",
+  });
+}
+
 /** Crear o reintentar el evento remoto en Acreditapp. */
 export async function syncAcreditappEvent(
   eventId: string

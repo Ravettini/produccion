@@ -140,7 +140,7 @@ export default function Calendar() {
     <div className="page-container">
       <PageHeader
         title="Calendario"
-        subtitle="Vista mensual de eventos institucionales"
+        subtitle="Vista mensual de todos los eventos"
         actions={
           <Link to="/events/new">
             <Button size="sm">

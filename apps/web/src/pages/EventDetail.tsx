@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getEvent, updateEvent, deleteEvent, syncAcreditappEvent } from "../api/events";
+import { getEvent, updateEvent, deleteEvent, syncAcreditappEvent, cloneEvent } from "../api/events";
 import { listProposals, createProposal } from "../api/proposals";
 import { exportarBriefDocx, exportarBriefCompletoDocx } from "../api/ai";
 import {
@@ -14,7 +14,13 @@ import {
 } from "../api/attachments";
 import type { EventStatus, Proposal, ProposalCategory, ProposalStatus } from "../types";
 import { useAuth } from "../hooks/useAuth";
-import { canCreateProposal, canConfirmEvent, canDeleteEvent, canEditEvent } from "../hooks/usePermissions";
+import {
+  canCloneEvent,
+  canCreateProposal,
+  canConfirmEvent,
+  canDeleteEvent,
+  canEditEvent,
+} from "../hooks/usePermissions";
 import {
   Button,
   Card,
@@ -194,6 +200,21 @@ export default function EventDetail() {
     },
   });
 
+  const cloneEventMutation = useMutation({
+    mutationFn: () => cloneEvent(id!),
+    onSuccess: (created) => {
+      qc.invalidateQueries({ queryKey: ["events"] });
+      navigate(`/events/${created.id}`, {
+        state: created.acreditappWarning
+          ? { acreditappWarning: created.acreditappWarning }
+          : undefined,
+      });
+    },
+    onError: (error) => {
+      alert((error as Error).message || "No se pudo duplicar el evento");
+    },
+  });
+
   const syncAcreditapp = useMutation({
     mutationFn: () => syncAcreditappEvent(id!),
     onSuccess: () => {
@@ -281,6 +302,20 @@ export default function EventDetail() {
         subtitle={subtitleParts.join(" · ")}
         actions={
           <div className="flex flex-wrap gap-2">
+            {canCloneEvent(user) && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  if (cloneEventMutation.isPending) return;
+                  if (!window.confirm("¿Duplicar este evento? Se creará una copia editable.")) return;
+                  cloneEventMutation.mutate();
+                }}
+                disabled={cloneEventMutation.isPending}
+              >
+                {cloneEventMutation.isPending ? "Duplicando…" : "Duplicar evento"}
+              </Button>
+            )}
             {canEditEvent(user, event) && (
             <Link to={`/events/${id}/edit`}>
               <Button variant="secondary" size="sm">Editar evento</Button>
@@ -557,7 +592,7 @@ export default function EventDetail() {
                 Una tarjeta por tipo. Si ya existe, editá el requerimiento en lugar de crear otro.
               </p>
             </div>
-            {canCreateProposal(user) && (
+            {canCreateProposal(user, event) && (
               <Button
                 size="sm"
                 onClick={() =>
@@ -606,7 +641,7 @@ export default function EventDetail() {
               ))}
             </div>
           )}
-          {canCreateProposal(user) && (
+          {canCreateProposal(user, event) && (
             <NewProposalForm
               eventId={id!}
               occupiedCategories={proposals.map((p: Proposal) => p.categoria)}

@@ -30,8 +30,52 @@ const PROPOSAL_VALIDATE_BY_ROLE: Record<string, string[]> = {
   COBERTURA: ["OTRO"],
 };
 
-export function canCreateProposal(user: User | null): boolean {
-  return user !== null && PROPOSAL_CREATOR_ROLES.includes(user.role);
+function specialtyIsRequestedOnEvent(
+  role: string,
+  event: { tipoEvento?: string | null; areaSolicitante?: string | null }
+): boolean {
+  if (event.areaSolicitante && /responsabilidad\s+social/i.test(event.areaSolicitante)) return false;
+  if (/solo\s+informar/i.test(String(event.tipoEvento ?? ""))) return false;
+  const keywordsByRole: Record<string, string[]> = {
+    PRODUCCION: ["producción", "produccion"],
+    INSTITUCIONALES: ["institucional"],
+    AGENDA: ["institucional"],
+    COBERTURA: ["cobertura", "comunicación", "comunicacion"],
+  };
+  const keywords = keywordsByRole[role];
+  if (!keywords) return false;
+  const partes = String(event.tipoEvento ?? "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  return keywords.some((kw) => partes.some((p) => p.includes(kw)));
+}
+
+export function canCreateProposal(
+  user: User | null,
+  event?: {
+    tipoEvento?: string | null;
+    areaSolicitante?: string | null;
+    createdById?: string | null;
+  } | null
+): boolean {
+  if (!user || !PROPOSAL_CREATOR_ROLES.includes(user.role)) return false;
+  if (!event) return true;
+  if (user.role === "ADMIN") return true;
+  if (event.createdById && event.createdById === user.id) return true;
+  if (SPECIALTY_ROLES.includes(user.role)) {
+    return specialtyIsRequestedOnEvent(user.role, event);
+  }
+  if (user.role === "DIRECTOR_GENERAL" || user.role === "ORGANIZACION") {
+    if (event.createdById && event.createdById === user.id) return true;
+    return false;
+  }
+  return true;
+}
+
+/** Quién puede duplicar un evento existente (mismos roles que pueden crear). */
+export function canCloneEvent(user: User | null): boolean {
+  return canCreateEvent(user);
 }
 
 /** Quién puede abrir la carga de un evento nuevo (solicitantes / admin / institucionales). */
@@ -67,6 +111,10 @@ export function canConfirmEvent(user: User | null): boolean {
 export function canEditEvent(user: User | null, event: { createdById?: string | null }): boolean {
   if (!user) return false;
   if (user.role === "ADMIN") return true;
+  // Especialidades (incl. Institucionales) solo editan si son creadoras; el resto es solo lectura.
+  if (SPECIALTY_ROLES.includes(user.role)) {
+    return Boolean(event.createdById && event.createdById === user.id);
+  }
   if (!event.createdById) return true;
   return event.createdById === user.id;
 }

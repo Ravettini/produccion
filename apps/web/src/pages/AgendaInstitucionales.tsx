@@ -117,9 +117,7 @@ export default function AgendaInstitucionales() {
     for (const day of weekDays) map.set(civilFromLocalDate(day), []);
     for (const ev of events) {
       if (ev.estado === "CANCELADO") continue;
-      // Agenda SSCCYRS: eventos con institucionales o confirmados / en radar
-      const esInsti = /institucional/i.test(ev.tipoEvento);
-      if (!esInsti && ev.estado !== "CONFIRMADO" && ev.estado !== "EN_RADAR") continue;
+      // Institucionales ve toda la agenda (incluyendo eventos que no les pidieron soporte).
       const civil = toCivilDateString(ev.fechaTentativa);
       if (!map.has(civil)) continue;
       map.get(civil)!.push(ev);
@@ -146,7 +144,7 @@ export default function AgendaInstitucionales() {
     <div className="page-container max-w-[1400px]">
       <PageHeader
         title="Agenda semanal SSCCYRS"
-        subtitle="Vista semanal para Institucionales (modelo de impresión / descarga)"
+        subtitle="Vista semanal de todos los eventos (impresión / descarga). Solo lectura salvo los que te corresponden."
         actions={
           <div className="flex flex-wrap gap-2 print:hidden">
             <Button

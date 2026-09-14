@@ -132,8 +132,9 @@ export function isDgConvocada(
 /**
  * ¿El usuario puede ver este evento?
  * - Admin / Validador: todos
+ * - Institucionales / Agenda: todos (lectura; las acciones siguen condicionadas a si les corresponde)
  * - Director General / Organización: eventos creados por él, de su área, convocados o CONFIRMADOS de otras DGs
- * - Producción / Institucionales (Agenda) / Cobertura: solo si tipoEvento los incluye
+ * - Producción / Cobertura: solo si tipoEvento los incluye
  */
 export function canUserSeeEvent(
   user: EventVisibilityUser,
@@ -146,6 +147,9 @@ export function canUserSeeEvent(
   }
 ): boolean {
   if (ROLES_SEE_ALL.has(user.role)) return true;
+
+  // Agenda / Institucionales necesitan ver toda la agenda aunque no les hayan pedido soporte.
+  if (user.role === "INSTITUCIONALES" || user.role === "AGENDA") return true;
 
   const keywords = getTipoKeywordsForRole(user.role);
   if (keywords) {

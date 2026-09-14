@@ -458,6 +458,127 @@ eventsRouter.put("/:id", authMiddleware, async (req, res) => {
 });
 
 /**
+ * POST /events/:id/clone - Duplicar un evento existente (sin decisiones ni acreditación).
+ */
+eventsRouter.post("/:id/clone", authMiddleware, async (req, res) => {
+  const role = req.user?.role;
+  if (!role || !["ORGANIZACION", "ADMIN", "DIRECTOR_GENERAL", "INSTITUCIONALES", "AGENDA"].includes(role)) {
+    res.status(403).json({ error: "Tu rol no puede duplicar eventos." });
+    return;
+  }
+
+  const source = await prisma.event.findUnique({ where: { id: req.params.id } });
+  if (!source) {
+    res.status(404).json({ error: "Evento no encontrado" });
+    return;
+  }
+
+  const dbUser = await prisma.user.findUnique({
+    where: { id: req.user!.id },
+    select: { id: true, role: true, area: true, name: true },
+  });
+  if (!dbUser || !canUserSeeEvent({ id: dbUser.id, role: dbUser.role, area: dbUser.area }, source)) {
+    res.status(403).json({ error: "No tenés permiso para ver este evento" });
+    return;
+  }
+
+  const isAutoConfirmed =
+    /responsabilidad\s+social/i.test(String(source.areaSolicitante)) ||
+    /solo\s+informar/i.test(String(source.tipoEvento));
+  const status = isAutoConfirmed ? "CONFIRMADO" : "PENDIENTE";
+
+  const fechaBase =
+    source.fechaTentativa instanceof Date
+      ? source.fechaTentativa
+      : parseFechaTentativa(source.fechaTentativa);
+
+  let fechaDate = fechaBase;
+  let placed = false;
+  for (let attempt = 0; attempt < 60; attempt++) {
+    const sameDayCount = await countEventsSameDayDg(String(source.areaSolicitante), fechaDate);
+    if (sameDayCount < 2) {
+      placed = true;
+      break;
+    }
+    const next = new Date(fechaDate);
+    next.setUTCDate(next.getUTCDate() + 1);
+    fechaDate = next;
+  }
+  if (!placed) {
+    res.status(400).json({
+      error: "No hay día disponible cercano para clonar (máximo 2 eventos por DG por día).",
+    });
+    return;
+  }
+
+  const baseTitle = String(source.titulo).replace(/\s*\(copia(?:\s*\d+)?\)\s*$/i, "").trim();
+  const titulo = `${baseTitle} (copia)`.slice(0, 240);
+
+  let datosProduccion: string | null = null;
+  if (source.datosProduccion != null) {
+    datosProduccion =
+      typeof source.datosProduccion === "string"
+        ? source.datosProduccion
+        : JSON.stringify(source.datosProduccion);
+  }
+
+  const event = await prisma.event.create({
+    data: {
+      titulo,
+      descripcion: String(source.descripcion),
+      tipoEvento: String(source.tipoEvento),
+      areaSolicitante: String(source.areaSolicitante),
+      fechaTentativa: fechaDate,
+      estado: status,
+      createdById: req.user?.id ?? null,
+      resumen: null,
+      usuarioSolicitante: dbUser.name ? String(dbUser.name) : source.usuarioSolicitante,
+      publico: source.publico ?? null,
+      lugar: source.lugar ?? null,
+      programa: source.programa ?? null,
+      funcionario: source.funcionario ?? null,
+      productor: source.productor ?? null,
+      necesitaAcreditacion: source.necesitaAcreditacion === true,
+      linkAcreditacionConvocados: null,
+      motivoCancelacion: null,
+      realizacionAsistentes: null,
+      realizacionImpacto: null,
+      realizacionLinkImpacto: null,
+      datosProduccion,
+    },
+  });
+
+  if (req.user?.id) {
+    try {
+      await syncProposalsFromEvent({
+        eventId: String(event.id),
+        userId: req.user.id,
+        tipoEvento: String(event.tipoEvento),
+        lugar: event.lugar,
+        funcionario: event.funcionario,
+        programa: event.programa,
+        datosProduccion: event.datosProduccion,
+      });
+    } catch (err) {
+      console.error("[events] clone syncProposalsFromEvent:", err);
+    }
+  }
+
+  const sync = await ensureAcreditappLink(toAcreditappEventInput(event));
+  let result = event;
+  if (sync.link) {
+    result = await prisma.event.update({
+      where: { id: String(event.id) },
+      data: { linkAcreditacionConvocados: sync.link },
+    });
+  }
+  const payload = serializeEventFecha(result);
+  res.status(201).json(
+    sync.warning ? { ...payload, acreditappWarning: sync.warning } : payload
+  );
+});
+
+/**
  * POST /events/:id/sync-acreditapp - Crear/reintentar evento remoto en Acreditapp.
  */
 eventsRouter.post("/:id/sync-acreditapp", authMiddleware, async (req, res) => {

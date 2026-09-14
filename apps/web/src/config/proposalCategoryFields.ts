@@ -160,6 +160,7 @@ export const INSTAGRAM_CUENTAS: { value: string; label: string }[] = [
 export const LINKEDIN_CUENTAS: { value: string; label: string }[] = [
   { value: "LinkedIn SSCCYRS", label: "LinkedIn SSCCYRS" },
   { value: "LinkedIn BADA", label: "LinkedIn BADA" },
+  { value: "LinkedIn BA JOVEN", label: "LinkedIn BA JOVEN" },
 ];
 
 /** Formatos audiovisuales (selección múltiple en el wizard de cobertura) */
