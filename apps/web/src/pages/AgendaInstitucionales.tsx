@@ -247,9 +247,12 @@ export default function AgendaInstitucionales() {
           <div className="flex min-h-[520px]">
             {/* Sidebar vertical */}
             <div className="w-14 sm:w-16 shrink-0 bg-[#7BA8B0] text-white flex flex-col items-center py-4 relative print:w-14">
-              <div className="w-9 h-9 rounded-full bg-amber-300 text-slate-900 flex items-center justify-center text-[10px] font-bold leading-tight text-center px-0.5">
-                BA
-              </div>
+              <img
+                src="/ba-desde-adentro.png"
+                alt="BA Desde adentro"
+                className="w-10 h-auto object-contain"
+                draggable={false}
+              />
               <p className="mt-1 text-[8px] text-center leading-tight px-1 opacity-90">
                 Desde
                 <br />
@@ -315,9 +318,13 @@ export default function AgendaInstitucionales() {
             </div>
           </div>
           <div className="flex justify-end items-center gap-2 px-4 py-3 border-t border-slate-100">
-            <div className="w-12 h-12 rounded-full bg-amber-300 text-slate-900 flex items-center justify-center text-xs font-bold text-center leading-tight">
-              BA
-              <span className="sr-only">Desde adentro</span>
+            <div className="w-12 h-12 rounded-full bg-[#7BA8B0] flex items-center justify-center p-1.5">
+              <img
+                src="/ba-desde-adentro.png"
+                alt="BA Desde adentro"
+                className="w-full h-auto object-contain"
+                draggable={false}
+              />
             </div>
             <span className="text-[10px] text-slate-500 max-w-[4.5rem] leading-tight">
               Desde adentro

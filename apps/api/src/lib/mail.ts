@@ -51,7 +51,8 @@ function getTransporter(): Transporter | null {
     secure,
     auth: {
       user: process.env.SMTP_USER!.trim(),
-      pass: process.env.SMTP_PASS!.trim(),
+      // Gmail App Passwords a veces se copian con espacios
+      pass: process.env.SMTP_PASS!.replace(/\s+/g, ""),
     },
   });
   return transporter;
@@ -96,13 +97,17 @@ export async function sendMail(opts: {
   const tx = getTransporter();
   if (!tx) return false;
 
-  const to = (process.env.NOTIFY_EMAIL_TO || process.env.SMTP_USER || "").trim();
-  const from = (process.env.NOTIFY_EMAIL_FROM || process.env.SMTP_USER || to).trim();
+  const recipients = resolveNotifyRecipients();
+  if (recipients.length === 0) {
+    console.warn("[mail] Omitido: sin destinatarios (NOTIFY_EMAIL_TO / INSTITUCIONALES).");
+    return false;
+  }
+  const from = (process.env.NOTIFY_EMAIL_FROM || process.env.SMTP_USER || recipients[0]).trim();
 
   try {
     await tx.sendMail({
       from,
-      to,
+      to: recipients.join(", "),
       subject: opts.subject,
       text: opts.text,
       html: opts.html ?? undefined,
@@ -112,6 +117,27 @@ export async function sendMail(opts: {
     console.error("[mail] Error al enviar:", err instanceof Error ? err.message : err);
     return false;
   }
+}
+
+/** Destinatarios: NOTIFY_EMAIL_TO (+ opc. INSTITUCIONALES), separados por coma. */
+function resolveNotifyRecipients(): string[] {
+  const chunks = [
+    process.env.NOTIFY_EMAIL_TO,
+    process.env.NOTIFY_EMAIL_INSTITUCIONALES,
+    process.env.SMTP_USER,
+  ];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const chunk of chunks) {
+    if (!chunk?.trim()) continue;
+    for (const part of chunk.split(/[,;]+/)) {
+      const email = part.trim().toLowerCase();
+      if (!email || !email.includes("@") || seen.has(email)) continue;
+      seen.add(email);
+      out.push(email);
+    }
+  }
+  return out;
 }
 
 function eventSummaryLines(event: MailEventLike): string[] {
