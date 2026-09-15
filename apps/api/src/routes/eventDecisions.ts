@@ -10,6 +10,7 @@ import {
   type AreaDecisionRole,
 } from "../lib/eventVisibility.js";
 import { AREA_LABELS, buildAreaChecklist, type AreaDecisionRow } from "../lib/areaDecisions.js";
+import { notifyAreaDecision, notifyEventStatusChanged } from "../lib/mail.js";
 import { syncProposalsFromEvent } from "../lib/syncProposalsFromEvent.js";
 
 export const eventDecisionsRouter = Router({ mergeParams: true });
@@ -169,10 +170,40 @@ eventDecisionsRouter.post("/:eventId/area-decisions", authMiddleware, async (req
           reason: "Confirmado automáticamente al aprobar todas las áreas involucradas",
         },
       });
+      return { row, eventConfirmed: true as const };
     }
 
-    return { row, eventConfirmed: allAreasApproved && canAutoConfirm };
+    return { row, eventConfirmed: false as const };
   });
+
+  notifyAreaDecision(
+    {
+      id: String(event.id),
+      titulo: String(event.titulo),
+      areaSolicitante: event.areaSolicitante != null ? String(event.areaSolicitante) : null,
+      fechaTentativa: event.fechaTentativa as Date | string | null,
+      estado: result.eventConfirmed ? "CONFIRMADO" : String(event.estado),
+      tipoEvento: event.tipoEvento != null ? String(event.tipoEvento) : null,
+    },
+    areaRole,
+    decision,
+    reasonStr
+  );
+
+  if (result.eventConfirmed) {
+    notifyEventStatusChanged(
+      {
+        id: String(event.id),
+        titulo: String(event.titulo),
+        areaSolicitante: event.areaSolicitante != null ? String(event.areaSolicitante) : null,
+        fechaTentativa: event.fechaTentativa as Date | string | null,
+        estado: "CONFIRMADO",
+        tipoEvento: event.tipoEvento != null ? String(event.tipoEvento) : null,
+      },
+      String(event.estado),
+      "CONFIRMADO"
+    );
+  }
 
   res.json({
     ...result.row,

@@ -4,6 +4,7 @@ import { authMiddleware, requireRoles } from "../middleware/auth.js";
 import { canUserSeeEvent, filterEventsForUser } from "../lib/eventVisibility.js";
 import { buildAreaChecklist, type AreaDecisionRow } from "../lib/areaDecisions.js";
 import { ensureAcreditappLink, fetchAcreditappAttendance } from "../lib/acreditapp.js";
+import { notifyEventCreated, notifyEventStatusChanged } from "../lib/mail.js";
 import { syncProposalsFromEvent } from "../lib/syncProposalsFromEvent.js";
 import {
   civilDateFromStored,
@@ -284,6 +285,14 @@ eventsRouter.post("/", authMiddleware, async (req, res) => {
     });
   }
   const payload = serializeEventFecha(result);
+  notifyEventCreated({
+    id: String(result.id),
+    titulo: String(result.titulo),
+    areaSolicitante: result.areaSolicitante != null ? String(result.areaSolicitante) : null,
+    fechaTentativa: result.fechaTentativa as Date | string | null,
+    estado: result.estado != null ? String(result.estado) : null,
+    tipoEvento: result.tipoEvento != null ? String(result.tipoEvento) : null,
+  });
   res.status(201).json(
     sync.warning ? { ...payload, acreditappWarning: sync.warning } : payload
   );
@@ -489,6 +498,22 @@ eventsRouter.put("/:id", authMiddleware, async (req, res) => {
   }
   const payload = serializeEventFecha(result);
   const warning = sync.warning || acreditappStatsWarning;
+  const prevEstado = String(existing.estado);
+  const nextEstadoResult = String(result.estado);
+  if (prevEstado !== nextEstadoResult) {
+    notifyEventStatusChanged(
+      {
+        id: String(result.id),
+        titulo: String(result.titulo),
+        areaSolicitante: result.areaSolicitante != null ? String(result.areaSolicitante) : null,
+        fechaTentativa: result.fechaTentativa as Date | string | null,
+        estado: nextEstadoResult,
+        tipoEvento: result.tipoEvento != null ? String(result.tipoEvento) : null,
+      },
+      prevEstado,
+      nextEstadoResult
+    );
+  }
   res.json(warning ? { ...payload, acreditappWarning: warning } : payload);
 });
 
@@ -644,6 +669,14 @@ eventsRouter.post("/:id/clone", authMiddleware, async (req, res) => {
     });
   }
   const payload = serializeEventFecha(result);
+  notifyEventCreated({
+    id: String(result.id),
+    titulo: String(result.titulo),
+    areaSolicitante: result.areaSolicitante != null ? String(result.areaSolicitante) : null,
+    fechaTentativa: result.fechaTentativa as Date | string | null,
+    estado: result.estado != null ? String(result.estado) : null,
+    tipoEvento: result.tipoEvento != null ? String(result.tipoEvento) : null,
+  });
   res.status(201).json(
     sync.warning ? { ...payload, acreditappWarning: sync.warning } : payload
   );
