@@ -52,7 +52,8 @@ model Event {
   necesitaAcreditacion   Boolean?  // ¿Se necesita acreditación?
   linkAcreditacionConvocados String? // Link a convocados para acreditar
   motivoCancelacion      String?   // Obligatorio cuando estado = CANCELADO
-  realizacionAsistentes  Int?      // Cuando estado = REALIZADO: cantidad de asistentes
+  realizacionAsistentes  Int?      // Cuando estado = REALIZADO (o carga manual): asistidos
+  realizacionConvocados  Int?      // Convocados (desde Acreditapp o carga manual)
   realizacionImpacto     String?   // Cuando estado = REALIZADO: impacto post-evento
   realizacionLinkImpacto String?   // Link a PDF o recurso de métricas de impacto (opcional)
   datosProduccion        String?   // JSON: misma estructura que propuesta Producción (técnica, catering, piezas)

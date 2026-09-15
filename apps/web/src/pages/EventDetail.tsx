@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getEvent, updateEvent, deleteEvent, syncAcreditappEvent, cloneEvent } from "../api/events";
+import { getEvent, updateEvent, deleteEvent, syncAcreditappEvent, cloneEvent, getAcreditappStats } from "../api/events";
 import { listProposals, createProposal } from "../api/proposals";
 import { exportarBriefDocx, exportarBriefCompletoDocx } from "../api/ai";
 import {
@@ -79,6 +79,9 @@ export default function EventDetail() {
   const [confirmEstado, setConfirmEstado] = useState<EventStatus | null>(null);
   const [motivoCancelacion, setMotivoCancelacion] = useState("");
   const [realizacionAsistentes, setRealizacionAsistentes] = useState<string>("");
+  const [realizacionConvocados, setRealizacionConvocados] = useState<string>("");
+  const [loadingAcreditappStats, setLoadingAcreditappStats] = useState(false);
+  const [acreditappStatsError, setAcreditappStatsError] = useState<string | null>(null);
   const [realizacionImpacto, setRealizacionImpacto] = useState("");
   const [realizacionLinkImpacto, setRealizacionLinkImpacto] = useState("");
   const [realizacionPdfFile, setRealizacionPdfFile] = useState<File | null>(null);
@@ -232,6 +235,31 @@ export default function EventDetail() {
       });
     }, 0);
   };
+
+  useEffect(() => {
+    if (confirmEstado !== "REALIZADO" || !event) return;
+    setRealizacionAsistentes(
+      event.realizacionAsistentes != null ? String(event.realizacionAsistentes) : ""
+    );
+    setRealizacionConvocados(
+      event.realizacionConvocados != null ? String(event.realizacionConvocados) : ""
+    );
+    setAcreditappStatsError(null);
+    if (event.necesitaAcreditacion === true && event.linkAcreditacionConvocados?.trim()) {
+      setLoadingAcreditappStats(true);
+      getAcreditappStats(event.id)
+        .then((stats) => {
+          setRealizacionConvocados(String(stats.convocados));
+          setRealizacionAsistentes(String(stats.asistidos));
+        })
+        .catch((err) => {
+          setAcreditappStatsError(
+            err instanceof Error ? err.message : "No se pudieron obtener datos de Acreditapp"
+          );
+        })
+        .finally(() => setLoadingAcreditappStats(false));
+    }
+  }, [confirmEstado, event?.id, event?.necesitaAcreditacion, event?.linkAcreditacionConvocados]);
 
   if (loadingEvent || !event) {
     return <DetailSkeleton />;
@@ -701,7 +729,7 @@ export default function EventDetail() {
       <Modal
         title={confirmEstado === "CANCELADO" ? "Cancelar evento" : confirmEstado === "REALIZADO" ? "Marcar como realizado" : "Confirmar evento"}
         open={!!confirmEstado}
-        onClose={() => { setConfirmEstado(null); setMotivoCancelacion(""); setRealizacionAsistentes(""); setRealizacionImpacto(""); setRealizacionLinkImpacto(""); setRealizacionPdfFile(null); }}
+        onClose={() => { setConfirmEstado(null); setMotivoCancelacion(""); setRealizacionAsistentes(""); setRealizacionConvocados(""); setAcreditappStatsError(null); setRealizacionImpacto(""); setRealizacionLinkImpacto(""); setRealizacionPdfFile(null); }}
       >
         {confirmEstado && (
           <div className="space-y-4">
@@ -721,11 +749,33 @@ export default function EventDetail() {
             {confirmEstado === "REALIZADO" && (
               <>
                 <p className="text-slate-600">
-                  Cargá datos del evento realizado (opcional pero recomendado).
+                  {event.necesitaAcreditacion === true
+                    ? "Al cerrar, se importan convocados y asistidos desde Acreditapp."
+                    : "Cargá convocados y asistidos manualmente (el evento no usa Acreditapp)."}
                 </p>
+                {event.necesitaAcreditacion === true && loadingAcreditappStats && (
+                  <p className="text-sm text-slate-500">Consultando Acreditapp…</p>
+                )}
+                {acreditappStatsError && (
+                  <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    {acreditappStatsError}. Podés completar los números a mano.
+                  </p>
+                )}
                 <div className="grid gap-3">
                   <label className="block text-sm font-medium text-slate-700">
-                    Cantidad de asistentes
+                    Convocados
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
+                    placeholder="Ej: 150"
+                    value={realizacionConvocados}
+                    onChange={(e) => setRealizacionConvocados(e.target.value)}
+                    readOnly={event.necesitaAcreditacion === true && loadingAcreditappStats}
+                  />
+                  <label className="block text-sm font-medium text-slate-700">
+                    Asistidos
                   </label>
                   <input
                     type="number"
@@ -734,6 +784,7 @@ export default function EventDetail() {
                     placeholder="Ej: 120"
                     value={realizacionAsistentes}
                     onChange={(e) => setRealizacionAsistentes(e.target.value)}
+                    readOnly={event.necesitaAcreditacion === true && loadingAcreditappStats}
                   />
                   <label className="block text-sm font-medium text-slate-700">
                     Impacto / comentarios
@@ -775,7 +826,7 @@ export default function EventDetail() {
               </p>
             )}
             <div className="stack-actions sm:justify-end [&_button]:w-full [&_button]:sm:w-auto">
-              <Button variant="secondary" onClick={() => { setConfirmEstado(null); setMotivoCancelacion(""); setRealizacionAsistentes(""); setRealizacionImpacto(""); setRealizacionLinkImpacto(""); setRealizacionPdfFile(null); }}>
+              <Button variant="secondary" onClick={() => { setConfirmEstado(null); setMotivoCancelacion(""); setRealizacionAsistentes(""); setRealizacionConvocados(""); setAcreditappStatsError(null); setRealizacionImpacto(""); setRealizacionLinkImpacto(""); setRealizacionPdfFile(null); }}>
                 Cancelar
               </Button>
               <Button
@@ -785,12 +836,14 @@ export default function EventDetail() {
                     updateEventMutation.mutate({ estado: "CANCELADO", motivoCancelacion: motivoCancelacion.trim() });
                   } else if (confirmEstado === "REALIZADO") {
                     const asistentes = realizacionAsistentes.trim() ? parseInt(realizacionAsistentes, 10) : undefined;
+                    const convocados = realizacionConvocados.trim() ? parseInt(realizacionConvocados, 10) : undefined;
                     const link = realizacionLinkImpacto.trim() || undefined;
                     const file = realizacionPdfFile;
                     updateEventMutation.mutate(
                       {
                         estado: "REALIZADO",
                         realizacionAsistentes: asistentes != null && !Number.isNaN(asistentes) ? asistentes : undefined,
+                        realizacionConvocados: convocados != null && !Number.isNaN(convocados) ? convocados : undefined,
                         realizacionImpacto: realizacionImpacto.trim() || undefined,
                         realizacionLinkImpacto: link,
                       },
@@ -807,6 +860,8 @@ export default function EventDetail() {
                           }
                           setConfirmEstado(null);
                           setRealizacionAsistentes("");
+                          setRealizacionConvocados("");
+                          setAcreditappStatsError(null);
                           setRealizacionImpacto("");
                           setRealizacionLinkImpacto("");
                           setRealizacionPdfFile(null);

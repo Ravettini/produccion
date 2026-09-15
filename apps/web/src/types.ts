@@ -45,6 +45,7 @@ export interface Event {
   linkAcreditacionConvocados?: string | null;
   motivoCancelacion?: string | null;
   realizacionAsistentes?: number | null;
+  realizacionConvocados?: number | null;
   realizacionImpacto?: string | null;
   realizacionLinkImpacto?: string | null;
   datosProduccion?: Record<string, unknown> | null;

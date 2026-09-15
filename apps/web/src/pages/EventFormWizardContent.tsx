@@ -78,6 +78,8 @@ export interface EventFormWizardContentProps {
   setMotivoCancelacion: (v: string) => void;
   realizacionAsistentes: string;
   setRealizacionAsistentes: (v: string) => void;
+  realizacionConvocados: string;
+  setRealizacionConvocados: (v: string) => void;
   realizacionImpacto: string;
   setRealizacionImpacto: (v: string) => void;
   isAdmin: boolean;
@@ -123,6 +125,8 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
     setMotivoCancelacion,
     realizacionAsistentes,
     setRealizacionAsistentes,
+    realizacionConvocados,
+    setRealizacionConvocados,
     realizacionImpacto,
     setRealizacionImpacto,
     isAdmin,
@@ -465,17 +469,44 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
             />
           )}
           <Select
-            label="¿Se necesita acreditación?"
+            label="¿Se necesita acreditación? (esto crea un evento en Acreditapp)"
             options={[
               { value: "", label: "Seleccionar…" },
-              { value: "true", label: "Sí" },
-              { value: "false", label: "No" },
+              { value: "true", label: "Sí — crea el evento en Acreditapp" },
+              { value: "false", label: "No — cargar convocados/asistidos a mano" },
             ]}
             value={necesitaAcreditacion === "" ? "" : necesitaAcreditacion ? "true" : "false"}
             onChange={(e) =>
               setNecesitaAcreditacion(e.target.value === "" ? "" : e.target.value === "true")
             }
           />
+          <p className="text-xs text-slate-500 -mt-1 px-0.5">
+            Si marcás Sí, al guardar se crea automáticamente el evento en Acreditapp para gestionar
+            la acreditación.
+          </p>
+          {necesitaAcreditacion === false && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 space-y-3">
+              <p className="text-sm font-medium text-slate-800">
+                Convocados y asistidos (carga manual)
+              </p>
+              <Input
+                label="Convocados"
+                type="number"
+                min={0}
+                value={realizacionConvocados}
+                onChange={(e) => setRealizacionConvocados(e.target.value)}
+                placeholder="Ej: 150"
+              />
+              <Input
+                label="Asistidos"
+                type="number"
+                min={0}
+                value={realizacionAsistentes}
+                onChange={(e) => setRealizacionAsistentes(e.target.value)}
+                placeholder="Ej: 120"
+              />
+            </div>
+          )}
           {necesitaAcreditacion === true && (
             <div className="space-y-3">
               <Input

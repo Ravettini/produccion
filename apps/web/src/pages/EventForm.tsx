@@ -61,6 +61,7 @@ export default function EventForm() {
   const [linkAcreditacionConvocados, setLinkAcreditacionConvocados] = useState("");
   const [datosProduccion, setDatosProduccion] = useState<Record<string, string>>({});
   const [realizacionAsistentes, setRealizacionAsistentes] = useState<string>("");
+  const [realizacionConvocados, setRealizacionConvocados] = useState<string>("");
   const [realizacionImpacto, setRealizacionImpacto] = useState("");
   const [motivoCancelacion, setMotivoCancelacion] = useState("");
   const [confirmModal, setConfirmModal] = useState<{ action: "CONFIRMADO" | "CANCELADO" } | null>(null);
@@ -117,6 +118,7 @@ export default function EventForm() {
         setDatosProduccion({ locacionesPosibles: existing.lugar.trim() });
       }
       setRealizacionAsistentes((existing as { realizacionAsistentes?: number | null }).realizacionAsistentes != null ? String((existing as { realizacionAsistentes: number }).realizacionAsistentes) : "");
+      setRealizacionConvocados((existing as { realizacionConvocados?: number | null }).realizacionConvocados != null ? String((existing as { realizacionConvocados: number }).realizacionConvocados) : "");
       setRealizacionImpacto((existing as { realizacionImpacto?: string | null }).realizacionImpacto ?? "");
       setMotivoCancelacion((existing as { motivoCancelacion?: string | null }).motivoCancelacion ?? "");
     }
@@ -368,6 +370,14 @@ export default function EventForm() {
         necesitaAcreditacion: necesitaAcreditacion === true || necesitaAcreditacion === false ? necesitaAcreditacion : undefined,
         linkAcreditacionConvocados: linkAcreditacionConvocados.trim() || undefined,
         datosProduccion: datosFinal,
+        realizacionConvocados:
+          necesitaAcreditacion === false && realizacionConvocados.trim()
+            ? parseInt(realizacionConvocados, 10)
+            : undefined,
+        realizacionAsistentes:
+          necesitaAcreditacion === false && realizacionAsistentes.trim()
+            ? parseInt(realizacionAsistentes, 10)
+            : undefined,
       });
     } else {
       update.mutate({
@@ -388,7 +398,22 @@ export default function EventForm() {
           necesitaAcreditacion: necesitaAcreditacion === true || necesitaAcreditacion === false ? necesitaAcreditacion : null,
           linkAcreditacionConvocados: linkAcreditacionConvocados.trim() || null,
           datosProduccion: datosFinal ?? null,
-          realizacionAsistentes: estado === "REALIZADO" && realizacionAsistentes.trim() ? parseInt(realizacionAsistentes, 10) : undefined,
+          realizacionConvocados:
+            necesitaAcreditacion === false && realizacionConvocados.trim()
+              ? parseInt(realizacionConvocados, 10)
+              : estado === "REALIZADO" && realizacionConvocados.trim()
+                ? parseInt(realizacionConvocados, 10)
+                : necesitaAcreditacion === false
+                  ? null
+                  : undefined,
+          realizacionAsistentes:
+            necesitaAcreditacion === false && realizacionAsistentes.trim()
+              ? parseInt(realizacionAsistentes, 10)
+              : estado === "REALIZADO" && realizacionAsistentes.trim()
+                ? parseInt(realizacionAsistentes, 10)
+                : necesitaAcreditacion === false
+                  ? null
+                  : undefined,
           realizacionImpacto: estado === "REALIZADO" && realizacionImpacto.trim() ? realizacionImpacto.trim() : undefined,
           motivoCancelacion: estado === "CANCELADO" ? (motivoCancelacion.trim() || null) : undefined,
         },
@@ -484,6 +509,8 @@ export default function EventForm() {
           setMotivoCancelacion={setMotivoCancelacion}
           realizacionAsistentes={realizacionAsistentes}
           setRealizacionAsistentes={setRealizacionAsistentes}
+          realizacionConvocados={realizacionConvocados}
+          setRealizacionConvocados={setRealizacionConvocados}
           realizacionImpacto={realizacionImpacto}
           setRealizacionImpacto={setRealizacionImpacto}
           isAdmin={isAdmin}

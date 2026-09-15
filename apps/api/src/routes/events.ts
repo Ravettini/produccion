@@ -3,7 +3,7 @@ import { prisma } from "../lib/prisma.js";
 import { authMiddleware, requireRoles } from "../middleware/auth.js";
 import { canUserSeeEvent, filterEventsForUser } from "../lib/eventVisibility.js";
 import { buildAreaChecklist, type AreaDecisionRow } from "../lib/areaDecisions.js";
-import { ensureAcreditappLink } from "../lib/acreditapp.js";
+import { ensureAcreditappLink, fetchAcreditappAttendance } from "../lib/acreditapp.js";
 import { syncProposalsFromEvent } from "../lib/syncProposalsFromEvent.js";
 import {
   civilDateFromStored,
@@ -186,6 +186,7 @@ eventsRouter.post("/", authMiddleware, async (req, res) => {
     linkAcreditacionConvocados,
     motivoCancelacion,
     realizacionAsistentes,
+    realizacionConvocados,
     realizacionImpacto,
     realizacionLinkImpacto,
     datosProduccion,
@@ -247,6 +248,7 @@ eventsRouter.post("/", authMiddleware, async (req, res) => {
       linkAcreditacionConvocados: linkAcreditacionConvocados !== undefined && String(linkAcreditacionConvocados).trim() !== "" ? String(linkAcreditacionConvocados).trim() : null,
       motivoCancelacion: motivoCancelacion != null && String(motivoCancelacion).trim() !== "" ? String(motivoCancelacion).trim() : null,
       realizacionAsistentes: realizacionAsistentes != null && (typeof realizacionAsistentes === "number" ? !Number.isNaN(realizacionAsistentes) : String(realizacionAsistentes).trim() !== "") ? (typeof realizacionAsistentes === "number" ? realizacionAsistentes : parseInt(String(realizacionAsistentes), 10)) : null,
+      realizacionConvocados: realizacionConvocados != null && (typeof realizacionConvocados === "number" ? !Number.isNaN(realizacionConvocados) : String(realizacionConvocados).trim() !== "") ? (typeof realizacionConvocados === "number" ? realizacionConvocados : parseInt(String(realizacionConvocados), 10)) : null,
       realizacionImpacto: realizacionImpacto != null && String(realizacionImpacto).trim() !== "" ? String(realizacionImpacto).trim() : null,
       realizacionLinkImpacto: realizacionLinkImpacto != null && String(realizacionLinkImpacto).trim() !== "" ? String(realizacionLinkImpacto).trim() : null,
       datosProduccion: datosProduccion != null && typeof datosProduccion === "object" ? JSON.stringify(datosProduccion) : (typeof datosProduccion === "string" && datosProduccion.trim() !== "" ? datosProduccion : null),
@@ -319,6 +321,7 @@ eventsRouter.put("/:id", authMiddleware, async (req, res) => {
     linkAcreditacionConvocados,
     motivoCancelacion,
     realizacionAsistentes,
+    realizacionConvocados,
     realizacionImpacto,
     realizacionLinkImpacto,
     datosProduccion,
@@ -406,6 +409,10 @@ eventsRouter.put("/:id", authMiddleware, async (req, res) => {
     const n = realizacionAsistentes === null || String(realizacionAsistentes).trim() === "" ? null : parseInt(String(realizacionAsistentes), 10);
     updates.realizacionAsistentes = n != null && !Number.isNaN(n) ? n : null;
   }
+  if (realizacionConvocados !== undefined) {
+    const n = realizacionConvocados === null || String(realizacionConvocados).trim() === "" ? null : parseInt(String(realizacionConvocados), 10);
+    updates.realizacionConvocados = n != null && !Number.isNaN(n) ? n : null;
+  }
   if (realizacionImpacto !== undefined) {
     updates.realizacionImpacto = realizacionImpacto == null || String(realizacionImpacto).trim() === "" ? null : String(realizacionImpacto).trim();
   }
@@ -418,6 +425,33 @@ eventsRouter.put("/:id", authMiddleware, async (req, res) => {
       : typeof datosProduccion === "object"
         ? JSON.stringify(datosProduccion)
         : String(datosProduccion);
+  }
+
+  // Al cerrar/realizar: si usa Acreditapp, traer convocados y asistidos automáticamente.
+  const nextEstado = updates.estado !== undefined ? String(updates.estado) : existing.estado;
+  const closingNow = nextEstado === "REALIZADO" && existing.estado !== "REALIZADO";
+  const needsAcreditacion =
+    updates.necesitaAcreditacion !== undefined
+      ? updates.necesitaAcreditacion === true
+      : existing.necesitaAcreditacion === true;
+  const linkForStats =
+    (updates.linkAcreditacionConvocados !== undefined
+      ? (updates.linkAcreditacionConvocados as string | null)
+      : existing.linkAcreditacionConvocados) ?? null;
+
+  let acreditappStatsWarning: string | undefined;
+  if (closingNow && needsAcreditacion && linkForStats) {
+    try {
+      const stats = await fetchAcreditappAttendance(String(linkForStats));
+      updates.realizacionConvocados = stats.convocados;
+      updates.realizacionAsistentes = stats.asistidos;
+    } catch (err) {
+      acreditappStatsWarning =
+        err instanceof Error
+          ? err.message
+          : "No se pudieron obtener convocados/asistidos desde Acreditapp.";
+      console.error("[events] fetchAcreditappAttendance:", acreditappStatsWarning);
+    }
   }
 
   const event = await prisma.event.update({
@@ -454,7 +488,44 @@ eventsRouter.put("/:id", authMiddleware, async (req, res) => {
     });
   }
   const payload = serializeEventFecha(result);
-  res.json(sync.warning ? { ...payload, acreditappWarning: sync.warning } : payload);
+  const warning = sync.warning || acreditappStatsWarning;
+  res.json(warning ? { ...payload, acreditappWarning: warning } : payload);
+});
+
+/**
+ * GET /events/:id/acreditapp-stats - Consultar convocados/asistidos en Acreditapp (preview).
+ */
+eventsRouter.get("/:id/acreditapp-stats", authMiddleware, async (req, res) => {
+  const event = await prisma.event.findUnique({ where: { id: req.params.id } });
+  if (!event) {
+    res.status(404).json({ error: "Evento no encontrado" });
+    return;
+  }
+  const dbUser = await prisma.user.findUnique({
+    where: { id: req.user!.id },
+    select: { id: true, role: true, area: true },
+  });
+  if (!dbUser || !canUserSeeEvent({ id: dbUser.id, role: dbUser.role, area: dbUser.area }, event)) {
+    res.status(403).json({ error: "No tenés permiso para ver este evento" });
+    return;
+  }
+  if (event.necesitaAcreditacion !== true) {
+    res.status(400).json({ error: "El evento no usa Acreditapp" });
+    return;
+  }
+  const link = event.linkAcreditacionConvocados?.trim();
+  if (!link) {
+    res.status(400).json({ error: "El evento aún no tiene link de Acreditapp" });
+    return;
+  }
+  try {
+    const stats = await fetchAcreditappAttendance(link);
+    res.json(stats);
+  } catch (err) {
+    res.status(502).json({
+      error: err instanceof Error ? err.message : "No se pudieron obtener estadísticas de Acreditapp",
+    });
+  }
 });
 
 /**

@@ -51,3 +51,10 @@ export async function syncAcreditappEvent(
     { method: "POST" }
   );
 }
+
+/** Consultar convocados / asistidos desde Acreditapp. */
+export async function getAcreditappStats(
+  eventId: string
+): Promise<{ convocados: number; asistidos: number; id: string; name?: string }> {
+  return api(`/events/${eventId}/acreditapp-stats`);
+}

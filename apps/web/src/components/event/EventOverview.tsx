@@ -474,8 +474,31 @@ export function EventOverview({
                 </div>
               )}
 
+              {(event.realizacionAsistentes != null || event.realizacionConvocados != null) &&
+                event.estado !== "REALIZADO" && (
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                    <h3 className="text-sm font-medium text-slate-800">
+                      Convocados / asistidos
+                      {event.necesitaAcreditacion === false ? " (manual)" : ""}
+                    </h3>
+                    <div className="mt-2 space-y-1 text-sm text-slate-700">
+                      {event.realizacionConvocados != null && (
+                        <p>
+                          <strong>Convocados:</strong> {event.realizacionConvocados}
+                        </p>
+                      )}
+                      {event.realizacionAsistentes != null && (
+                        <p>
+                          <strong>Asistidos:</strong> {event.realizacionAsistentes}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
               {event.estado === "REALIZADO" &&
                 (event.realizacionAsistentes != null ||
+                  event.realizacionConvocados != null ||
                   event.realizacionImpacto ||
                   event.realizacionLinkImpacto) && (
                   <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
@@ -483,11 +506,27 @@ export function EventOverview({
                       Resultado del evento
                     </h3>
                     <div className="mt-2 space-y-1 text-sm text-blue-900">
-                      {event.realizacionAsistentes != null && (
+                      {event.realizacionConvocados != null && (
                         <p>
-                          <strong>Asistentes:</strong> {event.realizacionAsistentes}
+                          <strong>Convocados:</strong> {event.realizacionConvocados}
                         </p>
                       )}
+                      {event.realizacionAsistentes != null && (
+                        <p>
+                          <strong>Asistidos:</strong> {event.realizacionAsistentes}
+                        </p>
+                      )}
+                      {event.realizacionAsistentes != null &&
+                        event.realizacionConvocados != null &&
+                        event.realizacionConvocados > 0 && (
+                          <p>
+                            <strong>Total asistencia:</strong>{" "}
+                            {Math.round(
+                              (event.realizacionAsistentes / event.realizacionConvocados) * 100
+                            )}
+                            %
+                          </p>
+                        )}
                       {event.realizacionImpacto && (
                         <p className="whitespace-pre-wrap">
                           <strong>Impacto:</strong> {event.realizacionImpacto}
