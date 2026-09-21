@@ -285,8 +285,20 @@ eventsRouter.put("/:id", authMiddleware, async (req, res) => {
     return;
   }
   const existingCreatedBy = (existing as { createdById?: string | null }).createdById;
-  if (req.user?.role !== "ADMIN" && existingCreatedBy && existingCreatedBy !== req.user?.id) {
-    res.status(403).json({ error: "Solo el creador o un admin puede editar este evento" });
+  const isAdmin = req.user?.role === "ADMIN";
+  const isCreator = Boolean(existingCreatedBy && existingCreatedBy === req.user?.id);
+  const isAreaOwner = Boolean(
+    (req.user?.role === "DIRECTOR_GENERAL" || req.user?.role === "ORGANIZACION") &&
+      req.user?.area &&
+      existing.areaSolicitante &&
+      req.user.area.toLowerCase() === String(existing.areaSolicitante).toLowerCase()
+  );
+  // Legacy sin creador: cualquier autenticado que llegó acá puede editar (misma regla previa).
+  const isLegacyOpen = !existingCreatedBy;
+  if (!isAdmin && !isCreator && !isAreaOwner && !isLegacyOpen) {
+    res.status(403).json({
+      error: "Solo el creador, alguien de la misma área o un admin puede editar este evento",
+    });
     return;
   }
   const {

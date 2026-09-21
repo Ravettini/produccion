@@ -108,15 +108,28 @@ export function canConfirmEvent(user: User | null): boolean {
   return user?.role === "ADMIN";
 }
 
-export function canEditEvent(user: User | null, event: { createdById?: string | null }): boolean {
+export function canEditEvent(
+  user: User | null,
+  event: { createdById?: string | null; areaSolicitante?: string | null }
+): boolean {
   if (!user) return false;
   if (user.role === "ADMIN") return true;
   // Especialidades (incl. Institucionales) solo editan si son creadoras; el resto es solo lectura.
   if (SPECIALTY_ROLES.includes(user.role)) {
     return Boolean(event.createdById && event.createdById === user.id);
   }
+  if (event.createdById && event.createdById === user.id) return true;
+  if (
+    (user.role === "DIRECTOR_GENERAL" || user.role === "ORGANIZACION") &&
+    user.area &&
+    event.areaSolicitante &&
+    user.area.toLowerCase() === event.areaSolicitante.toLowerCase()
+  ) {
+    return true;
+  }
+  // Eventos legacy sin creador: permite editar a roles no-especialidad.
   if (!event.createdById) return true;
-  return event.createdById === user.id;
+  return false;
 }
 
 /** Especialidad puede corregir campos del evento (ej. funcionario) si le fue solicitado. */
