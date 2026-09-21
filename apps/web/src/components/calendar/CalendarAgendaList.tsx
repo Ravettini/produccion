@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import type { Event, EventStatus } from "../../types";
 import { eventStatusLabels, eventStatusColors } from "../../utils/labels";
-import { getEventHorario } from "../../utils/eventHelpers";
+import { getEventHorario, getAreaPastelClass, compareEventsByStartTime } from "../../utils/eventHelpers";
 
 const DIAS_SEMANA_LARGO = [
   "Domingo",
@@ -36,7 +36,7 @@ export function CalendarAgendaList({
 
   for (let day = 1; day <= daysInMonth; day++) {
     const key = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    const events = eventsByDate[key] ?? [];
+    const events = [...(eventsByDate[key] ?? [])].sort(compareEventsByStartTime);
     if (events.length > 0) {
       daysWithEvents.push({ day, key, events });
     }
@@ -83,7 +83,7 @@ export function CalendarAgendaList({
                 <li key={ev.id}>
                   <Link
                     to={`/events/${ev.id}`}
-                    className="block p-3 rounded-xl bg-white border border-slate-200 hover:border-brand-300 hover:bg-brand-50/30 transition-colors"
+                    className={`block p-3 rounded-xl border transition-colors ${getAreaPastelClass(ev.areaSolicitante)} hover:brightness-95`}
                   >
                     <div className="flex items-start justify-between gap-2 mb-1.5">
                       <span className="font-medium text-slate-900 text-sm break-words flex-1 min-w-0">

@@ -10,7 +10,12 @@ import { Select } from "../components/ui/Select";
 import { PageHeader } from "../components/layout/PageHeader";
 import { CalendarAgendaList } from "../components/calendar/CalendarAgendaList";
 import { eventStatusLabels, eventStatusColors } from "../utils/labels";
-import { getEventHorario, eventMatchesTipoFilter } from "../utils/eventHelpers";
+import {
+  getEventHorario,
+  eventMatchesTipoFilter,
+  compareEventsByStartTime,
+  getAreaPastelClass,
+} from "../utils/eventHelpers";
 import { toCivilDateString } from "../utils/formatters";
 import { useAuth } from "../hooks/useAuth";
 
@@ -113,6 +118,9 @@ export default function Calendar() {
       const key = eventDateKey(e.fechaTentativa);
       if (!map[key]) map[key] = [];
       map[key].push(e);
+    }
+    for (const key of Object.keys(map)) {
+      map[key]!.sort(compareEventsByStartTime);
     }
     return map;
   }, [filteredEvents]);
@@ -300,16 +308,16 @@ export default function Calendar() {
                         <Link
                           key={ev.id}
                           to={`/events/${ev.id}`}
-                          className="block text-[10px] sm:text-xs p-1.5 rounded-lg bg-slate-50 hover:bg-brand-50 border border-slate-200 hover:border-brand-300 transition-colors truncate"
+                          className={`block text-[10px] sm:text-xs p-1.5 rounded-lg border transition-colors truncate ${getAreaPastelClass(ev.areaSolicitante)} hover:brightness-95`}
                           title={`${ev.titulo} — ${ev.areaSolicitante} — ${getEventHorario(ev)}`}
                         >
                           <span className="font-medium text-slate-800 block truncate">
                             {ev.titulo}
                           </span>
-                          <span className="text-slate-500 truncate block">
+                          <span className="text-slate-600 truncate block">
                             {ev.areaSolicitante}
                           </span>
-                          <span className="text-slate-500 truncate block">
+                          <span className="text-slate-600 truncate block">
                             {getEventHorario(ev)}
                           </span>
                           <span
@@ -329,18 +337,35 @@ export default function Calendar() {
         )}
       </div>
 
-      <div className="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-200 text-sm">
-        <p className="font-medium text-slate-800 mb-2">Leyenda</p>
-        <div className="flex flex-wrap gap-2">
-          {(Object.keys(eventStatusLabels) as EventStatus[]).map((s) => (
-            <span
-              key={s}
-              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${eventStatusColors[s]}`}
-            >
-              {eventStatusLabels[s]}
-            </span>
-          ))}
+      <div className="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-200 text-sm space-y-3">
+        <div>
+          <p className="font-medium text-slate-800 mb-2">Leyenda de estados</p>
+          <div className="flex flex-wrap gap-2">
+            {(Object.keys(eventStatusLabels) as EventStatus[]).map((s) => (
+              <span
+                key={s}
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${eventStatusColors[s]}`}
+              >
+                {eventStatusLabels[s]}
+              </span>
+            ))}
+          </div>
         </div>
+        {areasUnicas.length > 0 && (
+          <div>
+            <p className="font-medium text-slate-800 mb-2">Colores por área</p>
+            <div className="flex flex-wrap gap-2">
+              {areasUnicas.map((area) => (
+                <span
+                  key={area}
+                  className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${getAreaPastelClass(area)}`}
+                >
+                  {area}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -6,7 +6,7 @@ import { listEvents } from "../api/events";
 import { PageHeader } from "../components/layout/PageHeader";
 import { Button } from "../components/ui/Button";
 import { useAuth } from "../hooks/useAuth";
-import { parseDatosProduccion } from "../utils/eventHelpers";
+import { parseDatosProduccion, compareEventsByStartTime } from "../utils/eventHelpers";
 import { toCivilDateString } from "../utils/formatters";
 import type { Event } from "../types";
 import { cn } from "../utils/cn";
@@ -104,6 +104,8 @@ export default function AgendaInstitucionales() {
   const { user } = useAuth();
   const [weekAnchor, setWeekAnchor] = useState(() => mondayOfWeek(new Date()));
   const [exportingJpg, setExportingJpg] = useState(false);
+  /** Eventos pintados en amarillo a mano (no por estado). */
+  const [highlightedIds, setHighlightedIds] = useState<Set<string>>(() => new Set());
 
   const { data: events = [], isLoading } = useQuery({
     queryKey: ["events"],
@@ -125,10 +127,19 @@ export default function AgendaInstitucionales() {
       map.get(civil)!.push(ev);
     }
     for (const list of map.values()) {
-      list.sort((a, b) => formatHoraAgenda(a).localeCompare(formatHoraAgenda(b), "es"));
+      list.sort(compareEventsByStartTime);
     }
     return map;
   }, [events, weekDays]);
+
+  const toggleHighlight = (id: string) => {
+    setHighlightedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const mesLabel = MES_CORTO[weekAnchor.getMonth()] ?? "";
   const year = weekAnchor.getFullYear();
@@ -291,12 +302,27 @@ export default function AgendaInstitucionales() {
                     </div>
                     <ul className="flex-1 p-1.5 space-y-1.5 overflow-hidden">
                       {dayEvents.map((ev) => {
-                        const highlight = ev.estado === "CONFIRMADO";
+                        const highlight = highlightedIds.has(ev.id);
                         return (
                           <li
                             key={ev.id}
+                            role="button"
+                            tabIndex={0}
+                            title={
+                              highlight
+                                ? "Clic para quitar el resaltado amarillo"
+                                : "Clic para resaltar en amarillo"
+                            }
+                            onClick={() => toggleHighlight(ev.id)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                toggleHighlight(ev.id);
+                              }
+                            }}
                             className={cn(
-                              "text-[10px] sm:text-[11px] leading-snug text-slate-800 px-1 py-0.5 rounded-sm",
+                              "text-[10px] sm:text-[11px] leading-snug text-slate-800 px-1 py-0.5 rounded-sm cursor-pointer select-none print:cursor-default",
+                              "hover:ring-1 hover:ring-amber-400/60 print:hover:ring-0",
                               highlight && "bg-amber-300"
                             )}
                           >
@@ -334,9 +360,9 @@ export default function AgendaInstitucionales() {
       )}
 
       <p className="mt-3 text-xs text-slate-400 print:hidden">
-        Tip: «Descargar JPG» genera la agenda a color. «PDF» abre el diálogo de impresión (elegí
-        «Guardar como PDF» y activá «Gráficos de fondo» si hace falta). Los confirmados van en
-        amarillo.
+        Tip: hacé clic en un evento para pintarlo de amarillo (o quitar el color). «Descargar JPG»
+        genera la agenda a color. «PDF» abre el diálogo de impresión (activá «Gráficos de fondo» si
+        hace falta).
       </p>
 
       <style>{`

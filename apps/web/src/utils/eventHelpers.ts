@@ -29,6 +29,62 @@ export function getEventHorario(event: Event): string {
   return "Sin horario";
 }
 
+/**
+ * Minutos desde 00:00 del horario de comienzo del evento (o convocatoria).
+ * Sin horario → al final del día (para ordenar temprano → tarde).
+ */
+export function getEventStartMinutes(event: Event): number {
+  const dp = parseDatosProduccion(event.datosProduccion);
+  const raw = (dp.horarioComienzo || dp.horarioConvocatoria || "").trim();
+  if (!raw) return 24 * 60 + 1;
+  const withMin = raw.match(/(\d{1,2})[:.](\d{2})/);
+  if (withMin) {
+    const h = Number(withMin[1]);
+    const m = Number(withMin[2]);
+    if (Number.isFinite(h) && Number.isFinite(m)) return h * 60 + m;
+  }
+  const onlyHour = raw.match(/(\d{1,2})\s*hs?/i);
+  if (onlyHour) {
+    const h = Number(onlyHour[1]);
+    if (Number.isFinite(h)) return h * 60;
+  }
+  return 24 * 60 + 1;
+}
+
+export function compareEventsByStartTime(a: Event, b: Event): number {
+  const diff = getEventStartMinutes(a) - getEventStartMinutes(b);
+  if (diff !== 0) return diff;
+  return (a.titulo || "").localeCompare(b.titulo || "", "es");
+}
+
+/** Fondos claritos por área (DG) para el calendario. */
+const AREA_PASTEL_CLASSES = [
+  "bg-sky-100 border-sky-200",
+  "bg-emerald-100 border-emerald-200",
+  "bg-violet-100 border-violet-200",
+  "bg-amber-100 border-amber-200",
+  "bg-rose-100 border-rose-200",
+  "bg-cyan-100 border-cyan-200",
+  "bg-lime-100 border-lime-200",
+  "bg-fuchsia-100 border-fuchsia-200",
+  "bg-orange-100 border-orange-200",
+  "bg-teal-100 border-teal-200",
+  "bg-indigo-100 border-indigo-200",
+  "bg-pink-100 border-pink-200",
+  "bg-yellow-100 border-yellow-200",
+  "bg-blue-100 border-blue-200",
+  "bg-green-100 border-green-200",
+] as const;
+
+export function getAreaPastelClass(area: string | null | undefined): string {
+  const key = (area ?? "").trim() || "Sin área";
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) {
+    hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+  }
+  return AREA_PASTEL_CLASSES[hash % AREA_PASTEL_CLASSES.length]!;
+}
+
 export function getCantidadPersonas(event: Event): number | null {
   const dp = parseDatosProduccion(event.datosProduccion);
   const n = parseInt(dp.cantidadPersonas ?? "", 10);
