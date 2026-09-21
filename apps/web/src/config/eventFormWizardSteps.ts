@@ -75,7 +75,8 @@ const STEP: Record<EventFormStepId, WizardStepDef> = {
     id: "descripcion",
     label: "Descripción",
     title: "Contanos más del evento",
-    subtitle: "Objetivo, dinámica y cualquier detalle relevante para el brief.",
+    subtitle:
+      "Objetivo, dinámica y cualquier detalle relevante. Podés pegar links (https://…) y después van a ser clickeables.",
   },
   complementos: {
     id: "complementos",

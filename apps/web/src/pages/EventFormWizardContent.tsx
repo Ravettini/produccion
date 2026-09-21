@@ -419,14 +419,19 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
 
     case "descripcion":
       return (
-        <TextArea
-          label=""
-          value={descripcion}
-          onChange={(e) => setDescripcion(e.target.value)}
-          required
-          rows={6}
-          placeholder="Objetivo, dinámica, participantes esperados…"
-        />
+        <div className="space-y-2">
+          <TextArea
+            label=""
+            value={descripcion}
+            onChange={(e) => setDescripcion(e.target.value)}
+            required
+            rows={6}
+            placeholder="Objetivo, dinámica, participantes esperados… Podés incluir links: https://…"
+          />
+          <p className="text-xs text-slate-500 px-0.5">
+            Si pegás una URL (http/https o www), en el detalle del evento queda como link clickeable.
+          </p>
+        </div>
       );
 
     case "complementos":

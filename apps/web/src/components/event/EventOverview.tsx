@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { FileDown } from "lucide-react";
 import type { Event, User } from "../../types";
 import { Button, Card, CardBody, CardHeader, TextArea } from "../ui";
+import { LinkifiedText } from "../ui/LinkifiedText";
 import { SearchableSelect } from "../ui/SearchableSelect";
 import { patchEventFields } from "../../api/eventDecisions";
 import { PRODUCTORES_OPTIONS } from "../../config/productores";
@@ -213,9 +214,9 @@ export function EventOverview({
             <div className="space-y-5">
               <div>
                 <h3 className="text-sm font-medium text-slate-500">Descripción</h3>
-                <p className="mt-1 whitespace-pre-wrap leading-relaxed text-slate-800">
-                  {event.descripcion}
-                </p>
+                <div className="mt-1 text-slate-800">
+                  <LinkifiedText text={event.descripcion} />
+                </div>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
