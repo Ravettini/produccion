@@ -100,12 +100,34 @@ function canSeeAgenda(role?: string | null): boolean {
   return ["ADMIN", "INSTITUCIONALES", "AGENDA"].includes(role ?? "");
 }
 
+const HIGHLIGHT_STORAGE_KEY = "agenda-ssccyrs-highlighted-ids";
+
+function loadHighlightedIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(HIGHLIGHT_STORAGE_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return new Set();
+    return new Set(parsed.filter((id): id is string => typeof id === "string"));
+  } catch {
+    return new Set();
+  }
+}
+
+function saveHighlightedIds(ids: Set<string>) {
+  try {
+    localStorage.setItem(HIGHLIGHT_STORAGE_KEY, JSON.stringify([...ids]));
+  } catch {
+    // ignore quota / private mode
+  }
+}
+
 export default function AgendaInstitucionales() {
   const { user } = useAuth();
   const [weekAnchor, setWeekAnchor] = useState(() => mondayOfWeek(new Date()));
   const [exportingJpg, setExportingJpg] = useState(false);
-  /** Eventos pintados en amarillo a mano (no por estado). */
-  const [highlightedIds, setHighlightedIds] = useState<Set<string>>(() => new Set());
+  /** Eventos pintados en amarillo a mano (no por estado). Persistidos en localStorage. */
+  const [highlightedIds, setHighlightedIds] = useState<Set<string>>(loadHighlightedIds);
 
   const { data: events = [], isLoading } = useQuery({
     queryKey: ["events"],
@@ -137,6 +159,7 @@ export default function AgendaInstitucionales() {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
+      saveHighlightedIds(next);
       return next;
     });
   };
