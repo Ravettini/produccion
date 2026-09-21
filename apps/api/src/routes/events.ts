@@ -7,8 +7,6 @@ import { ensureAcreditappLink, fetchAcreditappAttendance } from "../lib/acredita
 import { notifyEventCreated, notifyEventStatusChanged } from "../lib/mail.js";
 import { syncProposalsFromEvent } from "../lib/syncProposalsFromEvent.js";
 import {
-  civilDateFromStored,
-  dayBoundsFromCivil,
   parseFechaTentativa,
   serializeEventFecha,
 } from "../lib/fechaTentativa.js";
@@ -43,19 +41,6 @@ function toAcreditappEventInput(event: {
         : null,
     datosProduccion: event.datosProduccion ?? null,
   };
-}
-
-async function countEventsSameDayDg(areaSolicitante: string, fecha: Date, excludeId?: string) {
-  const civil = civilDateFromStored(fecha);
-  const { start, end } = dayBoundsFromCivil(civil);
-  return prisma.event.count({
-    where: {
-      areaSolicitante,
-      fechaTentativa: { gte: start, lte: end },
-      estado: { not: "CANCELADO" },
-      ...(excludeId ? { id: { not: excludeId } } : {}),
-    },
-  });
 }
 
 /**
@@ -210,14 +195,6 @@ eventsRouter.post("/", authMiddleware, async (req, res) => {
     status = "PENDIENTE";
   }
   const fechaDate = parseFechaTentativa(fechaTentativa);
-  const area = String(areaSolicitante);
-  const sameDayCount = await countEventsSameDayDg(area, fechaDate);
-  if (sameDayCount >= 2) {
-    res.status(400).json({
-      error: "Cada dirección general puede cargar como máximo 2 eventos el mismo día.",
-    });
-    return;
-  }
   const validPublico = ["EXTERNO", "INTERNO", "MIXTO"].includes(String(publico)) ? String(publico) : null;
   let usuarioSolicitante: string | null =
     bodyUsuario !== undefined && String(bodyUsuario).trim() !== "" ? String(bodyUsuario).trim() : null;
@@ -341,24 +318,7 @@ eventsRouter.put("/:id", authMiddleware, async (req, res) => {
   if (tipoEvento !== undefined) updates.tipoEvento = String(tipoEvento);
   if (areaSolicitante !== undefined) updates.areaSolicitante = String(areaSolicitante);
   if (fechaTentativa !== undefined) {
-    const fechaDate = parseFechaTentativa(fechaTentativa);
-    updates.fechaTentativa = fechaDate;
-    const areaCheck = areaSolicitante !== undefined ? String(areaSolicitante) : existing.areaSolicitante;
-    const sameDayCount = await countEventsSameDayDg(areaCheck, fechaDate, req.params.id);
-    if (sameDayCount >= 2) {
-      res.status(400).json({
-        error: "Cada dirección general puede cargar como máximo 2 eventos el mismo día.",
-      });
-      return;
-    }
-  } else if (areaSolicitante !== undefined) {
-    const sameDayCount = await countEventsSameDayDg(String(areaSolicitante), existing.fechaTentativa, req.params.id);
-    if (sameDayCount >= 2) {
-      res.status(400).json({
-        error: "Cada dirección general puede cargar como máximo 2 eventos el mismo día.",
-      });
-      return;
-    }
+    updates.fechaTentativa = parseFechaTentativa(fechaTentativa);
   }
   const resultingArea = updates.areaSolicitante !== undefined ? String(updates.areaSolicitante) : existing.areaSolicitante;
   const resultingTipo = updates.tipoEvento !== undefined ? String(updates.tipoEvento) : existing.tipoEvento;
@@ -583,29 +543,10 @@ eventsRouter.post("/:id/clone", authMiddleware, async (req, res) => {
     /solo\s+informar/i.test(String(source.tipoEvento));
   const status = isAutoConfirmed ? "CONFIRMADO" : "PENDIENTE";
 
-  const fechaBase =
+  const fechaDate =
     source.fechaTentativa instanceof Date
       ? source.fechaTentativa
       : parseFechaTentativa(source.fechaTentativa);
-
-  let fechaDate = fechaBase;
-  let placed = false;
-  for (let attempt = 0; attempt < 60; attempt++) {
-    const sameDayCount = await countEventsSameDayDg(String(source.areaSolicitante), fechaDate);
-    if (sameDayCount < 2) {
-      placed = true;
-      break;
-    }
-    const next = new Date(fechaDate);
-    next.setUTCDate(next.getUTCDate() + 1);
-    fechaDate = next;
-  }
-  if (!placed) {
-    res.status(400).json({
-      error: "No hay día disponible cercano para clonar (máximo 2 eventos por DG por día).",
-    });
-    return;
-  }
 
   const baseTitle = String(source.titulo).replace(/\s*\(copia(?:\s*\d+)?\)\s*$/i, "").trim();
   const titulo = `${baseTitle} (copia)`.slice(0, 240);
