@@ -3,7 +3,8 @@
  * Formato: valor y etiqueta = "Nombre Apellido".
  */
 
-const RAW = `Jorge	Macri
+const RAW = `Ángeles
+Jorge	Macri
 Yana	Kashytsya
 EMILIA	PUENTE GOMEZ
 Victoria	Gorleri
