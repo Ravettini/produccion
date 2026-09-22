@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import type { Event, EventStatus } from "../../types";
 import { eventStatusLabels, eventStatusColors } from "../../utils/labels";
 import { getEventHorario, getAreaPastelClass, compareEventsByStartTime } from "../../utils/eventHelpers";
+import type { AreaChecklistItem } from "../../types";
 
 const DIAS_SEMANA_LARGO = [
   "Domingo",
@@ -18,6 +19,12 @@ const MESES = [
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
 ];
 
+function pendingAreasLabel(checklist?: AreaChecklistItem[]): string | null {
+  if (!checklist?.length) return null;
+  const pending = checklist.filter((c) => c.estado === "PENDING");
+  if (pending.length === 0) return null;
+  return `Pendiente de ${pending.map((p) => p.label).join(", ")}`;
+}
 interface CalendarAgendaListProps {
   year: number;
   month: number;
@@ -79,7 +86,9 @@ export function CalendarAgendaList({
               </span>
             </div>
             <ul className="p-3 space-y-2">
-              {events.map((ev) => (
+              {events.map((ev) => {
+                const pendingLabel = pendingAreasLabel(ev.areaChecklist);
+                return (
                 <li key={ev.id}>
                   <Link
                     to={`/events/${ev.id}`}
@@ -89,17 +98,24 @@ export function CalendarAgendaList({
                       <span className="font-medium text-slate-900 text-sm break-words flex-1 min-w-0">
                         {ev.titulo}
                       </span>
-                      <span
-                        className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-medium ${eventStatusColors[ev.estado as EventStatus]}`}
-                      >
-                        {eventStatusLabels[ev.estado as EventStatus]}
-                      </span>
+                      {pendingLabel ? (
+                        <span className="shrink-0 px-2 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-900">
+                          {pendingLabel}
+                        </span>
+                      ) : (
+                        <span
+                          className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-medium ${eventStatusColors[ev.estado as EventStatus]}`}
+                        >
+                          {eventStatusLabels[ev.estado as EventStatus]}
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-slate-500 truncate">{ev.areaSolicitante}</p>
                     <p className="text-xs text-slate-500 mt-0.5">{getEventHorario(ev)}</p>
                   </Link>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           </section>
         );

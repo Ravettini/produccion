@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { authMiddleware, requireRoles } from "../middleware/auth.js";
-import { canUserSeeEvent, filterEventsForUser } from "../lib/eventVisibility.js";
+import { canUserSeeEvent, filterEventsForUser, getRequestedAreaRoles } from "../lib/eventVisibility.js";
 import { buildAreaChecklist, type AreaDecisionRow } from "../lib/areaDecisions.js";
 import { ensureAcreditappLink, fetchAcreditappAttendance } from "../lib/acreditapp.js";
 import { notifyEventCreated, notifyEventStatusChanged } from "../lib/mail.js";
@@ -133,6 +133,28 @@ eventsRouter.get("/:id", authMiddleware, async (req, res) => {
     res.status(403).json({ error: "No tenés permiso para ver este evento" });
     return;
   }
+
+  // Reparar eventos ya aprobados por todas las áreas pedidas pero sin pasar a CONFIRMADO.
+  const requested = getRequestedAreaRoles(event.tipoEvento, event.areaSolicitante);
+  if (
+    event.estado !== "CONFIRMADO" &&
+    event.estado !== "CANCELADO" &&
+    event.estado !== "REALIZADO" &&
+    requested.length > 0
+  ) {
+    const decisionsForConfirm = (event.areaDecisions ?? []) as { areaRole: string; estado: string }[];
+    const approved = new Set(
+      decisionsForConfirm.filter((d) => d.estado === "APPROVED").map((d) => d.areaRole)
+    );
+    if (requested.every((r) => approved.has(r))) {
+      await prisma.event.update({
+        where: { id: event.id },
+        data: { estado: "CONFIRMADO" },
+      });
+      (event as { estado: string }).estado = "CONFIRMADO";
+    }
+  }
+
   res.json(
     serializeEventFecha({
       ...event,

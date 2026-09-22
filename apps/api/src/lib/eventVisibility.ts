@@ -82,6 +82,18 @@ export function isUserResponsibleForEvent(
   return getRequestedAreaRoles(event.tipoEvento, event.areaSolicitante).includes(area);
 }
 
+/** ¿Institucionales ya aprobó? (alcanza para aparecer en calendario). */
+export function hasInstitucionalesApproved(event: {
+  areaDecisions?: { areaRole?: string | null; estado?: string | null }[] | null;
+}): boolean {
+  const decisions = event.areaDecisions ?? [];
+  return decisions.some(
+    (d) =>
+      (d.areaRole === "INSTITUCIONALES" || d.areaRole === "AGENDA") &&
+      d.estado === "APPROVED"
+  );
+}
+
 export function tipoEventoMatchesKeywords(
   tipoEvento: string | null | undefined,
   keywords: string[]
@@ -144,6 +156,7 @@ export function canUserSeeEvent(
     createdById?: string | null;
     estado?: string | null;
     datosProduccion?: unknown;
+    areaDecisions?: { areaRole?: string | null; estado?: string | null }[] | null;
   }
 ): boolean {
   if (ROLES_SEE_ALL.has(user.role)) return true;
@@ -162,7 +175,9 @@ export function canUserSeeEvent(
       return true;
     }
     if (user.area && isDgConvocada(event, user.area)) return true;
-    if (event.estado === "CONFIRMADO") return true;
+    // Confirmados o ya aprobados por Institucionales (aunque falte otra área).
+    if (event.estado === "CONFIRMADO" || event.estado === "REALIZADO") return true;
+    if (hasInstitucionalesApproved(event)) return true;
     // Sin área: ve los que creó; si no hay createdById legacy, no restringir por área
     if (!user.area) return true;
     return false;
@@ -178,6 +193,7 @@ export function filterEventsForUser<T extends {
   createdById?: string | null;
   estado?: string | null;
   datosProduccion?: unknown;
+  areaDecisions?: { areaRole?: string | null; estado?: string | null }[] | null;
 }>(user: EventVisibilityUser, events: T[]): T[] {
   if (ROLES_SEE_ALL.has(user.role)) return events;
   return events.filter((e) => canUserSeeEvent(user, e));

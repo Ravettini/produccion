@@ -6,6 +6,7 @@ export const PRODUCTORES_EQUIPO = [
   "Gabriela Lorenzo",
   "Iker Belardi",
   "Rochy Varillas",
+  "Ángeles",
 ] as const;
 
 export const PRODUCTORES_OPTIONS = PRODUCTORES_EQUIPO.map((name) => ({

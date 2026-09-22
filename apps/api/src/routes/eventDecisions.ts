@@ -34,6 +34,50 @@ async function ensureDecisionRows(eventId: string, tipoEvento: string, areaSolic
   return requested;
 }
 
+/** Si todas las áreas pedidas ya aprobaron y el evento sigue pendiente, confirmarlo. */
+async function reconcileAutoConfirm(
+  event: {
+    id: string;
+    estado: string;
+    tipoEvento: string;
+    areaSolicitante?: string | null;
+  },
+  userId?: string
+) {
+  if (event.estado === "CONFIRMADO" || event.estado === "CANCELADO" || event.estado === "REALIZADO") {
+    return false;
+  }
+  const requested = getRequestedAreaRoles(event.tipoEvento, event.areaSolicitante);
+  if (requested.length === 0) return false;
+  const decisions = await prisma.eventAreaDecision.findMany({
+    where: { eventId: event.id, areaRole: { in: requested } },
+    select: { areaRole: true, estado: true },
+  });
+  const approved = new Set(
+    decisions.filter((d) => d.estado === "APPROVED").map((d) => d.areaRole)
+  );
+  if (!requested.every((r) => approved.has(r))) return false;
+
+  await prisma.event.update({
+    where: { id: event.id },
+    data: { estado: "CONFIRMADO" },
+  });
+  if (userId) {
+    await prisma.eventAudit.create({
+      data: {
+        eventId: event.id,
+        userId,
+        action: "EDIT",
+        field: "estado",
+        fromValue: event.estado,
+        toValue: "CONFIRMADO",
+        reason: "Confirmado automáticamente: todas las áreas involucradas ya habían aprobado",
+      },
+    });
+  }
+  return true;
+}
+
 /**
  * GET /events/:eventId/area-decisions
  * Checks de aprobación por área solicitada.
@@ -52,6 +96,8 @@ eventDecisionsRouter.get("/:eventId/area-decisions", authMiddleware, async (req,
   }
 
   const requested = await ensureDecisionRows(eventId, event.tipoEvento, event.areaSolicitante);
+  await reconcileAutoConfirm(event, dbUser.id);
+  const freshEvent = await prisma.event.findUnique({ where: { id: eventId } });
   const decisions = await prisma.eventAreaDecision.findMany({
     where: { eventId, areaRole: { in: requested } },
     include: { user: { select: { id: true, name: true, role: true } } },
@@ -64,7 +110,12 @@ eventDecisionsRouter.get("/:eventId/area-decisions", authMiddleware, async (req,
       ...d,
       label: AREA_LABELS[d.areaRole as AreaDecisionRole] ?? d.areaRole,
     })),
-    checklist: buildAreaChecklist(event.tipoEvento, decisions as AreaDecisionRow[], event.areaSolicitante),
+    checklist: buildAreaChecklist(
+      freshEvent?.tipoEvento ?? event.tipoEvento,
+      decisions as AreaDecisionRow[],
+      freshEvent?.areaSolicitante ?? event.areaSolicitante
+    ),
+    eventEstado: freshEvent?.estado ?? event.estado,
     myAreaRole: normalizeAreaRole(dbUser.role),
     canDecide: isUserResponsibleForEvent(dbUser, event),
   });
@@ -104,16 +155,18 @@ eventDecisionsRouter.post("/:eventId/area-decisions", authMiddleware, async (req
 
   const areaRole =
     dbUser.role === "ADMIN"
-      ? (normalizeAreaRole(String(req.body?.areaRole ?? "")) ?? getRequestedAreaRoles(event.tipoEvento)[0])
+      ? (normalizeAreaRole(String(req.body?.areaRole ?? "")) ??
+        getRequestedAreaRoles(event.tipoEvento, event.areaSolicitante)[0])
       : normalizeAreaRole(dbUser.role);
 
-  if (!areaRole || !getRequestedAreaRoles(event.tipoEvento).includes(areaRole)) {
+  const requestedAreas = getRequestedAreaRoles(event.tipoEvento, event.areaSolicitante);
+
+  if (!areaRole || !requestedAreas.includes(areaRole)) {
     res.status(400).json({ error: "No hay área aplicable para esta decisión" });
     return;
   }
 
   const reasonStr = reason != null ? String(reason).trim() : null;
-  const requestedAreas = getRequestedAreaRoles(event.tipoEvento);
   const result = await prisma.$transaction(async (tx) => {
     const row = await tx.eventAreaDecision.upsert({
       where: { eventId_areaRole: { eventId, areaRole } },

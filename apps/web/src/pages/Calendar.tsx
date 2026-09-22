@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { listEvents } from "../api/events";
-import type { Event, EventStatus } from "../types";
+import type { Event, EventStatus, AreaChecklistItem } from "../types";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { Select } from "../components/ui/Select";
@@ -35,6 +35,25 @@ const CALENDAR_SEE_ALL_STATUSES = new Set([
   "DIRECTOR_GENERAL",
 ]);
 
+function hasInstitucionalesApproved(event: Event): boolean {
+  return (event.areaChecklist ?? []).some(
+    (c) => c.areaRole === "INSTITUCIONALES" && c.estado === "APPROVED"
+  );
+}
+
+/** Para Organización y roles restringidos: confirmado O ya aprobado por Institucionales. */
+function isCalendarEligible(event: Event): boolean {
+  if (event.estado === "CANCELADO") return false;
+  if (event.estado === "CONFIRMADO" || event.estado === "REALIZADO") return true;
+  return hasInstitucionalesApproved(event);
+}
+
+function pendingAreasLabel(checklist?: AreaChecklistItem[]): string | null {
+  if (!checklist?.length) return null;
+  const pending = checklist.filter((c) => c.estado === "PENDING");
+  if (pending.length === 0) return null;
+  return `Pendiente de ${pending.map((p) => p.label).join(", ")}`;
+}
 const MESES = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
@@ -93,7 +112,7 @@ export default function Calendar() {
 
   const filteredEvents = useMemo(() => {
     return events.filter((e) => {
-      if (!seeAllStatuses && e.estado !== "CONFIRMADO") return false;
+      if (!seeAllStatuses && !isCalendarEligible(e)) return false;
       if (filterEstado && e.estado !== filterEstado) return false;
       if (filterTipos.length > 0 && !filterTipos.some((f) => eventMatchesTipoFilter(e.tipoEvento, f))) {
         return false;
@@ -168,18 +187,22 @@ export default function Calendar() {
         />
         <Select
           options={[
-            { value: "", label: seeAllStatuses ? "Todos los estados" : "Confirmados" },
+            { value: "", label: seeAllStatuses ? "Todos los estados" : "Confirmados / aprob. Institucionales" },
             ...(seeAllStatuses
               ? (Object.entries(eventStatusLabels) as [EventStatus, string][]).map(([v, l]) => ({
                   value: v,
                   label: l,
                 }))
-              : [{ value: "CONFIRMADO", label: eventStatusLabels.CONFIRMADO }]),
+              : [
+                  { value: "CONFIRMADO", label: eventStatusLabels.CONFIRMADO },
+                  { value: "PENDIENTE", label: "Pendiente (con Inst. OK)" },
+                  { value: "EN_ANALISIS", label: eventStatusLabels.EN_ANALISIS },
+                ]),
           ]}
-          value={seeAllStatuses ? filterEstado : "CONFIRMADO"}
-          onChange={(e) => setFilterEstado((e.target.value || "") as EventStatus)}
+          value={filterEstado}
+          onChange={(e) => setFilterEstado((e.target.value || "") as EventStatus | "")}
           className="w-full sm:w-44"
-          disabled={!seeAllStatuses}
+          disabled={false}
         />
         <Select
           options={[
@@ -304,12 +327,14 @@ export default function Calendar() {
                       {day}
                     </span>
                     <div className="flex-1 overflow-y-auto mt-1 space-y-1">
-                      {dayEvents.map((ev) => (
+                      {dayEvents.map((ev) => {
+                        const pendingLabel = pendingAreasLabel(ev.areaChecklist);
+                        return (
                         <Link
                           key={ev.id}
                           to={`/events/${ev.id}`}
                           className={`block text-[10px] sm:text-xs p-1.5 rounded-lg border transition-colors truncate ${getAreaPastelClass(ev.areaSolicitante)} hover:brightness-95`}
-                          title={`${ev.titulo} — ${ev.areaSolicitante} — ${getEventHorario(ev)}`}
+                          title={`${ev.titulo} — ${ev.areaSolicitante} — ${getEventHorario(ev)}${pendingLabel ? ` — ${pendingLabel}` : ""}`}
                         >
                           <span className="font-medium text-slate-800 block truncate">
                             {ev.titulo}
@@ -320,13 +345,20 @@ export default function Calendar() {
                           <span className="text-slate-600 truncate block">
                             {getEventHorario(ev)}
                           </span>
-                          <span
-                            className={`inline-block mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium ${eventStatusColors[ev.estado as EventStatus]}`}
-                          >
-                            {eventStatusLabels[ev.estado as EventStatus]}
-                          </span>
+                          {pendingLabel ? (
+                            <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-900">
+                              {pendingLabel}
+                            </span>
+                          ) : (
+                            <span
+                              className={`inline-block mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium ${eventStatusColors[ev.estado as EventStatus]}`}
+                            >
+                              {eventStatusLabels[ev.estado as EventStatus]}
+                            </span>
+                          )}
                         </Link>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 );
