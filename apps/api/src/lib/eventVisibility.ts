@@ -148,6 +148,11 @@ export function isDgConvocada(
  * - Director General / Organización: eventos creados por él, de su área, convocados o CONFIRMADOS de otras DGs
  * - Producción / Cobertura: solo si tipoEvento los incluye
  */
+/** Eventos de AREA CENTRAL los ve cualquier usuario. */
+export function isAreaCentralEvent(event: { areaSolicitante?: string | null }): boolean {
+  return (event.areaSolicitante ?? "").trim().toLowerCase() === "area central";
+}
+
 export function canUserSeeEvent(
   user: EventVisibilityUser,
   event: {
@@ -160,6 +165,9 @@ export function canUserSeeEvent(
   }
 ): boolean {
   if (ROLES_SEE_ALL.has(user.role)) return true;
+
+  // Lo que carga AREA CENTRAL (director Julian Vilche) es visible para todos los roles.
+  if (isAreaCentralEvent(event)) return true;
 
   // Agenda / Institucionales necesitan ver toda la agenda aunque no les hayan pedido soporte.
   if (user.role === "INSTITUCIONALES" || user.role === "AGENDA") return true;

@@ -47,6 +47,7 @@ const DG_ABBR: Record<string, string> = {
   "Igualdad de Oportunidades": "DIO",
   Institucionales: "CENTRAL",
   Sistema: "CENTRAL",
+  "AREA CENTRAL": "AC",
 };
 
 function mondayOfWeek(d: Date): Date {

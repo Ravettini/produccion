@@ -44,6 +44,7 @@ function hasInstitucionalesApproved(event: Event): boolean {
 /** Para Organización y roles restringidos: confirmado O ya aprobado por Institucionales. */
 function isCalendarEligible(event: Event): boolean {
   if (event.estado === "CANCELADO") return false;
+  if ((event.areaSolicitante ?? "").trim().toLowerCase() === "area central") return true;
   if (event.estado === "CONFIRMADO" || event.estado === "REALIZADO") return true;
   return hasInstitucionalesApproved(event);
 }

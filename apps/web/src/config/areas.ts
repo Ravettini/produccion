@@ -19,6 +19,7 @@ export const AREAS_OPTIONS: { value: string; label: string }[] = [
   { value: "Dirección de la Mujer", label: "Dirección de la Mujer" },
   { value: "Autonomía Económica", label: "Autonomía Económica" },
   { value: "Igualdad de Oportunidades", label: "Igualdad de Oportunidades" },
+  { value: "AREA CENTRAL", label: "AREA CENTRAL" },
 ];
 
 /** Áreas extras para roles de especialidad / sistema al crear usuarios. */
