@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 
 const routeTitles: Record<string, string> = {
-  "/": "Eventoooooooooos",
+  "/": "Eventos",
   "/calendar": "Calendario",
   "/admin": "Administración",
   "/events/new": "Nuevo evento",
