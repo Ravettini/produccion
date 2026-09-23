@@ -13,7 +13,7 @@ import { RoleBadge } from "../ui/RoleBadge";
 import type { Role } from "../../types";
 
 const navItems = [
-  { to: "/", label: "Eventooooooooos", icon: LayoutDashboard, end: true },
+  { to: "/", label: "Eventoooooooooos", icon: LayoutDashboard, end: true },
   { to: "/calendar", label: "Calendario", icon: CalendarDays, end: false },
 ];
 
@@ -53,7 +53,7 @@ export function Sidebar({
             <span className="text-white font-bold text-lg">E</span>
           </div>
           <div className="min-w-0">
-            <p className="font-semibold text-white truncate">Eventooooooooos</p>
+            <p className="font-semibold text-white truncate">Eventoooooooooos</p>
             <p className="text-xs text-slate-400 truncate">Gestión institucional</p>
           </div>
         </div>
