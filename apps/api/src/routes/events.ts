@@ -361,24 +361,30 @@ eventsRouter.put("/:id", authMiddleware, async (req, res) => {
     /solo\s+informar/i.test(String(resultingTipo));
 
   if (estado !== undefined && validStatuses.includes(String(estado))) {
-    if (isAutoConfirmed && String(estado) === "CONFIRMADO") {
+    const nextEstado = String(estado);
+    const estadoChanged = nextEstado !== String(existing.estado);
+
+    if (!estadoChanged) {
+      // Guardar otros campos no debe exigir permiso de confirmación.
+    } else if (isAutoConfirmed && nextEstado === "CONFIRMADO") {
       updates.estado = "CONFIRMADO";
     } else if (req.user?.role === "DIRECTOR_GENERAL") {
       res.status(403).json({ error: "El Director General no puede cambiar el estado del evento" });
       return;
-    } else if (String(estado) === "CONFIRMADO" && req.user?.role !== "ADMIN") {
+    } else if (nextEstado === "CONFIRMADO" && req.user?.role !== "ADMIN") {
       res.status(403).json({ error: "Solo un administrador puede confirmar el evento" });
       return;
-    }
-    if (String(estado) === "CANCELADO") {
-      const motivo = motivoCancelacion != null ? String(motivoCancelacion).trim() : (existing as { motivoCancelacion?: string | null }).motivoCancelacion ?? "";
-      if (!motivo) {
-        res.status(400).json({ error: "Al cancelar el evento es obligatorio indicar el motivo o razón de cancelación." });
-        return;
+    } else {
+      if (nextEstado === "CANCELADO") {
+        const motivo = motivoCancelacion != null ? String(motivoCancelacion).trim() : (existing as { motivoCancelacion?: string | null }).motivoCancelacion ?? "";
+        if (!motivo) {
+          res.status(400).json({ error: "Al cancelar el evento es obligatorio indicar el motivo o razón de cancelación." });
+          return;
+        }
+        updates.motivoCancelacion = motivo;
       }
-      updates.motivoCancelacion = motivo;
+      updates.estado = nextEstado;
     }
-    updates.estado = String(estado);
   }
   if (resumen !== undefined) updates.resumen = resumen === null || resumen === "" ? null : String(resumen);
   if (publico !== undefined) {
