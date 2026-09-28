@@ -4,6 +4,7 @@ import { Menu } from "lucide-react";
 import { cn } from "../../utils/cn";
 import { useAuth } from "../../hooks/useAuth";
 import { usePendingActions } from "../../hooks/usePendingActions";
+import { isOutsideSsccyrs } from "../../hooks/usePermissions";
 import { Sidebar } from "./Sidebar";
 
 export function AppShell() {
@@ -24,7 +25,7 @@ export function AppShell() {
 
   if (!user) return null;
 
-  const isVice = user.role === "VICEJEFATURA";
+  const isVice = isOutsideSsccyrs(user);
 
   return (
     <div className={cn("min-h-screen flex bg-surface", isVice && "theme-vice")}>
@@ -40,6 +41,7 @@ export function AppShell() {
         isAdmin={isAdmin}
         userName={user.name}
         userRole={user.role}
+        esSsccyrs={user.esSsccyrs}
         onLogout={logout}
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}

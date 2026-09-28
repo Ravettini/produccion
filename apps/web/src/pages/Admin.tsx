@@ -26,7 +26,9 @@ import {
 import { USER_AREA_OPTIONS } from "../config/areas";
 import { formatDateShort } from "../utils/formatters";
 
-const roleOptions = (Object.entries(roleLabels) as [Role, string][]).map(([value, label]) => ({
+const roleOptions = (Object.entries(roleLabels) as [Role, string][])
+  .filter(([value]) => value !== "VICEJEFATURA")
+  .map(([value, label]) => ({
   value,
   label,
 }));
@@ -35,6 +37,49 @@ const areaSelectOptions = [
   { value: "", label: "— Sin área —" },
   ...USER_AREA_OPTIONS,
 ];
+
+function SsccyrsToggle({
+  value,
+  onChange,
+}: {
+  value: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <div>
+      <p className="text-sm font-medium text-slate-700 mb-2">¿Es SSCCYRS?</p>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => onChange(true)}
+          className={`px-4 py-2 rounded-lg text-sm font-medium border ${
+            value
+              ? "bg-brand-600 text-white border-brand-600"
+              : "bg-white text-slate-600 border-slate-200"
+          }`}
+        >
+          Sí
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange(false)}
+          className={`px-4 py-2 rounded-lg text-sm font-medium border ${
+            !value
+              ? "bg-teal-700 text-white border-teal-700"
+              : "bg-white text-slate-600 border-slate-200"
+          }`}
+        >
+          No
+        </button>
+      </div>
+      <p className="text-xs text-slate-500 mt-1.5">
+        {value
+          ? "Ve la app normal."
+          : "Ve la app en verde y solo puede pedir Producción y Cobertura."}
+      </p>
+    </div>
+  );
+}
 
 export default function Admin() {
   const { user } = useAuth();
@@ -47,9 +92,11 @@ export default function Admin() {
   const [createName, setCreateName] = useState("");
   const [createRole, setCreateRole] = useState<Role>("ORGANIZACION");
   const [createArea, setCreateArea] = useState("");
+  const [createEsSsccyrs, setCreateEsSsccyrs] = useState(true);
   const [editName, setEditName] = useState("");
   const [editRole, setEditRole] = useState<Role>("ORGANIZACION");
   const [editArea, setEditArea] = useState("");
+  const [editEsSsccyrs, setEditEsSsccyrs] = useState(true);
   const [editPassword, setEditPassword] = useState("");
   const [showVaciarConfirm, setShowVaciarConfirm] = useState(false);
 
@@ -75,6 +122,7 @@ export default function Admin() {
         name: createName,
         role: createRole,
         area: createArea.trim() || undefined,
+        esSsccyrs: createEsSsccyrs,
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "users"] });
@@ -84,16 +132,18 @@ export default function Admin() {
       setCreateName("");
       setCreateRole("ORGANIZACION");
       setCreateArea("");
+      setCreateEsSsccyrs(true);
     },
   });
 
   const update = useMutation({
     mutationFn: () => {
       if (!editingId) throw new Error("Sin usuario");
-      const data: { name?: string; role?: string; area?: string | null; password?: string } = {
+      const data: { name?: string; role?: string; area?: string | null; password?: string; esSsccyrs?: boolean } = {
         name: editName,
         role: editRole,
         area: editArea.trim() || null,
+        esSsccyrs: editEsSsccyrs,
       };
       if (editPassword.trim()) data.password = editPassword;
       return updateUser(editingId, data);
@@ -123,11 +173,12 @@ export default function Admin() {
     },
   });
 
-  const openEdit = (u: { id: string; name: string; role: string; area?: string | null }) => {
+  const openEdit = (u: { id: string; name: string; role: string; area?: string | null; esSsccyrs?: boolean | null }) => {
     setEditingId(u.id);
     setEditName(u.name);
     setEditArea(u.area ?? "");
     setEditRole(u.role as Role);
+    setEditEsSsccyrs(u.esSsccyrs !== false && u.role !== "VICEJEFATURA");
     setEditPassword("");
   };
 
@@ -625,6 +676,7 @@ export default function Admin() {
             value={createArea}
             onChange={(e) => setCreateArea(e.target.value)}
           />
+          <SsccyrsToggle value={createEsSsccyrs} onChange={setCreateEsSsccyrs} />
           {create.error && (
             <p className="text-red-600 text-sm">{create.error.message}</p>
           )}
@@ -666,6 +718,7 @@ export default function Admin() {
               value={editArea}
               onChange={(e) => setEditArea(e.target.value)}
             />
+            <SsccyrsToggle value={editEsSsccyrs} onChange={setEditEsSsccyrs} />
             <Input
               label="Nueva contraseña (opcional)"
               type="password"

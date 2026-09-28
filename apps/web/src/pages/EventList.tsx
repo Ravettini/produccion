@@ -18,7 +18,7 @@ import { EventCard } from "../components/domain/EventCard";
 import { eventStatusLabels } from "../utils/labels";
 import { CheckCircle2, FileStack, Clock, Radar, BellRing } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
-import { canCreateEvent } from "../hooks/usePermissions";
+import { canCreateEvent, isOutsideSsccyrs } from "../hooks/usePermissions";
 import { getEventPendingForUser } from "../utils/changeAlerts";
 
 const statusOptions = [
@@ -43,7 +43,7 @@ export default function EventList() {
         ? "Ves todos los eventos (Agenda/calendario). Solo podés actuar en los que te solicitaron Institucionales."
         : user?.role === "COBERTURA"
           ? "Mostrás solo eventos que solicitaron Cobertura."
-          : user?.role === "VICEJEFATURA"
+          : isOutsideSsccyrs(user)
             ? "Podés pedir Producción y Cobertura. No ves calendario ni agenda."
             : (user?.role === "DIRECTOR_GENERAL" || user?.role === "ORGANIZACION") && user.area
             ? `Mostrás eventos de tu área (${user.area}), convocados y los confirmados de las demás DGs.`

@@ -9,7 +9,7 @@ import Admin from "./pages/Admin";
 import Calendar from "./pages/Calendar";
 import AgendaInstitucionales from "./pages/AgendaInstitucionales";
 import { AppShell } from "./components/layout/AppShell";
-import { canCreateEvent } from "./hooks/usePermissions";
+import { canCreateEvent, isOutsideSsccyrs } from "./hooks/usePermissions";
 
 function Protected({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -27,7 +27,7 @@ function Protected({ children }: { children: React.ReactNode }) {
 function RequireNotVicejefatura({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return null;
-  if (user?.role === "VICEJEFATURA") return <Navigate to="/" replace />;
+  if (isOutsideSsccyrs(user)) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getEvent, createEvent, updateEvent } from "../api/events";
 import type { EventStatus } from "../types";
+import { canEditEvent, isOutsideSsccyrs } from "../hooks/usePermissions";
 import { useAuth } from "../hooks/useAuth";
 import { Button } from "../components/ui/Button";
 import { Modal } from "../components/ui/Modal";
@@ -17,7 +18,6 @@ import {
   parseLocacionesPosibles,
   joinLocacionesPosibles,
 } from "../utils/sugerirLocaciones";
-import { canEditEvent } from "../hooks/usePermissions";
 import { buildWizardSteps } from "../config/eventFormWizardSteps";
 import type { EventFormStepId } from "../config/eventFormWizardSteps";
 import { EventFormWizardContent } from "./EventFormWizardContent";
@@ -517,6 +517,7 @@ export default function EventForm() {
           canPickAnyArea={canPickAnyArea}
           userArea={user?.area}
           userRole={user?.role}
+          outsideSsccyrs={isOutsideSsccyrs(user)}
           showEstadoSelect={showEstadoSelect}
         />
       </WizardShell>

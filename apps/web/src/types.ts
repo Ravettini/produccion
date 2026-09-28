@@ -25,6 +25,8 @@ export interface User {
   name: string;
   role: Role;
   area?: string | null;
+  /** false = fuera de SSCCYRS (vista verde y límites de carga). */
+  esSsccyrs?: boolean | null;
 }
 
 export interface Event {

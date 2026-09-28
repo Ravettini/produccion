@@ -245,6 +245,11 @@ export function EventOverview({
                 {event.funcionario && (
                   <Detail label="Funcionario(s)">{event.funcionario}</Detail>
                 )}
+                {dp.invitacionFuncionario?.trim() && (
+                  <Detail label="¿Pensás invitar a algún funcionario?">
+                    {dp.invitacionFuncionario}
+                  </Detail>
+                )}
                 {(locacionesPosibles.length > 0 || event.lugar) && (
                   <Detail label="Locaciones posibles">
                     {locacionesPosibles.length > 0

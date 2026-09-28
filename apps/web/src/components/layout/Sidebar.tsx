@@ -21,6 +21,7 @@ interface SidebarProps {
   isAdmin: boolean;
   userName?: string;
   userRole?: Role | string;
+  esSsccyrs?: boolean | null;
   onLogout: () => void;
   open?: boolean;
   onClose?: () => void;
@@ -32,13 +33,15 @@ export function Sidebar({
   isAdmin,
   userName,
   userRole,
+  esSsccyrs,
   onLogout,
   open = false,
   onClose,
   pendingCount = 0,
 }: SidebarProps) {
-  const showAgenda = ["ADMIN", "INSTITUCIONALES", "AGENDA"].includes(String(userRole ?? ""));
-  const showCalendar = userRole !== "VICEJEFATURA";
+  const outside = userRole === "VICEJEFATURA" || esSsccyrs === false;
+  const showAgenda = !outside && ["ADMIN", "INSTITUCIONALES", "AGENDA"].includes(String(userRole ?? ""));
+  const showCalendar = !outside;
   const items = showCalendar ? navItems : navItems.filter((item) => item.to !== "/calendar");
 
   return (

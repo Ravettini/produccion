@@ -85,6 +85,15 @@ export function canCreateEvent(user: User | null): boolean {
   return user !== null && EVENT_CREATOR_ROLES.includes(user.role);
 }
 
+/** Fuera de SSCCYRS: misma experiencia que tenía el rol Vicejefatura. */
+export function isOutsideSsccyrs(
+  user: { role?: string | null; esSsccyrs?: boolean | null } | null | undefined
+): boolean {
+  if (!user) return false;
+  if (user.role === "VICEJEFATURA") return true;
+  return user.esSsccyrs === false;
+}
+
 export function isSpecialtyRole(user: User | null): boolean {
   return user !== null && SPECIALTY_ROLES.includes(user.role);
 }

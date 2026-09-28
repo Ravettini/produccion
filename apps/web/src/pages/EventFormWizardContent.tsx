@@ -87,6 +87,7 @@ export interface EventFormWizardContentProps {
   canPickAnyArea?: boolean;
   userArea?: string | null;
   userRole?: string | null;
+  outsideSsccyrs?: boolean;
   showEstadoSelect: boolean;
 }
 
@@ -134,6 +135,7 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
     canPickAnyArea = false,
     userArea,
     userRole,
+    outsideSsccyrs = false,
     showEstadoSelect,
     estadoOptions,
     onEstadoChange,
@@ -212,7 +214,7 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
 
     case "tipo": {
       const tipoOpciones =
-        userRole === "VICEJEFATURA"
+        outsideSsccyrs || userRole === "VICEJEFATURA"
           ? TIPO_OPCIONES.filter((o) => o.value === "Producción" || o.value === "Cobertura")
           : TIPO_OPCIONES;
       return (
@@ -478,6 +480,20 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
               value={funcionario}
               onChange={setFuncionario}
               emptyMessage="Ningún funcionario coincide"
+            />
+          )}
+          {(outsideSsccyrs || userRole === "VICEJEFATURA") && (
+            <TextArea
+              label="¿Tenés pensado invitar a algún funcionario?"
+              value={datosProduccion.invitacionFuncionario ?? ""}
+              onChange={(e) =>
+                setDatosProduccion((prev) => ({
+                  ...prev,
+                  invitacionFuncionario: e.target.value,
+                }))
+              }
+              rows={4}
+              placeholder="Escribí libremente a quién pensás invitar…"
             />
           )}
           <Select

@@ -32,7 +32,7 @@ authRouter.post("/login", async (req, res) => {
   );
   res.json({
     token,
-    user: { id: user.id, email: user.email, name: user.name, role: user.role, area: user.area ?? null },
+    user: { id: user.id, email: user.email, name: user.name, role: user.role, area: user.area ?? null, esSsccyrs: user.esSsccyrs },
   });
 });
 
@@ -87,7 +87,7 @@ authRouter.post("/register", authMiddleware, requireRoles("ADMIN"), async (req, 
 authRouter.get("/me", authMiddleware, async (req, res) => {
   const u = await prisma.user.findUnique({
     where: { id: req.user!.id },
-    select: { id: true, email: true, name: true, role: true, area: true },
+    select: { id: true, email: true, name: true, role: true, area: true, esSsccyrs: true },
   });
   if (!u) {
     res.status(404).json({ error: "Usuario no encontrado" });

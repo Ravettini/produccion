@@ -31,8 +31,19 @@ function vicejefaturaTipoError(tipoEvento: unknown): string | null {
   const ok =
     partes.length > 0 &&
     partes.every((p) => /^(producción|produccion|cobertura)$/i.test(p));
-  if (!ok) return "Vicejefatura solo puede pedir Producción y/o Cobertura.";
+  if (!ok) return "Fuera de SSCCYRS solo se puede pedir Producción y/o Cobertura.";
   return null;
+}
+
+async function isOutsideSsccyrsUser(userId: string | undefined, role?: string | null): Promise<boolean> {
+  if (role === "VICEJEFATURA") return true;
+  if (!userId) return false;
+  const row = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { esSsccyrs: true, role: true },
+  });
+  if (!row) return role === "VICEJEFATURA";
+  return row.role === "VICEJEFATURA" || row.esSsccyrs === false;
 }
 
 function toAcreditappEventInput(event: {
@@ -225,7 +236,7 @@ eventsRouter.post("/", authMiddleware, async (req, res) => {
     });
     return;
   }
-  if (role === "VICEJEFATURA") {
+  if (await isOutsideSsccyrsUser(req.user?.id, role)) {
     const tipoError = vicejefaturaTipoError(tipoEvento);
     if (tipoError) {
       res.status(400).json({ error: tipoError });
@@ -387,7 +398,7 @@ eventsRouter.put("/:id", authMiddleware, async (req, res) => {
     /responsabilidad\s+social/i.test(String(resultingArea)) ||
     /solo\s+informar/i.test(String(resultingTipo));
 
-  if (req.user?.role === "VICEJEFATURA") {
+  if (await isOutsideSsccyrsUser(req.user?.id, req.user?.role)) {
     const tipoError = vicejefaturaTipoError(resultingTipo);
     if (tipoError) {
       res.status(400).json({ error: tipoError });
@@ -612,7 +623,7 @@ eventsRouter.post("/:id/clone", authMiddleware, async (req, res) => {
     res.status(403).json({ error: "No tenés permiso para ver este evento" });
     return;
   }
-  if (role === "VICEJEFATURA") {
+  if (await isOutsideSsccyrsUser(req.user?.id, role)) {
     const tipoError = vicejefaturaTipoError(source.tipoEvento);
     if (tipoError) {
       res.status(400).json({ error: tipoError });
