@@ -9,6 +9,7 @@ import {
 import {
   canUserSeeEvent,
   isSpecialtyRole,
+  isStaffAdmin,
   isUserResponsibleForEvent,
 } from "../lib/eventVisibility.js";
 export const proposalByIdRouter = Router();
@@ -75,7 +76,7 @@ proposalByIdRouter.put("/:id", authMiddleware, async (req, res) => {
   }
 
   const isOwnerOrAdmin =
-    proposal.createdById === dbUser.id || dbUser.role === "ADMIN";
+    proposal.createdById === dbUser.id || isStaffAdmin(dbUser.role);
   const isSpecialtyEditor =
     isSpecialtyRole(dbUser.role) &&
     canUserSeeEvent(dbUser, proposal.event) &&
@@ -187,7 +188,7 @@ proposalByIdRouter.post("/:id/submit", authMiddleware, async (req, res) => {
     res.status(400).json({ error: "Solo se puede enviar una propuesta en DRAFT" });
     return;
   }
-  if (proposal.createdById !== req.user!.id && req.user!.role !== "ADMIN") {
+  if (proposal.createdById !== req.user!.id && !isStaffAdmin(req.user!.role)) {
     res.status(403).json({ error: "Solo el creador o un admin puede enviar" });
     return;
   }
@@ -329,7 +330,7 @@ proposalByIdRouter.post("/:id/cancel", authMiddleware, async (req, res) => {
     res.status(400).json({ error: "No se puede cancelar en estado " + proposal.estado });
     return;
   }
-  if (proposal.createdById !== req.user!.id && req.user!.role !== "ADMIN") {
+  if (proposal.createdById !== req.user!.id && !isStaffAdmin(req.user!.role)) {
     res.status(403).json({ error: "Solo el creador o un admin puede cancelar" });
     return;
   }

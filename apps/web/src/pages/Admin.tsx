@@ -24,6 +24,7 @@ import {
   categoryLabels,
 } from "../utils/labels";
 import { USER_AREA_OPTIONS } from "../config/areas";
+import { isStaffAdmin } from "../hooks/usePermissions";
 import { formatDateShort } from "../utils/formatters";
 
 const roleOptions = (Object.entries(roleLabels) as [Role, string][])
@@ -100,7 +101,7 @@ export default function Admin() {
   const [editPassword, setEditPassword] = useState("");
   const [showVaciarConfirm, setShowVaciarConfirm] = useState(false);
 
-  if (user?.role !== "ADMIN") {
+  if (!isStaffAdmin(user?.role)) {
     return <Navigate to="/" replace />;
   }
 

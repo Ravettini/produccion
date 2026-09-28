@@ -28,6 +28,7 @@ const FILTROS_TIPO = [
 /** Roles que ven todos los estados en el calendario. */
 const CALENDAR_SEE_ALL_STATUSES = new Set([
   "ADMIN",
+  "SUPERADMIN",
   "PRODUCCION",
   "INSTITUCIONALES",
   "AGENDA",

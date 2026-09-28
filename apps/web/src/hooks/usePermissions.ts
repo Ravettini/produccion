@@ -1,5 +1,9 @@
 import type { User, Proposal, Event } from "../types";
 
+export function isStaffAdmin(role?: string | null): boolean {
+  return role === "ADMIN" || role === "SUPERADMIN";
+}
+
 const PROPOSAL_CREATOR_ROLES = [
   "ORGANIZACION",
   "VICEJEFATURA",
@@ -8,12 +12,14 @@ const PROPOSAL_CREATOR_ROLES = [
   "INSTITUCIONALES",
   "COBERTURA",
   "ADMIN",
+  "SUPERADMIN",
 ];
 
 /** Quién puede cargar eventos nuevos (incl. Institucionales / Nacho cuando las DG no cargan). */
 const EVENT_CREATOR_ROLES = [
   "ORGANIZACION",
   "ADMIN",
+  "SUPERADMIN",
   "DIRECTOR_GENERAL",
   "VICEJEFATURA",
   "INSTITUCIONALES",
@@ -25,6 +31,7 @@ const SPECIALTY_ROLES = ["PRODUCCION", "INSTITUCIONALES", "AGENDA", "COBERTURA"]
 /** Categorías de requerimiento que cada especialidad puede aprobar/rechazar. */
 const PROPOSAL_VALIDATE_BY_ROLE: Record<string, string[]> = {
   ADMIN: ["LOGISTICA", "CATERING", "TECNICA", "AGENDA", "PRODUCCION", "OTRO"],
+  SUPERADMIN: ["LOGISTICA", "CATERING", "TECNICA", "AGENDA", "PRODUCCION", "OTRO"],
   VALIDADOR: ["LOGISTICA", "CATERING", "TECNICA", "AGENDA", "PRODUCCION", "OTRO"],
   PRODUCCION: ["PRODUCCION", "CATERING", "TECNICA", "LOGISTICA"],
   INSTITUCIONALES: ["AGENDA"],
@@ -63,7 +70,7 @@ export function canCreateProposal(
 ): boolean {
   if (!user || !PROPOSAL_CREATOR_ROLES.includes(user.role)) return false;
   if (!event) return true;
-  if (user.role === "ADMIN") return true;
+  if (isStaffAdmin(user.role)) return true;
   if (event.createdById && event.createdById === user.id) return true;
   if (SPECIALTY_ROLES.includes(user.role)) {
     return specialtyIsRequestedOnEvent(user.role, event);
@@ -105,7 +112,7 @@ export function canApproveOrRejectProposal(
   if (!user) return false;
   const allowed = PROPOSAL_VALIDATE_BY_ROLE[user.role];
   if (!allowed) return false;
-  if (!proposal?.categoria) return user.role === "ADMIN" || user.role === "VALIDADOR";
+  if (!proposal?.categoria) return isStaffAdmin(user.role) || user.role === "VALIDADOR";
   if (!allowed.includes(proposal.categoria)) return false;
   if (user.role === "COBERTURA" && proposal.categoria === "OTRO") {
     return String(proposal.titulo ?? "")
@@ -116,7 +123,7 @@ export function canApproveOrRejectProposal(
 }
 
 export function canConfirmEvent(user: User | null): boolean {
-  return user?.role === "ADMIN";
+  return isStaffAdmin(user?.role);
 }
 
 export function canEditEvent(
@@ -124,7 +131,7 @@ export function canEditEvent(
   event: { createdById?: string | null; areaSolicitante?: string | null }
 ): boolean {
   if (!user) return false;
-  if (user.role === "ADMIN") return true;
+  if (isStaffAdmin(user.role)) return true;
   // Especialidades (incl. Institucionales) solo editan si son creadoras; el resto es solo lectura.
   if (SPECIALTY_ROLES.includes(user.role)) {
     return Boolean(event.createdById && event.createdById === user.id);
@@ -146,7 +153,7 @@ export function canEditEvent(
 /** Especialidad puede corregir campos del evento (ej. funcionario) si le fue solicitado. */
 export function canSpecialtyEditEventFields(user: User | null, canDecide: boolean): boolean {
   if (!user) return false;
-  if (user.role === "ADMIN") return true;
+  if (isStaffAdmin(user.role)) return true;
   return isSpecialtyRole(user) && canDecide;
 }
 
@@ -155,7 +162,7 @@ export function canDeleteEvent(
   event?: { createdById?: string | null; areaSolicitante?: string | null } | null
 ): boolean {
   if (!user) return false;
-  if (user.role === "ADMIN") return true;
+  if (isStaffAdmin(user.role)) return true;
   if (!event) return false;
   if (event.createdById && event.createdById === user.id) return true;
   if (
@@ -176,7 +183,7 @@ export function canEditProposal(
 ): boolean {
   if (!user) return false;
   if (proposal.estado === "CANCELLED") return false;
-  if (user.role === "ADMIN") return true;
+  if (isStaffAdmin(user.role)) return true;
   if (opts?.specialtyCanEdit && isSpecialtyRole(user)) return true;
   if (proposal.estado !== "DRAFT") return false;
   return proposal.createdById === user.id;
@@ -185,13 +192,13 @@ export function canEditProposal(
 export function canSubmitProposal(user: User | null, proposal: Proposal): boolean {
   if (!user) return false;
   if (proposal.estado !== "DRAFT") return false;
-  return proposal.createdById === user.id || user.role === "ADMIN";
+  return proposal.createdById === user.id || isStaffAdmin(user.role);
 }
 
 export function canCancelProposal(user: User | null, proposal: Proposal): boolean {
   if (!user) return false;
   if (["APPROVED", "REJECTED", "CANCELLED"].includes(proposal.estado)) return false;
-  return proposal.createdById === user.id || user.role === "ADMIN";
+  return proposal.createdById === user.id || isStaffAdmin(user.role);
 }
 
 export type { Event };

@@ -1,12 +1,13 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth as useAuthContext } from "../context/AuthContext";
 import { logout } from "../api/auth";
+import { isStaffAdmin } from "./usePermissions";
 
 export function useAuth() {
   const { user, loading, setUser } = useAuthContext();
   const navigate = useNavigate();
 
-  const isAdmin = user?.role === "ADMIN";
+  const isAdmin = isStaffAdmin(user?.role);
 
   const handleLogout = () => {
     logout();

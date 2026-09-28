@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { authMiddleware, requireRoles } from "../middleware/auth.js";
-import { canUserSeeEvent, filterEventsForUser, getRequestedAreaRoles } from "../lib/eventVisibility.js";
+import { canUserSeeEvent, filterEventsForUser, getRequestedAreaRoles, isStaffAdmin } from "../lib/eventVisibility.js";
 import { buildAreaChecklist, type AreaDecisionRow } from "../lib/areaDecisions.js";
 import { ensureAcreditappLink, fetchAcreditappAttendance } from "../lib/acreditapp.js";
 import { notifyEventCreated, notifyEventStatusChanged } from "../lib/mail.js";
@@ -17,6 +17,7 @@ const validStatuses = ["PENDIENTE", "EN_RADAR", "EN_ANALISIS", "CONFIRMADO", "CA
 const EVENT_CREATOR_ROLES = [
   "ORGANIZACION",
   "ADMIN",
+  "SUPERADMIN",
   "DIRECTOR_GENERAL",
   "VICEJEFATURA",
   "INSTITUCIONALES",
@@ -249,9 +250,9 @@ eventsRouter.post("/", authMiddleware, async (req, res) => {
   let status = estado && validStatuses.includes(String(estado)) ? String(estado) : "PENDIENTE";
   if (isAutoConfirmed) {
     status = "CONFIRMADO";
-  } else if (req.user?.role !== "ADMIN") {
+  } else if (!isStaffAdmin(req.user?.role)) {
     status = "PENDIENTE";
-  } else if (status === "CONFIRMADO" && req.user?.role !== "ADMIN") {
+  } else if (status === "CONFIRMADO" && !isStaffAdmin(req.user?.role)) {
     status = "PENDIENTE";
   }
   const fechaDate = parseFechaTentativa(fechaTentativa);
@@ -345,7 +346,7 @@ eventsRouter.put("/:id", authMiddleware, async (req, res) => {
     return;
   }
   const existingCreatedBy = (existing as { createdById?: string | null }).createdById;
-  const isAdmin = req.user?.role === "ADMIN";
+  const isAdmin = isStaffAdmin(req.user?.role);
   const isCreator = Boolean(existingCreatedBy && existingCreatedBy === req.user?.id);
   const isAreaOwner = Boolean(
     (req.user?.role === "DIRECTOR_GENERAL" || req.user?.role === "ORGANIZACION" || req.user?.role === "VICEJEFATURA") &&
@@ -417,7 +418,7 @@ eventsRouter.put("/:id", authMiddleware, async (req, res) => {
     } else if (req.user?.role === "DIRECTOR_GENERAL") {
       res.status(403).json({ error: "El Director General no puede cambiar el estado del evento" });
       return;
-    } else if (nextEstado === "CONFIRMADO" && req.user?.role !== "ADMIN") {
+    } else if (nextEstado === "CONFIRMADO" && !isStaffAdmin(req.user?.role)) {
       res.status(403).json({ error: "Solo un administrador puede confirmar el evento" });
       return;
     } else {
@@ -726,7 +727,7 @@ eventsRouter.post("/:id/sync-acreditapp", authMiddleware, async (req, res) => {
     return;
   }
   const existingCreatedBy = (event as { createdById?: string | null }).createdById;
-  if (req.user?.role !== "ADMIN" && existingCreatedBy && existingCreatedBy !== req.user?.id) {
+  if (!isStaffAdmin(req.user?.role) && existingCreatedBy && existingCreatedBy !== req.user?.id) {
     res.status(403).json({ error: "Solo el creador o un admin puede sincronizar acreditación" });
     return;
   }
@@ -778,7 +779,7 @@ eventsRouter.delete("/:id", authMiddleware, async (req, res) => {
     return;
   }
   const user = req.user;
-  const isAdmin = user?.role === "ADMIN";
+  const isAdmin = isStaffAdmin(user?.role);
   const isCreator = Boolean(event.createdById && event.createdById === user?.id);
   const isAreaOwner = Boolean(
     user?.area &&

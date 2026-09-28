@@ -40,7 +40,7 @@ authRouter.post("/login", async (req, res) => {
  * POST /auth/register
  * Solo ADMIN o seed. Body: { email, password, name, role }
  */
-authRouter.post("/register", authMiddleware, requireRoles("ADMIN"), async (req, res) => {
+authRouter.post("/register", authMiddleware, requireRoles("ADMIN", "SUPERADMIN"), async (req, res) => {
   const { email, password, name, role, area } = req.body ?? {};
   if (!email || !password || !name || !role) {
     res.status(400).json({ error: "email, password, name y role requeridos" });
@@ -48,6 +48,7 @@ authRouter.post("/register", authMiddleware, requireRoles("ADMIN"), async (req, 
   }
   const validRoles = [
     "ADMIN",
+    "SUPERADMIN",
     "DIRECTOR_GENERAL",
     "ORGANIZACION",
     "VICEJEFATURA",

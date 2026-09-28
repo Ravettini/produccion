@@ -77,6 +77,7 @@ export function requireRoles(...roles: string[]) {
  */
 export const canValidate = requireRoles(
   "ADMIN",
+  "SUPERADMIN",
   "VALIDADOR",
   "PRODUCCION",
   "INSTITUCIONALES",
@@ -94,7 +95,8 @@ export const canCreateProposal = requireRoles(
   "AGENDA",
   "INSTITUCIONALES",
   "COBERTURA",
-  "ADMIN"
+  "ADMIN",
+  "SUPERADMIN"
 );
 
 /** Categorías que cada rol puede validar. */
@@ -103,7 +105,7 @@ export function rolesAllowedForProposalCategory(
   categoria: string,
   titulo?: string | null
 ): boolean {
-  if (role === "ADMIN" || role === "VALIDADOR") return true;
+  if (role === "ADMIN" || role === "SUPERADMIN" || role === "VALIDADOR") return true;
   if (role === "PRODUCCION") {
     return ["PRODUCCION", "CATERING", "TECNICA", "LOGISTICA"].includes(categoria);
   }

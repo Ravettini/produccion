@@ -98,7 +98,7 @@ function abbrDg(area: string): string {
 }
 
 function canSeeAgenda(role?: string | null): boolean {
-  return ["ADMIN", "INSTITUCIONALES", "AGENDA"].includes(role ?? "");
+  return ["ADMIN", "SUPERADMIN", "INSTITUCIONALES", "AGENDA"].includes(role ?? "");
 }
 
 const HIGHLIGHT_STORAGE_KEY = "agenda-ssccyrs-highlighted-ids";

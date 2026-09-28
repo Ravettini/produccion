@@ -1,14 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { authMiddleware } from "../middleware/auth.js";
-import {
-  canUserSeeEvent,
-  getRequestedAreaRoles,
-  isSpecialtyRole,
-  isUserResponsibleForEvent,
-  normalizeAreaRole,
-  type AreaDecisionRole,
-} from "../lib/eventVisibility.js";
+import { canUserSeeEvent, isStaffAdmin, isUserResponsibleForEvent, getRequestedAreaRoles, isSpecialtyRole, normalizeAreaRole, type AreaDecisionRole } from "../lib/eventVisibility.js";
 import { AREA_LABELS, buildAreaChecklist, type AreaDecisionRow } from "../lib/areaDecisions.js";
 import { notifyAreaDecision, notifyEventStatusChanged } from "../lib/mail.js";
 import { syncProposalsFromEvent } from "../lib/syncProposalsFromEvent.js";
@@ -148,13 +141,13 @@ eventDecisionsRouter.post("/:eventId/area-decisions", authMiddleware, async (req
     res.status(401).json({ error: "Usuario no encontrado" });
     return;
   }
-  if (!isUserResponsibleForEvent(dbUser, event) && dbUser.role !== "ADMIN") {
+  if (!isUserResponsibleForEvent(dbUser, event) && !isStaffAdmin(dbUser.role)) {
     res.status(403).json({ error: "Solo el área solicitada puede aprobar o rechazar este evento" });
     return;
   }
 
   const areaRole =
-    dbUser.role === "ADMIN"
+    isStaffAdmin(dbUser.role)
       ? (normalizeAreaRole(String(req.body?.areaRole ?? "")) ??
         getRequestedAreaRoles(event.tipoEvento, event.areaSolicitante)[0])
       : normalizeAreaRole(dbUser.role);
@@ -363,7 +356,7 @@ eventDecisionsRouter.patch("/:eventId/fields", authMiddleware, async (req, res) 
   }
 
   const canEdit =
-    dbUser.role === "ADMIN" ||
+    isStaffAdmin(dbUser.role) ||
     (isSpecialtyRole(dbUser.role) && isUserResponsibleForEvent(dbUser, event));
   if (!canEdit) {
     res.status(403).json({ error: "No tenés permiso para editar este evento" });
@@ -372,12 +365,12 @@ eventDecisionsRouter.patch("/:eventId/fields", authMiddleware, async (req, res) 
 
   const allowed = ["funcionario", "lugar", "programa", "productor"] as const;
   // Responsable de Producción: solo rol PRODUCCION o ADMIN
-  if (fields.productor !== undefined && dbUser.role !== "ADMIN" && dbUser.role !== "PRODUCCION") {
+  if (fields.productor !== undefined && !isStaffAdmin(dbUser.role) && dbUser.role !== "PRODUCCION") {
     res.status(403).json({ error: "Solo Producción puede definir el responsable de Producción" });
     return;
   }
   // Locación confirmada: solo PRODUCCION o ADMIN
-  if (fields.lugar !== undefined && dbUser.role !== "ADMIN" && dbUser.role !== "PRODUCCION") {
+  if (fields.lugar !== undefined && !isStaffAdmin(dbUser.role) && dbUser.role !== "PRODUCCION") {
     res.status(403).json({ error: "Solo Producción puede confirmar la locación del evento" });
     return;
   }

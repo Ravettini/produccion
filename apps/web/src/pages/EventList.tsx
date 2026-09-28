@@ -38,7 +38,9 @@ export default function EventList() {
 
   const specialtyHint = isOutsideSsccyrs(user)
     ? "Ves todas las áreas del organigrama, menos la Ss. de Cultura Ciudadana y Responsabilidad Social y sus direcciones."
-    : user?.role === "ADMIN" || user?.role === "VALIDADOR"
+    : user?.role === "ADMIN"
+      ? "Ves y gestionás eventos con Producción o Cobertura. Los que son solo Institucionales no aparecen."
+      : user?.role === "SUPERADMIN" || user?.role === "VALIDADOR"
       ? null
       : "Ves solo la Ss. de Cultura Ciudadana y Responsabilidad Social y sus direcciones.";
 

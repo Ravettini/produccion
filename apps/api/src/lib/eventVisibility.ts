@@ -14,7 +14,7 @@ export type EventVisibilityUser = {
 
 /** Roles que ven todos los eventos del sistema. */
 export const ROLES_SEE_ALL = new Set([
-  "ADMIN",
+  "SUPERADMIN",
   "VALIDADOR",
 ]);
 
@@ -143,15 +143,19 @@ export function isDgConvocada(
   return convocadas.some((c) => c.toLowerCase() === area.toLowerCase());
 }
 
-/** Fabio (admin) solo ve eventos que piden Producción. */
-const FABIO_EMAIL = "fabio@gmail.com";
-
-export function seesOnlyProduccionRequests(user: EventVisibilityUser): boolean {
-  return user.role === "ADMIN" && (user.email ?? "").trim().toLowerCase() === FABIO_EMAIL;
+/** El administrador de producción ve eventos con Producción o Cobertura. */
+export function eventInvolvesProduccionOCobertura(tipoEvento: string | null | undefined): boolean {
+  return tipoEventoMatchesKeywords(tipoEvento, [
+    "producción",
+    "produccion",
+    "cobertura",
+    "comunicación",
+    "comunicacion",
+  ]);
 }
 
-export function eventRequestsProduccion(tipoEvento: string | null | undefined): boolean {
-  return tipoEventoMatchesKeywords(tipoEvento, ["producción", "produccion"]);
+export function isStaffAdmin(role?: string | null): boolean {
+  return role === "ADMIN" || role === "SUPERADMIN";
 }
 
 /**
@@ -211,8 +215,8 @@ export function canUserSeeEvent(
     areaDecisions?: { areaRole?: string | null; estado?: string | null }[] | null;
   }
 ): boolean {
-  if (seesOnlyProduccionRequests(user)) {
-    return eventRequestsProduccion(event.tipoEvento);
+  if (user.role === "ADMIN") {
+    return eventInvolvesProduccionOCobertura(event.tipoEvento);
   }
 
   // Fuera de SSCCYRS: todas las áreas, menos la Subsecretaría de Cultura Ciudadana.
@@ -234,7 +238,7 @@ export function filterEventsForUser<T extends {
   datosProduccion?: unknown;
   areaDecisions?: { areaRole?: string | null; estado?: string | null }[] | null;
 }>(user: EventVisibilityUser, events: T[]): T[] {
-  if (seesOnlyProduccionRequests(user)) {
+  if (user.role === "ADMIN") {
     return events.filter((e) => canUserSeeEvent(user, e));
   }
   if (ROLES_SEE_ALL.has(user.role)) return events;

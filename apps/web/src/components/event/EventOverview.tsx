@@ -79,8 +79,8 @@ export function EventOverview({
 
   const tieneProduccion = /producci[oó]n/i.test(event.tipoEvento);
   const canEditProductor =
-    tieneProduccion && (user?.role === "PRODUCCION" || user?.role === "ADMIN");
-  const canConfirmLugar = user?.role === "PRODUCCION" || user?.role === "ADMIN";
+    tieneProduccion && (user?.role === "PRODUCCION" || user?.role === "ADMIN" || user?.role === "SUPERADMIN");
+  const canConfirmLugar = user?.role === "PRODUCCION" || user?.role === "ADMIN" || user?.role === "SUPERADMIN";
 
   const saveProductor = useMutation({
     mutationFn: () =>

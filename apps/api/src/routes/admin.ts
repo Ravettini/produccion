@@ -12,6 +12,7 @@ export const adminRouter = Router();
 
 const validRoles = [
   "ADMIN",
+  "SUPERADMIN",
   "DIRECTOR_GENERAL",
   "ORGANIZACION",
   "VICEJEFATURA",
@@ -23,7 +24,7 @@ const validRoles = [
 ];
 
 adminRouter.use(authMiddleware);
-adminRouter.use(requireRoles("ADMIN"));
+adminRouter.use(requireRoles("ADMIN", "SUPERADMIN"));
 
 /**
  * GET /admin/metrics - Métricas del sistema (eventos, propuestas, tendencias).

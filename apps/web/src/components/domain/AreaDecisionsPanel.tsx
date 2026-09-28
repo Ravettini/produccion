@@ -40,9 +40,9 @@ export function AreaDecisionsPanel({
   const [editReason, setEditReason] = useState("");
   const [editingFunc, setEditingFunc] = useState(false);
   const [editingProd, setEditingProd] = useState(false);
-  const isAdmin = user?.role === "ADMIN";
+  const isAdmin = user?.role === "ADMIN" || user?.role === "SUPERADMIN";
   const canSetProductor =
-    tieneProduccion && (user?.role === "PRODUCCION" || user?.role === "ADMIN");
+    tieneProduccion && (user?.role === "PRODUCCION" || user?.role === "ADMIN" || user?.role === "SUPERADMIN");
 
   const { data, isLoading } = useQuery({
     queryKey: ["area-decisions", eventId],

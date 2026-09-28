@@ -1,5 +1,6 @@
 export type Role =
   | "ADMIN"
+  | "SUPERADMIN"
   | "DIRECTOR_GENERAL"
   | "ORGANIZACION"
   | "VICEJEFATURA"
