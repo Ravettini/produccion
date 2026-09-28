@@ -516,6 +516,7 @@ export default function EventForm() {
           isAdmin={isAdmin}
           canPickAnyArea={canPickAnyArea}
           userArea={user?.area}
+          userRole={user?.role}
           showEstadoSelect={showEstadoSelect}
         />
       </WizardShell>

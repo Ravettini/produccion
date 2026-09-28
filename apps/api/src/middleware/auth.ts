@@ -89,6 +89,7 @@ export const canValidate = requireRoles(
  */
 export const canCreateProposal = requireRoles(
   "ORGANIZACION",
+  "VICEJEFATURA",
   "PRODUCCION",
   "AGENDA",
   "INSTITUCIONALES",

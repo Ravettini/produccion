@@ -14,6 +14,7 @@ const validRoles = [
   "ADMIN",
   "DIRECTOR_GENERAL",
   "ORGANIZACION",
+  "VICEJEFATURA",
   "PRODUCCION",
   "INSTITUCIONALES",
   "AGENDA",

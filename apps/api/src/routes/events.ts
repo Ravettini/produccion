@@ -14,6 +14,26 @@ import {
 export const eventsRouter = Router();
 
 const validStatuses = ["PENDIENTE", "EN_RADAR", "EN_ANALISIS", "CONFIRMADO", "CANCELADO", "REALIZADO"];
+const EVENT_CREATOR_ROLES = [
+  "ORGANIZACION",
+  "ADMIN",
+  "DIRECTOR_GENERAL",
+  "VICEJEFATURA",
+  "INSTITUCIONALES",
+  "AGENDA",
+];
+
+function vicejefaturaTipoError(tipoEvento: unknown): string | null {
+  const partes = String(tipoEvento ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const ok =
+    partes.length > 0 &&
+    partes.every((p) => /^(producción|produccion|cobertura)$/i.test(p));
+  if (!ok) return "Vicejefatura solo puede pedir Producción y/o Cobertura.";
+  return null;
+}
 
 function toAcreditappEventInput(event: {
   id: unknown;
@@ -74,14 +94,14 @@ eventsRouter.get("/", authMiddleware, async (req, res) => {
   });
   const dbUser = await prisma.user.findUnique({
     where: { id: req.user!.id },
-    select: { id: true, role: true, area: true },
+    select: { id: true, role: true, area: true, email: true },
   });
   if (!dbUser) {
     res.status(401).json({ error: "Usuario no encontrado" });
     return;
   }
   const visible = filterEventsForUser(
-    { id: dbUser.id, role: dbUser.role, area: dbUser.area },
+    { id: dbUser.id, role: dbUser.role, area: dbUser.area, email: dbUser.email },
     list
   );
   res.json(
@@ -123,13 +143,13 @@ eventsRouter.get("/:id", authMiddleware, async (req, res) => {
   }
   const dbUser = await prisma.user.findUnique({
     where: { id: req.user!.id },
-    select: { id: true, role: true, area: true },
+    select: { id: true, role: true, area: true, email: true },
   });
   if (!dbUser) {
     res.status(401).json({ error: "Usuario no encontrado" });
     return;
   }
-  if (!canUserSeeEvent({ id: dbUser.id, role: dbUser.role, area: dbUser.area }, event)) {
+  if (!canUserSeeEvent({ id: dbUser.id, role: dbUser.role, area: dbUser.area, email: dbUser.email }, event)) {
     res.status(403).json({ error: "No tenés permiso para ver este evento" });
     return;
   }
@@ -172,7 +192,7 @@ eventsRouter.get("/:id", authMiddleware, async (req, res) => {
  */
 eventsRouter.post("/", authMiddleware, async (req, res) => {
   const role = req.user?.role;
-  if (!role || !["ORGANIZACION", "ADMIN", "DIRECTOR_GENERAL", "INSTITUCIONALES", "AGENDA"].includes(role)) {
+  if (!role || !EVENT_CREATOR_ROLES.includes(role)) {
     res.status(403).json({ error: "Tu rol no puede crear eventos. Solo podés gestionar los que te solicitaron." });
     return;
   }
@@ -204,6 +224,13 @@ eventsRouter.post("/", authMiddleware, async (req, res) => {
       error: "Faltan campos: titulo, descripcion, tipoEvento, areaSolicitante, fechaTentativa",
     });
     return;
+  }
+  if (role === "VICEJEFATURA") {
+    const tipoError = vicejefaturaTipoError(tipoEvento);
+    if (tipoError) {
+      res.status(400).json({ error: tipoError });
+      return;
+    }
   }
   const isAutoConfirmed =
     /responsabilidad\s+social/i.test(String(areaSolicitante)) ||
@@ -310,7 +337,7 @@ eventsRouter.put("/:id", authMiddleware, async (req, res) => {
   const isAdmin = req.user?.role === "ADMIN";
   const isCreator = Boolean(existingCreatedBy && existingCreatedBy === req.user?.id);
   const isAreaOwner = Boolean(
-    (req.user?.role === "DIRECTOR_GENERAL" || req.user?.role === "ORGANIZACION") &&
+    (req.user?.role === "DIRECTOR_GENERAL" || req.user?.role === "ORGANIZACION" || req.user?.role === "VICEJEFATURA") &&
       req.user?.area &&
       existing.areaSolicitante &&
       req.user.area.toLowerCase() === String(existing.areaSolicitante).toLowerCase()
@@ -359,6 +386,14 @@ eventsRouter.put("/:id", authMiddleware, async (req, res) => {
   const isAutoConfirmed =
     /responsabilidad\s+social/i.test(String(resultingArea)) ||
     /solo\s+informar/i.test(String(resultingTipo));
+
+  if (req.user?.role === "VICEJEFATURA") {
+    const tipoError = vicejefaturaTipoError(resultingTipo);
+    if (tipoError) {
+      res.status(400).json({ error: tipoError });
+      return;
+    }
+  }
 
   if (estado !== undefined && validStatuses.includes(String(estado))) {
     const nextEstado = String(estado);
@@ -528,9 +563,9 @@ eventsRouter.get("/:id/acreditapp-stats", authMiddleware, async (req, res) => {
   }
   const dbUser = await prisma.user.findUnique({
     where: { id: req.user!.id },
-    select: { id: true, role: true, area: true },
+    select: { id: true, role: true, area: true, email: true },
   });
-  if (!dbUser || !canUserSeeEvent({ id: dbUser.id, role: dbUser.role, area: dbUser.area }, event)) {
+  if (!dbUser || !canUserSeeEvent({ id: dbUser.id, role: dbUser.role, area: dbUser.area, email: dbUser.email }, event)) {
     res.status(403).json({ error: "No tenés permiso para ver este evento" });
     return;
   }
@@ -558,7 +593,7 @@ eventsRouter.get("/:id/acreditapp-stats", authMiddleware, async (req, res) => {
  */
 eventsRouter.post("/:id/clone", authMiddleware, async (req, res) => {
   const role = req.user?.role;
-  if (!role || !["ORGANIZACION", "ADMIN", "DIRECTOR_GENERAL", "INSTITUCIONALES", "AGENDA"].includes(role)) {
+  if (!role || !EVENT_CREATOR_ROLES.includes(role)) {
     res.status(403).json({ error: "Tu rol no puede duplicar eventos." });
     return;
   }
@@ -571,11 +606,18 @@ eventsRouter.post("/:id/clone", authMiddleware, async (req, res) => {
 
   const dbUser = await prisma.user.findUnique({
     where: { id: req.user!.id },
-    select: { id: true, role: true, area: true, name: true },
+    select: { id: true, role: true, area: true, email: true, name: true },
   });
-  if (!dbUser || !canUserSeeEvent({ id: dbUser.id, role: dbUser.role, area: dbUser.area }, source)) {
+  if (!dbUser || !canUserSeeEvent({ id: dbUser.id, role: dbUser.role, area: dbUser.area, email: dbUser.email }, source)) {
     res.status(403).json({ error: "No tenés permiso para ver este evento" });
     return;
+  }
+  if (role === "VICEJEFATURA") {
+    const tipoError = vicejefaturaTipoError(source.tipoEvento);
+    if (tipoError) {
+      res.status(400).json({ error: tipoError });
+      return;
+    }
   }
 
   const isAutoConfirmed =
@@ -731,7 +773,7 @@ eventsRouter.delete("/:id", authMiddleware, async (req, res) => {
     user?.area &&
     event.areaSolicitante &&
     user.area.toLowerCase() === event.areaSolicitante.toLowerCase() &&
-    (user.role === "DIRECTOR_GENERAL" || user.role === "ORGANIZACION")
+    (user.role === "DIRECTOR_GENERAL" || user.role === "ORGANIZACION" || user.role === "VICEJEFATURA")
   );
 
   if (!isAdmin && !isCreator && !isAreaOwner) {

@@ -24,6 +24,13 @@ function Protected({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function RequireNotVicejefatura({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (user?.role === "VICEJEFATURA") return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
 function RequireCreateEvent({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return null;
@@ -44,8 +51,22 @@ function AppRoutes() {
         }
       >
         <Route index element={<EventList />} />
-        <Route path="calendar" element={<Calendar />} />
-        <Route path="agenda" element={<AgendaInstitucionales />} />
+        <Route
+          path="calendar"
+          element={
+            <RequireNotVicejefatura>
+              <Calendar />
+            </RequireNotVicejefatura>
+          }
+        />
+        <Route
+          path="agenda"
+          element={
+            <RequireNotVicejefatura>
+              <AgendaInstitucionales />
+            </RequireNotVicejefatura>
+          }
+        />
         <Route path="admin" element={<Admin />} />
         <Route
           path="events/new"

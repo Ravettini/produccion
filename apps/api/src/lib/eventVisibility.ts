@@ -8,6 +8,7 @@ export type EventVisibilityUser = {
   id: string;
   role: string;
   area?: string | null;
+  email?: string | null;
 };
 
 /** Roles que ven todos los eventos del sistema. */
@@ -141,6 +142,17 @@ export function isDgConvocada(
   return convocadas.some((c) => c.toLowerCase() === area.toLowerCase());
 }
 
+/** Fabio (admin) solo ve eventos que piden Producción. */
+const FABIO_EMAIL = "fabio@gmail.com";
+
+export function seesOnlyProduccionRequests(user: EventVisibilityUser): boolean {
+  return user.role === "ADMIN" && (user.email ?? "").trim().toLowerCase() === FABIO_EMAIL;
+}
+
+export function eventRequestsProduccion(tipoEvento: string | null | undefined): boolean {
+  return tipoEventoMatchesKeywords(tipoEvento, ["producción", "produccion"]);
+}
+
 /**
  * ¿El usuario puede ver este evento?
  * - Admin / Validador: todos
@@ -164,6 +176,10 @@ export function canUserSeeEvent(
     areaDecisions?: { areaRole?: string | null; estado?: string | null }[] | null;
   }
 ): boolean {
+  if (seesOnlyProduccionRequests(user)) {
+    return eventRequestsProduccion(event.tipoEvento);
+  }
+
   if (ROLES_SEE_ALL.has(user.role)) return true;
 
   // Lo que carga AREA CENTRAL (director Julian Vilche) es visible para todos los roles.
@@ -177,7 +193,7 @@ export function canUserSeeEvent(
     return tipoEventoMatchesKeywords(event.tipoEvento, keywords);
   }
 
-  if (user.role === "DIRECTOR_GENERAL" || user.role === "ORGANIZACION") {
+  if (user.role === "DIRECTOR_GENERAL" || user.role === "ORGANIZACION" || user.role === "VICEJEFATURA") {
     if (event.createdById && event.createdById === user.id) return true;
     if (user.area && event.areaSolicitante && user.area.toLowerCase() === event.areaSolicitante.toLowerCase()) {
       return true;
@@ -203,6 +219,9 @@ export function filterEventsForUser<T extends {
   datosProduccion?: unknown;
   areaDecisions?: { areaRole?: string | null; estado?: string | null }[] | null;
 }>(user: EventVisibilityUser, events: T[]): T[] {
+  if (seesOnlyProduccionRequests(user)) {
+    return events.filter((e) => canUserSeeEvent(user, e));
+  }
   if (ROLES_SEE_ALL.has(user.role)) return events;
   return events.filter((e) => canUserSeeEvent(user, e));
 }

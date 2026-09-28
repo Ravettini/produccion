@@ -67,7 +67,7 @@ proposalByIdRouter.put("/:id", authMiddleware, async (req, res) => {
 
   const dbUser = await prisma.user.findUnique({
     where: { id: req.user!.id },
-    select: { id: true, role: true, area: true },
+    select: { id: true, role: true, area: true, email: true },
   });
   if (!dbUser) {
     res.status(401).json({ error: "Usuario no encontrado" });

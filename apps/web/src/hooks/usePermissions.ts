@@ -2,6 +2,7 @@ import type { User, Proposal, Event } from "../types";
 
 const PROPOSAL_CREATOR_ROLES = [
   "ORGANIZACION",
+  "VICEJEFATURA",
   "PRODUCCION",
   "AGENDA",
   "INSTITUCIONALES",
@@ -14,6 +15,7 @@ const EVENT_CREATOR_ROLES = [
   "ORGANIZACION",
   "ADMIN",
   "DIRECTOR_GENERAL",
+  "VICEJEFATURA",
   "INSTITUCIONALES",
   "AGENDA",
 ];
@@ -66,7 +68,7 @@ export function canCreateProposal(
   if (SPECIALTY_ROLES.includes(user.role)) {
     return specialtyIsRequestedOnEvent(user.role, event);
   }
-  if (user.role === "DIRECTOR_GENERAL" || user.role === "ORGANIZACION") {
+  if (user.role === "DIRECTOR_GENERAL" || user.role === "ORGANIZACION" || user.role === "VICEJEFATURA") {
     if (event.createdById && event.createdById === user.id) return true;
     return false;
   }
@@ -120,7 +122,7 @@ export function canEditEvent(
   }
   if (event.createdById && event.createdById === user.id) return true;
   if (
-    (user.role === "DIRECTOR_GENERAL" || user.role === "ORGANIZACION") &&
+    (user.role === "DIRECTOR_GENERAL" || user.role === "ORGANIZACION" || user.role === "VICEJEFATURA") &&
     user.area &&
     event.areaSolicitante &&
     user.area.toLowerCase() === event.areaSolicitante.toLowerCase()
@@ -151,7 +153,7 @@ export function canDeleteEvent(
     user.area &&
     event.areaSolicitante &&
     user.area.toLowerCase() === event.areaSolicitante.toLowerCase() &&
-    (user.role === "DIRECTOR_GENERAL" || user.role === "ORGANIZACION")
+    (user.role === "DIRECTOR_GENERAL" || user.role === "ORGANIZACION" || user.role === "VICEJEFATURA")
   ) {
     return true;
   }

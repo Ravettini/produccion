@@ -43,7 +43,9 @@ export default function EventList() {
         ? "Ves todos los eventos (Agenda/calendario). Solo podés actuar en los que te solicitaron Institucionales."
         : user?.role === "COBERTURA"
           ? "Mostrás solo eventos que solicitaron Cobertura."
-          : (user?.role === "DIRECTOR_GENERAL" || user?.role === "ORGANIZACION") && user.area
+          : user?.role === "VICEJEFATURA"
+            ? "Podés pedir Producción y Cobertura. No ves calendario ni agenda."
+            : (user?.role === "DIRECTOR_GENERAL" || user?.role === "ORGANIZACION") && user.area
             ? `Mostrás eventos de tu área (${user.area}), convocados y los confirmados de las demás DGs.`
             : null;
 

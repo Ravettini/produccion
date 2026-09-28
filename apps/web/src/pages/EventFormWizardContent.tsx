@@ -86,6 +86,7 @@ export interface EventFormWizardContentProps {
   /** Institucionales/admin pueden elegir cualquier DG al cargar eventos. */
   canPickAnyArea?: boolean;
   userArea?: string | null;
+  userRole?: string | null;
   showEstadoSelect: boolean;
 }
 
@@ -132,6 +133,7 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
     isAdmin,
     canPickAnyArea = false,
     userArea,
+    userRole,
     showEstadoSelect,
     estadoOptions,
     onEstadoChange,
@@ -208,11 +210,15 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
       );
     }
 
-    case "tipo":
+    case "tipo": {
+      const tipoOpciones =
+        userRole === "VICEJEFATURA"
+          ? TIPO_OPCIONES.filter((o) => o.value === "Producción" || o.value === "Cobertura")
+          : TIPO_OPCIONES;
       return (
         <div className="space-y-4">
           <ChoiceCards
-            options={TIPO_OPCIONES}
+            options={tipoOpciones}
             value={tipoSeleccionados}
             onChange={(v) => setTipoSeleccionados(v as string[])}
             multiple
@@ -228,6 +234,7 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
           )}
         </div>
       );
+    }
 
     case "publico":
       return (

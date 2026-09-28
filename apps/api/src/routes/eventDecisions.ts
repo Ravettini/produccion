@@ -18,7 +18,7 @@ export const eventDecisionsRouter = Router({ mergeParams: true });
 async function loadDbUser(userId: string) {
   return prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, role: true, area: true, name: true },
+    select: { id: true, role: true, area: true, email: true, name: true },
   });
 }
 

@@ -71,6 +71,7 @@ const BROAD_ROLES = new Set([
   "DIRECTOR_GENERAL",
   "VALIDADOR",
   "ORGANIZACION",
+  "VICEJEFATURA",
 ]);
 
 /** Roles que aprueban o rechazan requerimientos. */

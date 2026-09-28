@@ -2,6 +2,7 @@ export type Role =
   | "ADMIN"
   | "DIRECTOR_GENERAL"
   | "ORGANIZACION"
+  | "VICEJEFATURA"
   | "PRODUCCION"
   | "INSTITUCIONALES"
   | "AGENDA"

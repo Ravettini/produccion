@@ -5,6 +5,42 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --surface: 248 250 252;
+    --sidebar: 15 23 42;
+    --sidebar-hover: 30 41 59;
+    --sidebar-active: 30 58 95;
+    --sidebar-border: 30 41 59;
+    --brand-50: 239 246 255;
+    --brand-100: 219 234 254;
+    --brand-200: 191 219 254;
+    --brand-300: 147 197 253;
+    --brand-400: 96 165 250;
+    --brand-500: 59 130 246;
+    --brand-600: 37 99 235;
+    --brand-700: 29 78 216;
+    --brand-800: 30 64 175;
+    --brand-900: 30 58 138;
+  }
+
+  .theme-vice {
+    --surface: 240 253 250;
+    --sidebar: 19 78 74;
+    --sidebar-hover: 17 94 89;
+    --sidebar-active: 15 118 110;
+    --sidebar-border: 17 94 89;
+    --brand-50: 240 253 250;
+    --brand-100: 204 251 241;
+    --brand-200: 153 246 228;
+    --brand-300: 94 234 212;
+    --brand-400: 45 212 191;
+    --brand-500: 20 184 166;
+    --brand-600: 13 148 136;
+    --brand-700: 15 118 110;
+    --brand-800: 17 94 89;
+    --brand-900: 19 78 74;
+  }
+
   body {
     @apply bg-surface text-slate-900 antialiased font-sans;
     padding-left: env(safe-area-inset-left);

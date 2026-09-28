@@ -38,6 +38,8 @@ export function Sidebar({
   pendingCount = 0,
 }: SidebarProps) {
   const showAgenda = ["ADMIN", "INSTITUCIONALES", "AGENDA"].includes(String(userRole ?? ""));
+  const showCalendar = userRole !== "VICEJEFATURA";
+  const items = showCalendar ? navItems : navItems.filter((item) => item.to !== "/calendar");
 
   return (
     <aside
@@ -68,7 +70,7 @@ export function Sidebar({
       </div>
 
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-        {navItems.map((item) => (
+        {items.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
