@@ -171,6 +171,35 @@ export function isOutsideSsccyrsUser(user: EventVisibilityUser): boolean {
   return user.esSsccyrs === false;
 }
 
+/** Rama de la Ss. de Cultura Ciudadana y Responsabilidad Social (solo SSCCYRS sí). */
+const AREAS_SSCCRS = new Set([
+  "ss. de cultura ciudadana y responsabilidad social",
+  "cultura ciudadana y responsabilidad social",
+  "dg responsabilidad social",
+  "responsabilidad social",
+  "dg cultura del servicio publico",
+  "cultura del servicio publico",
+  "dg transformacion cultural",
+  "transformacion cultural",
+  "dg politicas de juventud",
+  "politicas de juventud",
+  "dg de la mujer",
+  "direccion de la mujer",
+]);
+
+function foldArea(area?: string | null): string {
+  return (area ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+/** Subsecretaría de Cultura Ciudadana y las DG que dependen de ella. */
+export function isSubsecretariaCulturaCiudadana(area?: string | null): boolean {
+  return AREAS_SSCCRS.has(foldArea(area));
+}
+
 export function canUserSeeEvent(
   user: EventVisibilityUser,
   event: {
@@ -186,40 +215,15 @@ export function canUserSeeEvent(
     return eventRequestsProduccion(event.tipoEvento);
   }
 
-  // Fuera de SSCCYRS: solo los eventos que cargó esa persona. Ninguna DG.
+  // Fuera de SSCCYRS: todas las áreas, menos la Subsecretaría de Cultura Ciudadana.
   if (isOutsideSsccyrsUser(user)) {
-    return Boolean(event.createdById && event.createdById === user.id);
+    return !isSubsecretariaCulturaCiudadana(event.areaSolicitante);
   }
 
   if (ROLES_SEE_ALL.has(user.role)) return true;
 
-  // Lo que carga AREA CENTRAL (director Julian Vilche) es visible para todos los roles.
-  if (isAreaCentralEvent(event)) return true;
-
-  // Agenda / Institucionales necesitan ver toda la agenda aunque no les hayan pedido soporte.
-  if (user.role === "INSTITUCIONALES" || user.role === "AGENDA") return true;
-
-  const keywords = getTipoKeywordsForRole(user.role);
-  if (keywords) {
-    return tipoEventoMatchesKeywords(event.tipoEvento, keywords);
-  }
-
-  if (user.role === "DIRECTOR_GENERAL" || user.role === "ORGANIZACION" || user.role === "VICEJEFATURA") {
-    if (event.createdById && event.createdById === user.id) return true;
-    if (user.area && event.areaSolicitante && user.area.toLowerCase() === event.areaSolicitante.toLowerCase()) {
-      return true;
-    }
-    if (user.area && isDgConvocada(event, user.area)) return true;
-    // Confirmados o ya aprobados por Institucionales (aunque falte otra área).
-    if (event.estado === "CONFIRMADO" || event.estado === "REALIZADO") return true;
-    if (hasInstitucionalesApproved(event)) return true;
-    // Sin área: ve los que creó; si no hay createdById legacy, no restringir por área
-    if (!user.area) return true;
-    return false;
-  }
-
-  // Roles desconocidos: sin acceso ajenos
-  return false;
+  // SSCCYRS sí: solo esa subsecretaría.
+  return isSubsecretariaCulturaCiudadana(event.areaSolicitante);
 }
 
 export function filterEventsForUser<T extends {

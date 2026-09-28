@@ -36,18 +36,11 @@ export default function EventList() {
   const [sortBy, setSortBy] = useState<"created" | "date" | "title">("created");
   const [soloPendientes, setSoloPendientes] = useState(false);
 
-  const specialtyHint =
-    user?.role === "PRODUCCION"
-      ? "Mostrás solo eventos que solicitaron requerimiento de Producción."
-      : user?.role === "INSTITUCIONALES" || user?.role === "AGENDA"
-        ? "Ves todos los eventos (Agenda/calendario). Solo podés actuar en los que te solicitaron Institucionales."
-        : user?.role === "COBERTURA"
-          ? "Mostrás solo eventos que solicitaron Cobertura."
-          : isOutsideSsccyrs(user)
-            ? "Solo ves los eventos que cargás vos. No aparecen las direcciones de SSCCYRS."
-            : (user?.role === "DIRECTOR_GENERAL" || user?.role === "ORGANIZACION") && user.area
-            ? `Mostrás eventos de tu área (${user.area}), convocados y los confirmados de las demás DGs.`
-            : null;
+  const specialtyHint = isOutsideSsccyrs(user)
+    ? "Ves todas las áreas del organigrama, menos la Ss. de Cultura Ciudadana y Responsabilidad Social y sus direcciones."
+    : user?.role === "ADMIN" || user?.role === "VALIDADOR"
+      ? null
+      : "Ves solo la Ss. de Cultura Ciudadana y Responsabilidad Social y sus direcciones.";
 
   const { data: events = [], isLoading, error, refetch } = useQuery({
     queryKey: ["events"],
