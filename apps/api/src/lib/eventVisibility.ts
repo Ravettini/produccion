@@ -175,7 +175,7 @@ export function isOutsideSsccyrsUser(user: EventVisibilityUser): boolean {
   return user.esSsccyrs === false;
 }
 
-/** Rama de la Ss. de Cultura Ciudadana y Responsabilidad Social (solo SSCCYRS sí). */
+/** DGs y GOs que ya estaban en el sistema, más la Ss. de Cultura Ciudadana del organigrama. */
 const AREAS_SSCCRS = new Set([
   "ss. de cultura ciudadana y responsabilidad social",
   "cultura ciudadana y responsabilidad social",
@@ -189,6 +189,16 @@ const AREAS_SSCCRS = new Set([
   "politicas de juventud",
   "dg de la mujer",
   "direccion de la mujer",
+  "bienestar ciudadano",
+  "comunicacion interna",
+  "cultura organizacional",
+  "relaciones gubernamentales",
+  "relaciones con la comunidad",
+  "cooperacion territorial",
+  "promotores ba",
+  "autonomia economica",
+  "igualdad de oportunidades",
+  "area central",
 ]);
 
 function foldArea(area?: string | null): string {
@@ -199,7 +209,7 @@ function foldArea(area?: string | null): string {
     .trim();
 }
 
-/** Subsecretaría de Cultura Ciudadana y las DG que dependen de ella. */
+/** DGs y proyectos anteriores, y la subsecretaría de Cultura Ciudadana. Solo SSCCYRS sí. */
 export function isSubsecretariaCulturaCiudadana(area?: string | null): boolean {
   return AREAS_SSCCRS.has(foldArea(area));
 }
@@ -219,14 +229,13 @@ export function canUserSeeEvent(
     return eventInvolvesProduccionOCobertura(event.tipoEvento);
   }
 
-  // Fuera de SSCCYRS: todas las áreas, menos la Subsecretaría de Cultura Ciudadana.
+  // Fuera de SSCCYRS: el organigrama nuevo, sin las DG/GO que ya eran de SSCCYRS.
   if (isOutsideSsccyrsUser(user)) {
     return !isSubsecretariaCulturaCiudadana(event.areaSolicitante);
   }
 
   if (ROLES_SEE_ALL.has(user.role)) return true;
 
-  // SSCCYRS sí: solo esa subsecretaría.
   return isSubsecretariaCulturaCiudadana(event.areaSolicitante);
 }
 

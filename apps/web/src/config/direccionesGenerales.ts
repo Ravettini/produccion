@@ -1,6 +1,7 @@
 /**
  * Áreas del organigrama de Vicejefatura (Decreto 306/26) más las que ya se usaban.
- * La Subsecretaría de Cultura Ciudadana y sus DG solo las ven quienes son SSCCYRS.
+ * Las DG y proyectos que ya estaban en la app son de SSCCYRS.
+ * El organigrama del PDF suma el resto de Vicejefatura, que ven quienes no son SSCCYRS.
  */
 export const DIRECCIONES_GENERALES_OPTIONS: { value: string; label: string }[] = [
   { value: "Ss. de Cultura Ciudadana y Responsabilidad Social", label: "Ss. de Cultura Ciudadana y Responsabilidad Social" },

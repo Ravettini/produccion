@@ -80,6 +80,17 @@ export const PROGRAMAS_POR_AREA: Record<string, ProgramaOption[]> = {
 
 /** Devuelve los proyectos disponibles para un área (o array vacío si no hay definición). */
 export function getProgramasParaArea(areaNombre: string): ProgramaOption[] {
-  if (!areaNombre?.trim()) return [];
-  return PROGRAMAS_POR_AREA[areaNombre.trim()] ?? [];
+  const area = areaNombre?.trim() ?? "";
+  if (!area) return [];
+  if (PROGRAMAS_POR_AREA[area]) return PROGRAMAS_POR_AREA[area];
+  const aliases: Record<string, string> = {
+    "DG de la Mujer": "Dirección de la Mujer",
+    "DG Transformación Cultural": "Transformación Cultural",
+    "DG Responsabilidad Social": "Responsabilidad Social",
+    "DG Políticas de Juventud": "Políticas de Juventud",
+    "DG Cultura del Servicio Público": "Cultura del Servicio Público",
+    "Ss. de Cultura Ciudadana y Responsabilidad Social": "Cultura Ciudadana y Responsabilidad Social",
+  };
+  const mapped = aliases[area];
+  return mapped ? PROGRAMAS_POR_AREA[mapped] ?? [] : [];
 }

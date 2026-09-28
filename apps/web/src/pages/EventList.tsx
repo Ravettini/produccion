@@ -37,12 +37,12 @@ export default function EventList() {
   const [soloPendientes, setSoloPendientes] = useState(false);
 
   const specialtyHint = isOutsideSsccyrs(user)
-    ? "Ves todas las áreas del organigrama, menos la Ss. de Cultura Ciudadana y Responsabilidad Social y sus direcciones."
+    ? "Ves el organigrama nuevo (Ambiente, Relaciones Institucionales, COPIDIS, APRA y el resto), no las DG de SSCCYRS."
     : user?.role === "ADMIN"
       ? "Ves y gestionás eventos con Producción o Cobertura. Los que son solo Institucionales no aparecen."
       : user?.role === "SUPERADMIN" || user?.role === "VALIDADOR"
       ? null
-      : "Ves solo la Ss. de Cultura Ciudadana y Responsabilidad Social y sus direcciones.";
+      : "Ves las DG y proyectos de SSCCYRS, incluida la Ss. de Cultura Ciudadana y Responsabilidad Social.";
 
   const { data: events = [], isLoading, error, refetch } = useQuery({
     queryKey: ["events"],
