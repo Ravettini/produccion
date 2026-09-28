@@ -551,6 +551,7 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
                 <p className="text-sm font-medium text-slate-800">Opciones en Acreditapp</p>
                 <Select
                   label="¿Sumar mesas?"
+                  help="Son los mostradores de acreditación el día del evento. Cada mesa es un puesto donde se acredita a la gente. Si marcás Sí, después indicás cuántas mesas van a estar abiertas."
                   options={[
                     { value: "", label: "Seleccionar…" },
                     { value: "si", label: "Sí" },
@@ -582,6 +583,7 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
                 )}
                 <Select
                   label="¿Sumar notas?"
+                  help="Permite anotar un comentario en cada persona que se acredita. Sirve para dejar un dato extra u observación junto a su registro."
                   options={[
                     { value: "", label: "Seleccionar…" },
                     { value: "si", label: "Sí" },
@@ -597,6 +599,7 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
                 />
                 <Select
                   label="¿Enviar acreditados a Google Sheets?"
+                  help="Cuando alguien se acredita, sus datos se copian también a una planilla de Google, además de quedar en Acreditapp."
                   options={[
                     { value: "", label: "Seleccionar…" },
                     { value: "si", label: "Sí" },

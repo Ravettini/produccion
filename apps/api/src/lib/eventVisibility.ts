@@ -9,6 +9,7 @@ export type EventVisibilityUser = {
   role: string;
   area?: string | null;
   email?: string | null;
+  esSsccyrs?: boolean | null;
 };
 
 /** Roles que ven todos los eventos del sistema. */
@@ -165,6 +166,11 @@ export function isAreaCentralEvent(event: { areaSolicitante?: string | null }): 
   return (event.areaSolicitante ?? "").trim().toLowerCase() === "area central";
 }
 
+export function isOutsideSsccyrsUser(user: EventVisibilityUser): boolean {
+  if (user.role === "VICEJEFATURA") return true;
+  return user.esSsccyrs === false;
+}
+
 export function canUserSeeEvent(
   user: EventVisibilityUser,
   event: {
@@ -178,6 +184,11 @@ export function canUserSeeEvent(
 ): boolean {
   if (seesOnlyProduccionRequests(user)) {
     return eventRequestsProduccion(event.tipoEvento);
+  }
+
+  // Fuera de SSCCYRS: solo los eventos que cargó esa persona. Ninguna DG.
+  if (isOutsideSsccyrsUser(user)) {
+    return Boolean(event.createdById && event.createdById === user.id);
   }
 
   if (ROLES_SEE_ALL.has(user.role)) return true;

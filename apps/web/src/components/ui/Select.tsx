@@ -1,14 +1,40 @@
+import { useState } from "react";
 import { cn } from "../../utils/cn";
 
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
   error?: string;
+  /** Texto que se muestra al tocar el ? junto al label. */
+  help?: string;
   options: { value: string; label: string }[];
+}
+
+function HelpButton({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="relative inline-flex">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-label="Qué significa esto"
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-300 text-[11px] font-semibold text-slate-500 hover:border-brand-400 hover:text-brand-700"
+      >
+        ?
+      </button>
+      {open && (
+        <span className="absolute left-0 top-7 z-20 w-64 rounded-lg border border-slate-200 bg-white p-2.5 text-xs font-normal leading-relaxed text-slate-600 shadow-lg">
+          {text}
+        </span>
+      )}
+    </span>
+  );
 }
 
 export function Select({
   label,
   error,
+  help,
   options,
   className,
   id,
@@ -18,9 +44,12 @@ export function Select({
   return (
     <div className="w-full">
       {label && (
-        <label htmlFor={inputId} className="block text-sm font-medium text-slate-700 mb-1.5">
-          {label}
-        </label>
+        <div className="mb-1.5 flex items-center gap-1.5">
+          <label htmlFor={inputId} className="block text-sm font-medium text-slate-700">
+            {label}
+          </label>
+          {help && <HelpButton text={help} />}
+        </div>
       )}
       <select
         id={inputId}

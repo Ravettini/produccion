@@ -322,7 +322,6 @@ export async function ensureAcreditappLink(
 
     const flags = acreditappOptsFromDatos(event.datosProduccion);
     const created = await createAcreditappEvent(event.titulo, {
-      description: event.descripcion ?? undefined,
       location: event.lugar ?? undefined,
       startAt,
       endAt,

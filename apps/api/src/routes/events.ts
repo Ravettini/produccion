@@ -105,14 +105,14 @@ eventsRouter.get("/", authMiddleware, async (req, res) => {
   });
   const dbUser = await prisma.user.findUnique({
     where: { id: req.user!.id },
-    select: { id: true, role: true, area: true, email: true },
+    select: { id: true, role: true, area: true, email: true, esSsccyrs: true },
   });
   if (!dbUser) {
     res.status(401).json({ error: "Usuario no encontrado" });
     return;
   }
   const visible = filterEventsForUser(
-    { id: dbUser.id, role: dbUser.role, area: dbUser.area, email: dbUser.email },
+    { id: dbUser.id, role: dbUser.role, area: dbUser.area, email: dbUser.email, esSsccyrs: dbUser.esSsccyrs },
     list
   );
   res.json(
@@ -154,13 +154,13 @@ eventsRouter.get("/:id", authMiddleware, async (req, res) => {
   }
   const dbUser = await prisma.user.findUnique({
     where: { id: req.user!.id },
-    select: { id: true, role: true, area: true, email: true },
+    select: { id: true, role: true, area: true, email: true, esSsccyrs: true },
   });
   if (!dbUser) {
     res.status(401).json({ error: "Usuario no encontrado" });
     return;
   }
-  if (!canUserSeeEvent({ id: dbUser.id, role: dbUser.role, area: dbUser.area, email: dbUser.email }, event)) {
+  if (!canUserSeeEvent({ id: dbUser.id, role: dbUser.role, area: dbUser.area, email: dbUser.email, esSsccyrs: dbUser.esSsccyrs }, event)) {
     res.status(403).json({ error: "No tenés permiso para ver este evento" });
     return;
   }
@@ -574,9 +574,9 @@ eventsRouter.get("/:id/acreditapp-stats", authMiddleware, async (req, res) => {
   }
   const dbUser = await prisma.user.findUnique({
     where: { id: req.user!.id },
-    select: { id: true, role: true, area: true, email: true },
+    select: { id: true, role: true, area: true, email: true, esSsccyrs: true },
   });
-  if (!dbUser || !canUserSeeEvent({ id: dbUser.id, role: dbUser.role, area: dbUser.area, email: dbUser.email }, event)) {
+  if (!dbUser || !canUserSeeEvent({ id: dbUser.id, role: dbUser.role, area: dbUser.area, email: dbUser.email, esSsccyrs: dbUser.esSsccyrs }, event)) {
     res.status(403).json({ error: "No tenés permiso para ver este evento" });
     return;
   }
@@ -617,9 +617,9 @@ eventsRouter.post("/:id/clone", authMiddleware, async (req, res) => {
 
   const dbUser = await prisma.user.findUnique({
     where: { id: req.user!.id },
-    select: { id: true, role: true, area: true, email: true, name: true },
+    select: { id: true, role: true, area: true, email: true, esSsccyrs: true, name: true },
   });
-  if (!dbUser || !canUserSeeEvent({ id: dbUser.id, role: dbUser.role, area: dbUser.area, email: dbUser.email }, source)) {
+  if (!dbUser || !canUserSeeEvent({ id: dbUser.id, role: dbUser.role, area: dbUser.area, email: dbUser.email, esSsccyrs: dbUser.esSsccyrs }, source)) {
     res.status(403).json({ error: "No tenés permiso para ver este evento" });
     return;
   }

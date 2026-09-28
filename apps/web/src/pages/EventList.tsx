@@ -44,7 +44,7 @@ export default function EventList() {
         : user?.role === "COBERTURA"
           ? "Mostrás solo eventos que solicitaron Cobertura."
           : isOutsideSsccyrs(user)
-            ? "Podés pedir Producción y Cobertura. No ves calendario ni agenda."
+            ? "Solo ves los eventos que cargás vos. No aparecen las direcciones de SSCCYRS."
             : (user?.role === "DIRECTOR_GENERAL" || user?.role === "ORGANIZACION") && user.area
             ? `Mostrás eventos de tu área (${user.area}), convocados y los confirmados de las demás DGs.`
             : null;
