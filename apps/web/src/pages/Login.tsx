@@ -41,9 +41,7 @@ export default function Login() {
         </div>
         <div className="relative">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-brand-600 flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold text-xl">E</span>
-            </div>
+            <img src="/logo-azul.png" alt="Agenda" className="w-12 h-12 rounded-2xl shadow-lg" />
             <div>
               <p className="text-white font-semibold text-lg">Eventos Institucionales</p>
               <p className="text-slate-400 text-sm">Gestión y requerimientos</p>
@@ -67,9 +65,7 @@ export default function Login() {
       <div className="flex-1 flex items-center justify-center bg-surface px-4 py-8 sm:px-8">
         <div className="w-full max-w-md">
           <div className="lg:hidden flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 rounded-xl bg-brand-600 flex items-center justify-center">
-              <span className="text-white font-bold">E</span>
-            </div>
+            <img src="/logo-azul.png" alt="Agenda" className="w-10 h-10 rounded-xl" />
             <div>
               <p className="font-semibold text-slate-900">Eventos Institucionales</p>
               <p className="text-slate-500 text-sm">Gestión y requerimientos</p>

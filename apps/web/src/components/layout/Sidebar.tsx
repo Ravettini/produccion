@@ -53,9 +53,11 @@ export function Sidebar({
     >
       <div className="px-5 py-5 border-b border-sidebar-border flex items-center justify-between">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-brand-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-brand-900/30">
-            <span className="text-white font-bold text-lg">E</span>
-          </div>
+          <img
+            src={outside ? "/logo-verde.png" : "/logo-azul.png"}
+            alt="Agenda"
+            className="w-10 h-10 rounded-xl flex-shrink-0 shadow-lg"
+          />
           <div className="min-w-0">
             <p className="font-semibold text-white truncate">Eventos</p>
             <p className="text-xs text-slate-400 truncate">Gestión institucional</p>

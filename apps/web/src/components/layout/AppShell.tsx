@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 import { Menu } from "lucide-react";
 import { cn } from "../../utils/cn";
@@ -26,6 +26,18 @@ export function AppShell() {
   if (!user) return null;
 
   const isVice = isOutsideSsccyrs(user);
+
+  useEffect(() => {
+    const href = isVice ? "/logo-verde.png" : "/logo-azul.png";
+    let link = document.querySelector<HTMLLinkElement>("link[rel='icon']");
+    if (!link) {
+      link = document.createElement("link");
+      link.rel = "icon";
+      document.head.appendChild(link);
+    }
+    link.type = "image/png";
+    link.href = href;
+  }, [isVice]);
 
   return (
     <div className={cn("min-h-screen flex bg-surface", isVice && "theme-vice")}>
@@ -57,6 +69,11 @@ export function AppShell() {
           >
             <Menu className="w-6 h-6" />
           </button>
+          <img
+            src={isVice ? "/logo-verde.png" : "/logo-azul.png"}
+            alt=""
+            className="w-8 h-8 rounded-lg"
+          />
           <span className="font-semibold text-slate-800 truncate">Eventos institucionales</span>
         </div>
         <main className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
