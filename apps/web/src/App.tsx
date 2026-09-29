@@ -24,7 +24,7 @@ function Protected({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function RequireNotVicejefatura({ children }: { children: React.ReactNode }) {
+function RequireNotAgenda({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return null;
   if (isOutsideSsccyrs(user)) return <Navigate to="/" replace />;
@@ -51,20 +51,13 @@ function AppRoutes() {
         }
       >
         <Route index element={<EventList />} />
-        <Route
-          path="calendar"
-          element={
-            <RequireNotVicejefatura>
-              <Calendar />
-            </RequireNotVicejefatura>
-          }
-        />
+        <Route path="calendar" element={<Calendar />} />
         <Route
           path="agenda"
           element={
-            <RequireNotVicejefatura>
+            <RequireNotAgenda>
               <AgendaInstitucionales />
-            </RequireNotVicejefatura>
+            </RequireNotAgenda>
           }
         />
         <Route path="admin" element={<Admin />} />

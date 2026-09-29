@@ -18,6 +18,7 @@ import {
 } from "../utils/eventHelpers";
 import { toCivilDateString } from "../utils/formatters";
 import { useAuth } from "../hooks/useAuth";
+import { isOutsideSsccyrs } from "../hooks/usePermissions";
 
 const FILTROS_TIPO = [
   { id: "produccion", label: "Producción" },
@@ -88,7 +89,8 @@ function getCalendarDays(year: number, month: number): (number | null)[] {
 
 export default function Calendar() {
   const { user } = useAuth();
-  const seeAllStatuses = user?.role != null && CALENDAR_SEE_ALL_STATUSES.has(user.role);
+  const seeAllStatuses =
+    (user?.role != null && CALENDAR_SEE_ALL_STATUSES.has(user.role)) || isOutsideSsccyrs(user);
   const today = useMemo(() => new Date(), []);
   const [current, setCurrent] = useState(() => ({
     year: today.getFullYear(),

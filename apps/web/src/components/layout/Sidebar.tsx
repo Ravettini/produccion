@@ -41,8 +41,7 @@ export function Sidebar({
 }: SidebarProps) {
   const outside = userRole === "VICEJEFATURA" || esSsccyrs === false;
   const showAgenda = !outside && ["ADMIN", "SUPERADMIN", "INSTITUCIONALES", "AGENDA"].includes(String(userRole ?? ""));
-  const showCalendar = !outside;
-  const items = showCalendar ? navItems : navItems.filter((item) => item.to !== "/calendar");
+  const items = navItems;
 
   return (
     <aside

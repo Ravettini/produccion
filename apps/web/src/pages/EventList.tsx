@@ -37,7 +37,7 @@ export default function EventList() {
   const [soloPendientes, setSoloPendientes] = useState(false);
 
   const specialtyHint = isOutsideSsccyrs(user)
-    ? "Ves el organigrama nuevo (Ambiente, Relaciones Institucionales, COPIDIS, APRA y el resto), no las DG de SSCCYRS."
+    ? "Ves el calendario y los eventos de tu subsecretaría."
     : user?.role === "ADMIN"
       ? "Ves y gestionás eventos con Producción o Cobertura. Los que son solo Institucionales no aparecen."
       : user?.role === "SUPERADMIN" || user?.role === "VALIDADOR"
