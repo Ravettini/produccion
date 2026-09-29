@@ -336,6 +336,14 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
             }
           />
           <Input
+            label="Break (opcional)"
+            type="time"
+            value={datosProduccion.horarioBreak ?? ""}
+            onChange={(e) =>
+              setDatosProduccion((prev) => ({ ...prev, horarioBreak: e.target.value }))
+            }
+          />
+          <Input
             label="Finalización"
             type="time"
             value={datosProduccion.horarioFinalizacion ?? ""}
@@ -453,13 +461,43 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
             placeholder="Nombre de quien solicita desde el área"
           />
           {opcionesPrograma.length > 0 ? (
-            <SearchableSelect
-              label="Programa (opcional)"
-              placeholder="Buscar programa…"
-              options={[{ value: "", label: "— Sin programa —" }, ...opcionesPrograma]}
-              value={programa}
-              onChange={setPrograma}
-            />
+            <>
+              <SearchableSelect
+                label="Programa (opcional)"
+                placeholder="Buscar programa…"
+                options={[
+                  { value: "", label: "— Sin programa —" },
+                  ...opcionesPrograma,
+                  { value: "__libre__", label: "Otro — escribir a mano" },
+                ]}
+                value={
+                  datosProduccion.programaEsLibre === "si" ||
+                  (programa.trim() !== "" &&
+                    !opcionesPrograma.some((o) => o.value === programa))
+                    ? "__libre__"
+                    : programa
+                }
+                onChange={(value) => {
+                  if (value === "__libre__") {
+                    setDatosProduccion((prev) => ({ ...prev, programaEsLibre: "si" }));
+                    if (opcionesPrograma.some((o) => o.value === programa)) setPrograma("");
+                    return;
+                  }
+                  setDatosProduccion((prev) => ({ ...prev, programaEsLibre: "" }));
+                  setPrograma(value);
+                }}
+              />
+              {(datosProduccion.programaEsLibre === "si" ||
+                (programa.trim() !== "" &&
+                  !opcionesPrograma.some((o) => o.value === programa))) && (
+                <Input
+                  label="Programa (campo libre)"
+                  value={programa}
+                  onChange={(e) => setPrograma(e.target.value)}
+                  placeholder="Escribí el programa si no está en la lista"
+                />
+              )}
+            </>
           ) : (
             <Input
               label="Programa (opcional)"

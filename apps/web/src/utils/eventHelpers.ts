@@ -23,9 +23,11 @@ export function getEventHorario(event: Event): string {
   const conv = dp.horarioConvocatoria?.trim();
   const ini = dp.horarioComienzo?.trim();
   const fin = dp.horarioFinalizacion?.trim();
-  if (conv && ini && fin) return `${conv} · ${ini} – ${fin}`;
-  if (ini && fin) return `${ini} – ${fin}`;
-  if (ini) return ini;
+  const br = dp.horarioBreak?.trim();
+  const rango = ini && fin ? `${ini} – ${fin}` : ini || "";
+  const conBreak = br ? `${rango}${rango ? " · " : ""}break ${br}` : rango;
+  if (conv && conBreak) return `${conv} · ${conBreak}`;
+  if (conBreak) return conBreak;
   return "Sin horario";
 }
 
