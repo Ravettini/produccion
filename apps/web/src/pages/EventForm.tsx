@@ -56,6 +56,7 @@ export default function EventForm() {
   const [publico, setPublico] = useState<"EXTERNO" | "INTERNO" | "MIXTO" | "">("");
   const [usuarioSolicitante, setUsuarioSolicitante] = useState("");
   const [programa, setPrograma] = useState("");
+  const [lugar, setLugar] = useState("");
   const [funcionario, setFuncionario] = useState<string[]>([]);
   const [necesitaAcreditacion, setNecesitaAcreditacion] = useState<boolean | "">("");
   const [linkAcreditacionConvocados, setLinkAcreditacionConvocados] = useState("");
@@ -96,6 +97,7 @@ export default function EventForm() {
       setPublico((existing.publico as "EXTERNO" | "INTERNO" | "MIXTO") ?? "");
       setUsuarioSolicitante(existing.usuarioSolicitante ?? "");
       setPrograma(existing.programa ?? "");
+      setLugar(existing.lugar ?? "");
       setFuncionario(
         ((existing as { funcionario?: string | null }).funcionario ?? "")
           .split(",")
@@ -363,8 +365,8 @@ export default function EventForm() {
         estado: isAutoConfirmed ? "CONFIRMADO" : isAdmin ? estado : "PENDIENTE",
         publico: publico || undefined,
         usuarioSolicitante: usuarioSolicitante.trim() || undefined,
-        // La locación confirmada la define Producción después.
-        lugar: undefined,
+        // Los eventos informativos guardan su lugar; los demás proponen locaciones.
+        lugar: tipoSeleccionados.includes("Solo informar") ? lugar.trim() || undefined : undefined,
         programa: programa.trim() || undefined,
         funcionario: funcionario.length > 0 ? funcionario.join(", ") : undefined,
         necesitaAcreditacion: necesitaAcreditacion === true || necesitaAcreditacion === false ? necesitaAcreditacion : undefined,
@@ -391,8 +393,8 @@ export default function EventForm() {
           estado: isAutoConfirmed ? "CONFIRMADO" : isDirectorGeneral ? existing!.estado : isAdmin ? estado : existing!.estado,
           publico: publico || null,
           usuarioSolicitante: usuarioSolicitante.trim() || null,
-          // Conservar la locación ya confirmada por Producción.
-          lugar: existing!.lugar ?? null,
+          // En eventos con soporte, conservar la locación confirmada por Producción.
+          lugar: tipoSeleccionados.includes("Solo informar") ? lugar.trim() || null : existing!.lugar ?? null,
           programa: programa.trim() || null,
           funcionario: funcionario.length > 0 ? funcionario.join(", ") : null,
           necesitaAcreditacion: necesitaAcreditacion === true || necesitaAcreditacion === false ? necesitaAcreditacion : null,
@@ -491,6 +493,8 @@ export default function EventForm() {
           setDatosProduccion={setDatosProduccion}
           lugaresSugeridos={lugaresSugeridos}
           lugaresOpciones={lugaresOpciones}
+          lugar={lugar}
+          setLugar={setLugar}
           usuarioSolicitante={usuarioSolicitante}
           setUsuarioSolicitante={setUsuarioSolicitante}
           programa={programa}

@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { authMiddleware } from "../middleware/auth.js";
 import { canUserSeeEvent, isStaffAdmin, isUserResponsibleForEvent, getRequestedAreaRoles, isSpecialtyRole, normalizeAreaRole, type AreaDecisionRole } from "../lib/eventVisibility.js";
-import { AREA_LABELS, buildAreaChecklist, type AreaDecisionRow } from "../lib/areaDecisions.js";
+import { AREA_LABELS, buildAreaChecklist, normalizeAreaDecisions, allRequestedAreasApproved, type AreaDecisionRow } from "../lib/areaDecisions.js";
 import { notifyAreaDecision, notifyEventStatusChanged } from "../lib/mail.js";
 import { syncProposalsFromEvent } from "../lib/syncProposalsFromEvent.js";
 
@@ -43,13 +43,10 @@ async function reconcileAutoConfirm(
   const requested = getRequestedAreaRoles(event.tipoEvento, event.areaSolicitante);
   if (requested.length === 0) return false;
   const decisions = await prisma.eventAreaDecision.findMany({
-    where: { eventId: event.id, areaRole: { in: requested } },
-    select: { areaRole: true, estado: true },
+    where: { eventId: event.id },
+    select: { areaRole: true, estado: true, updatedAt: true },
   });
-  const approved = new Set(
-    decisions.filter((d) => d.estado === "APPROVED").map((d) => d.areaRole)
-  );
-  if (!requested.every((r) => approved.has(r))) return false;
+  if (!allRequestedAreasApproved(event, decisions)) return false;
 
   await prisma.event.update({
     where: { id: event.id },
@@ -92,14 +89,15 @@ eventDecisionsRouter.get("/:eventId/area-decisions", authMiddleware, async (req,
   await reconcileAutoConfirm(event, dbUser.id);
   const freshEvent = await prisma.event.findUnique({ where: { id: eventId } });
   const decisions = await prisma.eventAreaDecision.findMany({
-    where: { eventId, areaRole: { in: requested } },
+    where: { eventId },
     include: { user: { select: { id: true, name: true, role: true } } },
     orderBy: { areaRole: "asc" },
   });
 
   res.json({
     requested,
-    decisions: decisions.map((d) => ({
+    decisions: normalizeAreaDecisions(decisions as AreaDecisionRow[])
+      .filter((d) => requested.includes(d.areaRole as AreaDecisionRole)).map((d) => ({
       ...d,
       label: AREA_LABELS[d.areaRole as AreaDecisionRole] ?? d.areaRole,
     })),
@@ -189,15 +187,10 @@ eventDecisionsRouter.post("/:eventId/area-decisions", authMiddleware, async (req
     });
 
     const decisions = await tx.eventAreaDecision.findMany({
-      where: { eventId, areaRole: { in: requestedAreas } },
-      select: { areaRole: true, estado: true },
+      where: { eventId },
+      select: { areaRole: true, estado: true, updatedAt: true },
     });
-    const approvedAreas = new Set(
-      decisions.filter((item) => item.estado === "APPROVED").map((item) => item.areaRole)
-    );
-    const allAreasApproved =
-      requestedAreas.length > 0 &&
-      requestedAreas.every((requestedArea) => approvedAreas.has(requestedArea));
+    const allAreasApproved = allRequestedAreasApproved(event, decisions);
     const canAutoConfirm = event.estado !== "CANCELADO" && event.estado !== "REALIZADO";
 
     if (allAreasApproved && canAutoConfirm && event.estado !== "CONFIRMADO") {

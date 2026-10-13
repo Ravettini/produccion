@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState, useRef, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { getAuthToken } from "../api/client";
 import { me, logout } from "../api/auth";
 import { setChangeAlertsUser } from "../utils/changeAlerts";
@@ -13,7 +14,18 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUserState] = useState<User | null>(null);
+  const queryClient = useQueryClient();
+  const userId = useRef<string | null>(null);
+  const setUser = useCallback((next: User | null) => {
+    const nextId = next?.id ?? null;
+    if (userId.current !== nextId) {
+      queryClient.clear();
+      userId.current = nextId;
+    }
+    setChangeAlertsUser(nextId);
+    setUserState(next);
+  }, [queryClient]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -29,11 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
       })
       .finally(() => setLoading(false));
-  }, []);
-
-  useEffect(() => {
-    setChangeAlertsUser(user?.id ?? null);
-  }, [user?.id]);
+  }, [setUser]);
 
   return (
     <AuthContext.Provider value={{ user, loading, setUser }}>

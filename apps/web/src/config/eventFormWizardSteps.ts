@@ -146,9 +146,10 @@ export function buildWizardSteps(input: {
 
   steps.push(STEP.horarios);
 
-  if (!isSoloInformar) {
-    steps.push(STEP.lugar);
-  }
+  steps.push(isSoloInformar ? {
+    ...STEP.lugar,
+    subtitle: "Indicá el lugar del evento (opcional). Podés elegir del catálogo o escribirlo.",
+  } : STEP.lugar);
 
   steps.push(STEP.descripcion);
 

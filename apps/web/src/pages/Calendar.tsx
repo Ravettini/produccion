@@ -18,24 +18,13 @@ import {
 } from "../utils/eventHelpers";
 import { toCivilDateString } from "../utils/formatters";
 import { useAuth } from "../hooks/useAuth";
-import { isOutsideSsccyrs } from "../hooks/usePermissions";
+import { canSeeAllCalendarStatuses } from "../hooks/usePermissions";
 
 const FILTROS_TIPO = [
   { id: "produccion", label: "Producción" },
   { id: "institucionales", label: "Institucionales" },
   { id: "cobertura", label: "Cobertura" },
 ] as const;
-
-/** Roles que ven todos los estados en el calendario. */
-const CALENDAR_SEE_ALL_STATUSES = new Set([
-  "ADMIN",
-  "SUPERADMIN",
-  "PRODUCCION",
-  "INSTITUCIONALES",
-  "AGENDA",
-  "VALIDADOR",
-  "DIRECTOR_GENERAL",
-]);
 
 function hasInstitucionalesApproved(event: Event): boolean {
   return (event.areaChecklist ?? []).some(
@@ -89,8 +78,7 @@ function getCalendarDays(year: number, month: number): (number | null)[] {
 
 export default function Calendar() {
   const { user } = useAuth();
-  const seeAllStatuses =
-    (user?.role != null && CALENDAR_SEE_ALL_STATUSES.has(user.role)) || isOutsideSsccyrs(user);
+  const seeAllStatuses = canSeeAllCalendarStatuses(user);
   const today = useMemo(() => new Date(), []);
   const [current, setCurrent] = useState(() => ({
     year: today.getFullYear(),

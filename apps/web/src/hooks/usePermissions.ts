@@ -4,6 +4,15 @@ export function isStaffAdmin(role?: string | null): boolean {
   return role === "ADMIN" || role === "SUPERADMIN";
 }
 
+/** El calendario usa el alcance de eventos autorizado por la API. Las cuentas
+ * de DG (Organización incluida) no necesitan esperar una aprobación. */
+export function canSeeAllCalendarStatuses(user: User | null): boolean {
+  return Boolean(user && [
+    "ADMIN", "SUPERADMIN", "PRODUCCION", "INSTITUCIONALES", "AGENDA",
+    "VALIDADOR", "DIRECTOR_GENERAL", "ORGANIZACION",
+  ].includes(user.role)) || isOutsideSsccyrs(user);
+}
+
 const PROPOSAL_CREATOR_ROLES = [
   "ORGANIZACION",
   "VICEJEFATURA",

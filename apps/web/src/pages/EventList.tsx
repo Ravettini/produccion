@@ -33,6 +33,7 @@ export default function EventList() {
   const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [areaFilter, setAreaFilter] = useState("");
   const [sortBy, setSortBy] = useState<"created" | "date" | "title">("created");
   const [soloPendientes, setSoloPendientes] = useState(false);
 
@@ -48,6 +49,9 @@ export default function EventList() {
     queryKey: ["events"],
     queryFn: listEvents,
   });
+
+  const areas = useMemo(() => [...new Set(events.map((e) => e.areaSolicitante.trim()).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, "es")), [events]);
 
   const stats = useMemo(() => {
     return {
@@ -75,6 +79,9 @@ export default function EventList() {
     if (statusFilter) {
       list = list.filter((e) => e.estado === statusFilter);
     }
+    if (areaFilter) {
+      list = list.filter((e) => e.areaSolicitante.trim() === areaFilter);
+    }
     if (soloPendientes) {
       list = list.filter((e) => getEventPendingForUser(user?.role, e).requiereAccion);
     }
@@ -88,7 +95,7 @@ export default function EventList() {
       return a.titulo.localeCompare(b.titulo);
     });
     return list;
-  }, [events, search, statusFilter, sortBy, soloPendientes, user?.role]);
+  }, [events, search, statusFilter, areaFilter, sortBy, soloPendientes, user?.role]);
 
   if (isLoading) {
     return (
@@ -199,6 +206,13 @@ export default function EventList() {
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as "created" | "date" | "title")}
           className="w-full sm:w-56"
+        />
+        <Select
+          aria-label="Filtrar por área"
+          options={[{ value: "", label: "Todas las áreas" }, ...areas.map((area) => ({ value: area, label: area }))]}
+          value={areaFilter}
+          onChange={(e) => setAreaFilter(e.target.value)}
+          className="w-full sm:w-52"
         />
         <label className="flex items-center gap-2 text-sm text-slate-600 whitespace-nowrap">
           <input

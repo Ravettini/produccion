@@ -60,6 +60,8 @@ export interface EventFormWizardContentProps {
   setDatosProduccion: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   lugaresSugeridos: LocacionSugerida[];
   lugaresOpciones: { value: string; label: string; codigo?: string }[];
+  lugar: string;
+  setLugar: (v: string) => void;
   usuarioSolicitante: string;
   setUsuarioSolicitante: (v: string) => void;
   programa: string;
@@ -116,6 +118,8 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
     setDatosProduccion,
     lugaresSugeridos,
     lugaresOpciones,
+    lugar,
+    setLugar,
     usuarioSolicitante,
     setUsuarioSolicitante,
     programa,
@@ -359,6 +363,26 @@ export function EventFormWizardContent(props: EventFormWizardContentProps) {
       );
 
     case "lugar": {
+      if (tipoSeleccionados.includes("Solo informar")) {
+        return (
+          <div className="space-y-4">
+            <SearchableSelect
+              label="Lugar del evento (opcional)"
+              options={[{ value: "", label: "Sin lugar definido" }, ...lugaresOpciones]}
+              value={lugar}
+              onChange={setLugar}
+              placeholder="Elegir del catálogo…"
+              searchPlaceholder="Buscar sede, nombre o dirección…"
+            />
+            <Input
+              label="Lugar o dirección (campo libre)"
+              value={lugar}
+              onChange={(e) => setLugar(e.target.value)}
+              placeholder="Ej: sede propia, domicilio o enlace virtual…"
+            />
+          </div>
+        );
+      }
       const locacionesPosibles = parseLocacionesPosibles(datosProduccion.locacionesPosibles);
       const setLocacionesPosibles = (values: string[]) => {
         const capped = values.slice(0, 3);

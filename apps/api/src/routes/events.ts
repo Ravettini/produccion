@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { authMiddleware, requireRoles } from "../middleware/auth.js";
-import { canUserSeeEvent, filterEventsForUser, getRequestedAreaRoles, isStaffAdmin } from "../lib/eventVisibility.js";
-import { buildAreaChecklist, type AreaDecisionRow } from "../lib/areaDecisions.js";
+import { canUserSeeEvent, filterEventsForUser, isStaffAdmin } from "../lib/eventVisibility.js";
+import { buildAreaChecklist, effectiveEventStatus, type AreaDecisionRow } from "../lib/areaDecisions.js";
 import { ensureAcreditappLink, fetchAcreditappAttendance } from "../lib/acreditapp.js";
 import { notifyEventCreated, notifyEventStatusChanged } from "../lib/mail.js";
 import { syncProposalsFromEvent } from "../lib/syncProposalsFromEvent.js";
@@ -120,6 +120,7 @@ eventsRouter.get("/", authMiddleware, async (req, res) => {
     visible.map((event) =>
       serializeEventFecha({
         ...event,
+        estado: effectiveEventStatus(event, event.areaDecisions as AreaDecisionRow[]),
         areaChecklist: buildAreaChecklist(
           event.tipoEvento,
           event.areaDecisions as AreaDecisionRow[],
@@ -167,24 +168,13 @@ eventsRouter.get("/:id", authMiddleware, async (req, res) => {
   }
 
   // Reparar eventos ya aprobados por todas las áreas pedidas pero sin pasar a CONFIRMADO.
-  const requested = getRequestedAreaRoles(event.tipoEvento, event.areaSolicitante);
-  if (
-    event.estado !== "CONFIRMADO" &&
-    event.estado !== "CANCELADO" &&
-    event.estado !== "REALIZADO" &&
-    requested.length > 0
-  ) {
-    const decisionsForConfirm = (event.areaDecisions ?? []) as { areaRole: string; estado: string }[];
-    const approved = new Set(
-      decisionsForConfirm.filter((d) => d.estado === "APPROVED").map((d) => d.areaRole)
-    );
-    if (requested.every((r) => approved.has(r))) {
-      await prisma.event.update({
-        where: { id: event.id },
-        data: { estado: "CONFIRMADO" },
-      });
-      (event as { estado: string }).estado = "CONFIRMADO";
-    }
+  const effectiveStatus = effectiveEventStatus(event, event.areaDecisions as AreaDecisionRow[]);
+  if (effectiveStatus !== event.estado) {
+    await prisma.event.update({
+      where: { id: event.id },
+      data: { estado: effectiveStatus },
+    });
+    (event as { estado: string }).estado = effectiveStatus;
   }
 
   res.json(
