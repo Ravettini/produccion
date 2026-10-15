@@ -98,6 +98,7 @@ export function eventMatchesTipoFilter(tipoEvento: string, filter: string): bool
   if (!filter) return true;
   const partes = tipoEvento.split(",").map((s) => s.trim().toLowerCase());
   const f = filter.toLowerCase();
+  if (f === "solo-informar") return partes.some((p) => /^solo\s+informar$/.test(p));
   if (f === "cobertura") return partes.some((p) => p.includes("cobertura") || p.includes("comunicación"));
   if (f === "institucionales") return partes.some((p) => p.includes("institucional"));
   if (f === "produccion") return partes.some((p) => p.includes("producción") || p.includes("produccion"));

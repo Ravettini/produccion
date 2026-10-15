@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
+import { notifySavedChange, describeChanges } from "../lib/notifications.js";
 import {
   authMiddleware,
   canCreateProposal,
@@ -172,6 +173,7 @@ proposalByIdRouter.put("/:id", authMiddleware, async (req, res) => {
     return row;
   });
 
+  notifySavedChange(String(proposal.eventId), req.user!.id, "Requerimiento actualizado", [`Requerimiento: ${proposal.titulo}`, ...describeChanges(proposal, data), `Motivo: ${reason}`]);
   res.json(updated);
 });
 
@@ -211,6 +213,7 @@ proposalByIdRouter.post("/:id/submit", authMiddleware, async (req, res) => {
     where: { id: req.params.id },
     include: { createdBy: { select: { id: true, name: true, email: true } } },
   });
+  notifySavedChange(String(proposal.eventId), req.user!.id, "Requerimiento enviado", [`Requerimiento: ${proposal.titulo}`, "Estado: DRAFT → SUBMITTED"]);
   res.json(updated);
 });
 
@@ -259,6 +262,7 @@ proposalByIdRouter.post("/:id/approve", authMiddleware, canValidate, async (req,
       validatedBy: { select: { id: true, name: true } },
     },
   });
+  notifySavedChange(String(proposal.eventId), req.user!.id, "Requerimiento aprobado", [`Requerimiento: ${proposal.titulo}`, "Estado: SUBMITTED → APPROVED"]);
   res.json(updated);
 });
 
@@ -314,6 +318,7 @@ proposalByIdRouter.post("/:id/reject", authMiddleware, canValidate, async (req, 
       validatedBy: { select: { id: true, name: true } },
     },
   });
+  notifySavedChange(String(proposal.eventId), req.user!.id, "Requerimiento rechazado", [`Requerimiento: ${proposal.titulo}`, "Estado: SUBMITTED → REJECTED", `Motivo: ${reason}`]);
   res.json(updated);
 });
 
@@ -353,6 +358,7 @@ proposalByIdRouter.post("/:id/cancel", authMiddleware, async (req, res) => {
     where: { id: req.params.id },
     include: { createdBy: { select: { id: true, name: true, email: true } } },
   });
+  notifySavedChange(String(proposal.eventId), req.user!.id, "Requerimiento cancelado", [`Requerimiento: ${proposal.titulo}`, `Estado: ${proposal.estado} → CANCELLED`]);
   res.json(updated);
 });
 
@@ -395,5 +401,6 @@ proposalByIdRouter.post("/:id/comments", authMiddleware, async (req, res) => {
     },
     include: { user: { select: { id: true, name: true } } },
   });
+  notifySavedChange(String(proposal.eventId), req.user!.id, "Comentario agregado", [`Requerimiento: ${proposal.titulo}`, String(comment.body)]);
   res.status(201).json(comment);
 });

@@ -22,12 +22,20 @@ function envFlagTrue(value: string | undefined, defaultTrue = true): boolean {
   return v === "1" || v === "true" || v === "yes" || v === "si" || v === "sí";
 }
 
+export function mailErrorMessage(error: unknown): string {
+  let message = error instanceof Error ? error.message : String(error);
+  const password = process.env.SMTP_PASS;
+  for (const secret of [password, password?.replace(/\s+/g, "")]) {
+    if (secret) message = message.split(secret).join("[redactado]");
+  }
+  return message;
+}
+
 export function isMailConfigured(): boolean {
   return Boolean(
     process.env.SMTP_HOST?.trim() &&
       process.env.SMTP_USER?.trim() &&
-      process.env.SMTP_PASS?.trim() &&
-      (process.env.NOTIFY_EMAIL_TO?.trim() || process.env.SMTP_USER?.trim())
+      process.env.SMTP_PASS?.trim()
   );
 }
 
@@ -58,31 +66,8 @@ function getTransporter(): Transporter | null {
   return transporter;
 }
 
-function publicEventUrl(eventId: string): string {
-  const base = (process.env.PUBLIC_URL ?? "").trim().replace(/\/$/, "");
-  return base ? `${base}/events/${eventId}` : `/events/${eventId}`;
-}
-
-function formatFecha(value: Date | string | null | undefined): string {
-  if (!value) return "—";
-  if (value instanceof Date) {
-    const iso = value.toISOString();
-    return iso.slice(0, 10);
-  }
-  const s = String(value);
-  const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
-  return m?.[1] ?? s;
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
 export async function sendMail(opts: {
+  event: MailEventLike;
   subject: string;
   text: string;
   html?: string;
@@ -97,7 +82,7 @@ export async function sendMail(opts: {
   const tx = getTransporter();
   if (!tx) return false;
 
-  const recipients = resolveNotifyRecipients();
+  const recipients = resolveNotifyRecipients(opts.event);
   if (recipients.length === 0) {
     console.warn("[mail] Omitido: sin destinatarios (NOTIFY_EMAIL_TO / INSTITUCIONALES).");
     return false;
@@ -105,26 +90,33 @@ export async function sendMail(opts: {
   const from = (process.env.NOTIFY_EMAIL_FROM || process.env.SMTP_USER || recipients[0]).trim();
 
   try {
-    await tx.sendMail({
+    const result = await tx.sendMail({
       from,
       to: recipients.join(", "),
       subject: opts.subject,
       text: opts.text,
       html: opts.html ?? undefined,
     });
+    console.info("[mail] Respuesta SMTP", {
+      messageId: result.messageId,
+      accepted: result.accepted,
+      rejected: result.rejected,
+    });
+    if (result.rejected?.length) console.warn("[mail] Destinatarios rechazados por SMTP", result.rejected);
+    if (result.accepted?.length === 0) return false;
     return true;
   } catch (err) {
-    console.error("[mail] Error al enviar:", err instanceof Error ? err.message : err);
+    console.error("[mail] Error al enviar:", mailErrorMessage(err));
     return false;
   }
 }
 
-/** Destinatarios: NOTIFY_EMAIL_TO (+ opc. INSTITUCIONALES), separados por coma. */
-function resolveNotifyRecipients(): string[] {
+/** Las credenciales del remitente nunca son una suscripción. */
+export function resolveNotifyRecipients(event: Pick<MailEventLike, "tipoEvento">): string[] {
+  const soloInformar = /solo\s+informar/i.test(event.tipoEvento ?? "");
   const chunks = [
-    process.env.NOTIFY_EMAIL_TO,
+    ...(soloInformar ? [] : [process.env.NOTIFY_EMAIL_PRODUCCION ?? process.env.NOTIFY_EMAIL_TO]),
     process.env.NOTIFY_EMAIL_INSTITUCIONALES,
-    process.env.SMTP_USER,
   ];
   const seen = new Set<string>();
   const out: string[] = [];
@@ -138,85 +130,4 @@ function resolveNotifyRecipients(): string[] {
     }
   }
   return out;
-}
-
-function eventSummaryLines(event: MailEventLike): string[] {
-  return [
-    `Título: ${event.titulo}`,
-    `Área: ${event.areaSolicitante ?? "—"}`,
-    `Fecha: ${formatFecha(event.fechaTentativa)}`,
-    `Tipo: ${event.tipoEvento ?? "—"}`,
-    `Estado: ${event.estado ?? "—"}`,
-    `Link: ${publicEventUrl(event.id)}`,
-  ];
-}
-
-function eventSummaryHtml(event: MailEventLike): string {
-  const rows = [
-    ["Título", event.titulo],
-    ["Área", event.areaSolicitante ?? "—"],
-    ["Fecha", formatFecha(event.fechaTentativa)],
-    ["Tipo", event.tipoEvento ?? "—"],
-    ["Estado", event.estado ?? "—"],
-  ];
-  const body = rows
-    .map(
-      ([k, v]) =>
-        `<tr><td style="padding:4px 12px 4px 0;color:#64748b">${escapeHtml(k!)}</td><td style="padding:4px 0;font-weight:600">${escapeHtml(String(v))}</td></tr>`
-    )
-    .join("");
-  const url = publicEventUrl(event.id);
-  return `<div style="font-family:system-ui,sans-serif;font-size:14px;color:#0f172a">
-  <table style="border-collapse:collapse">${body}</table>
-  <p style="margin-top:16px"><a href="${escapeHtml(url)}">Abrir evento en Agendapp</a></p>
-</div>`;
-}
-
-/** Fire-and-forget wrapper: never throws to callers. */
-function fire(promise: Promise<boolean>, label: string): void {
-  void promise.catch((err) => {
-    console.error(`[mail] ${label}:`, err instanceof Error ? err.message : err);
-  });
-}
-
-export function notifyEventCreated(event: MailEventLike): void {
-  const subject = `[Agendapp] Nuevo evento: ${event.titulo}`;
-  const text = ["Se creó un evento nuevo en Agendapp.", "", ...eventSummaryLines(event)].join("\n");
-  const html = `<p>Se creó un evento nuevo en Agendapp.</p>${eventSummaryHtml(event)}`;
-  fire(sendMail({ subject, text, html }), "notifyEventCreated");
-}
-
-export function notifyEventStatusChanged(
-  event: MailEventLike,
-  fromEstado: string,
-  toEstado: string
-): void {
-  const subject = `[Agendapp] Estado ${fromEstado} → ${toEstado}: ${event.titulo}`;
-  const text = [
-    `El estado del evento cambió de ${fromEstado} a ${toEstado}.`,
-    "",
-    ...eventSummaryLines({ ...event, estado: toEstado }),
-  ].join("\n");
-  const html = `<p>El estado del evento cambió de <strong>${escapeHtml(fromEstado)}</strong> a <strong>${escapeHtml(toEstado)}</strong>.</p>${eventSummaryHtml({ ...event, estado: toEstado })}`;
-  fire(sendMail({ subject, text, html }), "notifyEventStatusChanged");
-}
-
-export function notifyAreaDecision(
-  event: MailEventLike,
-  areaRole: string,
-  decision: "APPROVED" | "REJECTED",
-  reason?: string | null
-): void {
-  const label = decision === "APPROVED" ? "aprobó" : "rechazó";
-  const subject = `[Agendapp] ${areaRole} ${label}: ${event.titulo}`;
-  const lines = [
-    `El área ${areaRole} ${label} el evento.`,
-    reason ? `Motivo: ${reason}` : null,
-    "",
-    ...eventSummaryLines(event),
-  ].filter((l): l is string => l != null);
-  const html = `<p>El área <strong>${escapeHtml(areaRole)}</strong> ${label} el evento.</p>${
-    reason ? `<p><em>Motivo:</em> ${escapeHtml(reason)}</p>` : ""
-  }${eventSummaryHtml(event)}`;
-  fire(sendMail({ subject, text: lines.join("\n"), html }), "notifyAreaDecision");
 }

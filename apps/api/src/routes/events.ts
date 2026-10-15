@@ -4,7 +4,7 @@ import { authMiddleware, requireRoles } from "../middleware/auth.js";
 import { canUserSeeEvent, filterEventsForUser, isStaffAdmin } from "../lib/eventVisibility.js";
 import { buildAreaChecklist, effectiveEventStatus, type AreaDecisionRow } from "../lib/areaDecisions.js";
 import { ensureAcreditappLink, fetchAcreditappAttendance } from "../lib/acreditapp.js";
-import { notifyEventCreated, notifyEventStatusChanged } from "../lib/mail.js";
+import { notifySavedChange, describeChanges } from "../lib/notifications.js";
 import { syncProposalsFromEvent } from "../lib/syncProposalsFromEvent.js";
 import {
   parseFechaTentativa,
@@ -313,14 +313,7 @@ eventsRouter.post("/", authMiddleware, async (req, res) => {
     });
   }
   const payload = serializeEventFecha(result);
-  notifyEventCreated({
-    id: String(result.id),
-    titulo: String(result.titulo),
-    areaSolicitante: result.areaSolicitante != null ? String(result.areaSolicitante) : null,
-    fechaTentativa: result.fechaTentativa as Date | string | null,
-    estado: result.estado != null ? String(result.estado) : null,
-    tipoEvento: result.tipoEvento != null ? String(result.tipoEvento) : null,
-  });
+  notifySavedChange(result, req.user!.id, "Nuevo evento");
   res.status(201).json(
     sync.warning ? { ...payload, acreditappWarning: sync.warning } : payload
   );
@@ -535,22 +528,8 @@ eventsRouter.put("/:id", authMiddleware, async (req, res) => {
   }
   const payload = serializeEventFecha(result);
   const warning = sync.warning || acreditappStatsWarning;
-  const prevEstado = String(existing.estado);
-  const nextEstadoResult = String(result.estado);
-  if (prevEstado !== nextEstadoResult) {
-    notifyEventStatusChanged(
-      {
-        id: String(result.id),
-        titulo: String(result.titulo),
-        areaSolicitante: result.areaSolicitante != null ? String(result.areaSolicitante) : null,
-        fechaTentativa: result.fechaTentativa as Date | string | null,
-        estado: nextEstadoResult,
-        tipoEvento: result.tipoEvento != null ? String(result.tipoEvento) : null,
-      },
-      prevEstado,
-      nextEstadoResult
-    );
-  }
+  const changes = describeChanges(existing, updates);
+  if (changes.length > 0) notifySavedChange(result, req.user!.id, "Evento actualizado", changes);
   res.json(warning ? { ...payload, acreditappWarning: warning } : payload);
 });
 
@@ -694,14 +673,7 @@ eventsRouter.post("/:id/clone", authMiddleware, async (req, res) => {
     });
   }
   const payload = serializeEventFecha(result);
-  notifyEventCreated({
-    id: String(result.id),
-    titulo: String(result.titulo),
-    areaSolicitante: result.areaSolicitante != null ? String(result.areaSolicitante) : null,
-    fechaTentativa: result.fechaTentativa as Date | string | null,
-    estado: result.estado != null ? String(result.estado) : null,
-    tipoEvento: result.tipoEvento != null ? String(result.tipoEvento) : null,
-  });
+  notifySavedChange(result, req.user!.id, "Nuevo evento");
   res.status(201).json(
     sync.warning ? { ...payload, acreditappWarning: sync.warning } : payload
   );
@@ -746,6 +718,8 @@ eventsRouter.post("/:id/sync-acreditapp", authMiddleware, async (req, res) => {
       where: { id: String((event as { id: unknown }).id) },
       data: { linkAcreditacionConvocados: sync.link },
     });
+    const changes = describeChanges(event, { linkAcreditacionConvocados: sync.link });
+    if (changes.length) notifySavedChange(updated, req.user!.id, "Acreditación actualizada", changes);
     res.json({
       linkAcreditacionConvocados:
         (updated as { linkAcreditacionConvocados?: string | null }).linkAcreditacionConvocados != null
@@ -784,5 +758,6 @@ eventsRouter.delete("/:id", authMiddleware, async (req, res) => {
   }
 
   await prisma.event.delete({ where: { id: req.params.id } });
+  notifySavedChange(event, req.user!.id, "Evento eliminado");
   res.status(204).send();
 });

@@ -7,6 +7,8 @@ import type { Event, EventStatus } from "../types";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { Select } from "../components/ui/Select";
+import { Tabs } from "../components/ui/Tabs";
+import { eventMatchesTipoFilter } from "../utils/eventHelpers";
 import {
   EmptyState,
   ErrorState,
@@ -23,7 +25,7 @@ import { getEventPendingForUser } from "../utils/changeAlerts";
 
 const statusOptions = [
   { value: "", label: "Todos los estados" },
-  ...(Object.entries(eventStatusLabels) as [EventStatus, string][]).map(([v, l]) => ({
+  ...(Object.entries(eventStatusLabels) as [EventStatus, string][]).filter(([v]) => v !== "REALIZADO").map(([v, l]) => ({
     value: v,
     label: l,
   })),
@@ -34,6 +36,7 @@ export default function EventList() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [areaFilter, setAreaFilter] = useState("");
+  const [tipoFilter, setTipoFilter] = useState("");
   const [sortBy, setSortBy] = useState<"created" | "date" | "title">("created");
   const [soloPendientes, setSoloPendientes] = useState(false);
 
@@ -45,10 +48,12 @@ export default function EventList() {
       ? null
       : "Ves las DG y proyectos de SSCCYRS, incluida la Ss. de Cultura Ciudadana y Responsabilidad Social.";
 
-  const { data: events = [], isLoading, error, refetch } = useQuery({
+  const { data: allEvents = [], isLoading, error, refetch } = useQuery({
     queryKey: ["events"],
     queryFn: listEvents,
   });
+
+  const events = useMemo(() => allEvents.filter((event) => event.estado !== "REALIZADO"), [allEvents]);
 
   const areas = useMemo(() => [...new Set(events.map((e) => e.areaSolicitante.trim()).filter(Boolean))]
     .sort((a, b) => a.localeCompare(b, "es")), [events]);
@@ -67,6 +72,7 @@ export default function EventList() {
 
   const filtered = useMemo(() => {
     let list = [...events];
+    if (tipoFilter) list = list.filter((e) => eventMatchesTipoFilter(e.tipoEvento, tipoFilter));
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(
@@ -95,7 +101,7 @@ export default function EventList() {
       return a.titulo.localeCompare(b.titulo);
     });
     return list;
-  }, [events, search, statusFilter, areaFilter, sortBy, soloPendientes, user?.role]);
+  }, [events, search, statusFilter, areaFilter, tipoFilter, sortBy, soloPendientes, user?.role]);
 
   if (isLoading) {
     return (
@@ -149,7 +155,7 @@ export default function EventList() {
           value={stats.total}
           icon={FileStack}
           accent="blue"
-          subtitle="Todos los eventos cargados en el sistema"
+          subtitle="Eventos accesibles que aún no fueron realizados"
         />
         <StatCard
           label="En radar"
@@ -181,8 +187,22 @@ export default function EventList() {
         />
       </div>
 
-      <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 mb-6 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
-        <div className="relative flex-1 min-w-0 w-full sm:min-w-[200px]">
+      <div className="mb-4">
+        <Tabs
+          tabs={[
+            { id: "", label: "Todos" },
+            { id: "produccion", label: "Producción" },
+            { id: "institucionales", label: "Institucionales" },
+            { id: "cobertura", label: "Cobertura" },
+            { id: "solo-informar", label: "Solo informar" },
+          ]}
+          active={tipoFilter}
+          onChange={setTipoFilter}
+          panelId="event-list-results"
+        />
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 items-center gap-3 mb-6 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
+        <div className="relative min-w-0 sm:col-span-2 xl:col-span-3">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" aria-hidden />
           <Input
             placeholder="Buscar por título, área o tipo…"
@@ -195,7 +215,7 @@ export default function EventList() {
           options={statusOptions}
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="w-full sm:w-44"
+          className="w-full"
         />
         <Select
           options={[
@@ -205,16 +225,16 @@ export default function EventList() {
           ]}
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as "created" | "date" | "title")}
-          className="w-full sm:w-56"
+          className="w-full"
         />
         <Select
           aria-label="Filtrar por área"
           options={[{ value: "", label: "Todas las áreas" }, ...areas.map((area) => ({ value: area, label: area }))]}
           value={areaFilter}
           onChange={(e) => setAreaFilter(e.target.value)}
-          className="w-full sm:w-52"
+          className="w-full"
         />
-        <label className="flex items-center gap-2 text-sm text-slate-600 whitespace-nowrap">
+        <label className="flex items-center gap-2 text-sm text-slate-600 sm:col-span-2 xl:col-span-3">
           <input
             type="checkbox"
             checked={soloPendientes}
@@ -225,6 +245,7 @@ export default function EventList() {
         </label>
       </div>
 
+      <div id="event-list-results" role="tabpanel" aria-label="Eventos por requerimiento" tabIndex={0}>
       {filtered.length === 0 ? (
         <EmptyState
           title={events.length === 0 ? "No hay eventos todavía" : "Sin resultados"}
@@ -249,6 +270,7 @@ export default function EventList() {
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 }

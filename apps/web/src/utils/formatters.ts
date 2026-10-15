@@ -16,6 +16,16 @@ export function formatDateShort(date: string | Date): string {
   });
 }
 
+/** Instante de carga, convertido a la fecha local de Buenos Aires. */
+export function formatCreatedDate(date: string | Date): string {
+  const parsed = new Date(date);
+  if (!Number.isFinite(parsed.getTime())) return "—";
+  return parsed.toLocaleDateString("es-AR", {
+    day: "2-digit", month: "2-digit", year: "numeric",
+    timeZone: "America/Argentina/Buenos_Aires",
+  });
+}
+
 /**
  * Día calendario (YYYY-MM-DD) de una fecha sin hora, como la fecha del evento.
  * Se lee del texto para que la zona horaria no corra el día.

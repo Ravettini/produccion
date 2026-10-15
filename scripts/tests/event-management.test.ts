@@ -8,6 +8,23 @@ import { buildWizardSteps } from "../../apps/web/src/config/eventFormWizardSteps
 import { canSeeAllCalendarStatuses } from "../../apps/web/src/hooks/usePermissions.ts";
 import { getEventPendingForUser } from "../../apps/web/src/utils/changeAlerts.ts";
 import { EventFormWizardContent, type EventFormWizardContentProps } from "../../apps/web/src/pages/EventFormWizardContent.tsx";
+import { formatCreatedDate } from "../../apps/web/src/utils/formatters.ts";
+import { eventMatchesTipoFilter } from "../../apps/web/src/utils/eventHelpers.ts";
+
+test("la fecha de carga usa Buenos Aires incluso cerca de medianoche UTC", () => {
+  assert.equal(formatCreatedDate("2026-10-15T02:59:59Z"), "14/10/2026");
+  assert.equal(formatCreatedDate("2026-10-15T03:00:00Z"), "15/10/2026");
+  assert.equal(formatCreatedDate("invalid"), "—");
+});
+
+test("las pestañas incluyen eventos con múltiples requerimientos y tipos históricos", () => {
+  assert.equal(eventMatchesTipoFilter("Producción, Institucionales, Cobertura", "produccion"), true);
+  assert.equal(eventMatchesTipoFilter("Producción, Institucionales, Cobertura", "institucionales"), true);
+  assert.equal(eventMatchesTipoFilter("Comunicación", "cobertura"), true);
+  assert.equal(eventMatchesTipoFilter("Solo informar", "solo-informar"), true);
+  assert.equal(eventMatchesTipoFilter("Producción", "solo-informar"), false);
+  assert.equal(eventMatchesTipoFilter("Otro personalizado", ""), true);
+});
 
 const event = { tipoEvento: "Institucionales, Producción", areaSolicitante: "Relaciones Gubernamentales", estado: "PENDIENTE" };
 const legacy = { areaRole: "AGENDA", estado: "APPROVED", updatedAt: "2026-10-01T12:00:00Z", user: { id: "a", name: "Institucionales" } };

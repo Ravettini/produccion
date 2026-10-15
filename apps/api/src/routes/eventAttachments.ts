@@ -8,6 +8,7 @@ import path from "path";
 import fs from "fs";
 import multer from "multer";
 import { prisma } from "../lib/prisma.js";
+import { notifySavedChange } from "../lib/notifications.js";
 import { authMiddleware } from "../middleware/auth.js";
 
 export const eventAttachmentsRouter = Router({ mergeParams: true });
@@ -112,6 +113,7 @@ eventAttachmentsRouter.post("/:eventId/attachments", (req, res, next) => {
       tipo,
     },
   });
+  notifySavedChange(event, req.user!.id, "Adjunto agregado", [`Archivo: ${attachment.originalName}`]);
   res.status(201).json(attachment);
 });
 
@@ -156,5 +158,6 @@ eventAttachmentsRouter.delete("/:eventId/attachments/:attachmentId", async (req,
   await prisma.eventAttachment.delete({
     where: { id: attachmentId },
   });
+  notifySavedChange(eventId, req.user!.id, "Adjunto eliminado", [`Archivo: ${attachment.originalName}`]);
   res.status(204).send();
 });

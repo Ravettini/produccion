@@ -9,6 +9,7 @@ import {
   generateCompletoBriefDocx,
 } from "brief-generator";
 import { prisma } from "../lib/prisma.js";
+import { notifySavedChange } from "../lib/notifications.js";
 import { authMiddleware } from "../middleware/auth.js";
 import { getAIConfig } from "../lib/config.js";
 
@@ -268,10 +269,12 @@ ${aprobadas}
     }
 
     // La sinopsis queda guardada para el DOCX (campo Sinopsis del proyecto)
-    await prisma.event.update({
+    const updated = await prisma.event.update({
       where: { id },
       data: { resumen: sinopsis },
     });
+
+    if (event.resumen !== sinopsis) notifySavedChange(updated, req.user!.id, "Sinopsis actualizada", [sinopsis]);
 
     res.json({ brief: sinopsis, saved: true });
   } catch (err) {

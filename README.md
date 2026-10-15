@@ -187,6 +187,27 @@ Todo cambio de estado se registra en historial (auditoría).
 - [x] Roles y validación por JWT
 - [x] UI responsive
 
+## Notificaciones por correo
+
+El remitente se configura con `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`,
+`SMTP_PASS` y, opcionalmente, `NOTIFY_EMAIL_FROM`. Las credenciales SMTP no agregan
+destinatarios automáticamente. `NOTIFY_EMAIL_ENABLED=false` desactiva los avisos.
+
+- `NOTIFY_EMAIL_PRODUCCION=planillasproducciongcba@gmail.com`
+- `NOTIFY_EMAIL_INSTITUCIONALES=nachomart@gmail.com`
+
+Se permiten listas separadas por coma o punto y coma. Si `NOTIFY_EMAIL_PRODUCCION`
+no está definida, se usa `NOTIFY_EMAIL_TO` por compatibilidad; una lista explícitamente
+vacía desactiva ese grupo. Los eventos **Solo informar** se envían exclusivamente a
+Institucionales. Para el resto, ambos equipos reciben los avisos.
+
+Las altas y modificaciones guardadas de eventos, requerimientos, decisiones,
+comentarios y adjuntos generan un correo por acción, con autor y detalle de cambios.
+Los guardados sin cambios y las sincronizaciones internas no generan avisos adicionales.
+Los fallos de correo no revierten los cambios. Los logs `[mail] Respuesta SMTP`
+informan aceptación o rechazo del servidor; la aceptación no confirma la recepción
+en la bandeja del destinatario. Verificar estas variables también en el despliegue.
+
 ## Build para producción
 
 ```bash

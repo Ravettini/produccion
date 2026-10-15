@@ -3,7 +3,7 @@ import { prisma } from "../lib/prisma.js";
 import { authMiddleware } from "../middleware/auth.js";
 import { canUserSeeEvent, isStaffAdmin, isUserResponsibleForEvent, getRequestedAreaRoles, isSpecialtyRole, normalizeAreaRole, type AreaDecisionRole } from "../lib/eventVisibility.js";
 import { AREA_LABELS, buildAreaChecklist, normalizeAreaDecisions, allRequestedAreasApproved, type AreaDecisionRow } from "../lib/areaDecisions.js";
-import { notifyAreaDecision, notifyEventStatusChanged } from "../lib/mail.js";
+import { notifySavedChange, describeChanges } from "../lib/notifications.js";
 import { syncProposalsFromEvent } from "../lib/syncProposalsFromEvent.js";
 
 export const eventDecisionsRouter = Router({ mergeParams: true });
@@ -157,7 +157,10 @@ eventDecisionsRouter.post("/:eventId/area-decisions", authMiddleware, async (req
     return;
   }
 
-  const reasonStr = reason != null ? String(reason).trim() : null;
+  const reasonStr = reason != null ? String(reason).trim() || null : null;
+  const previous = normalizeAreaDecisions(await prisma.eventAreaDecision.findMany({ where: { eventId } }))
+    .find((row) => row.areaRole === areaRole);
+  const decisionChanged = previous?.estado !== decision || (previous?.reason ?? null) !== reasonStr;
   const result = await prisma.$transaction(async (tx) => {
     const row = await tx.eventAreaDecision.upsert({
       where: { eventId_areaRole: { eventId, areaRole } },
@@ -215,33 +218,13 @@ eventDecisionsRouter.post("/:eventId/area-decisions", authMiddleware, async (req
     return { row, eventConfirmed: false as const };
   });
 
-  notifyAreaDecision(
-    {
-      id: String(event.id),
-      titulo: String(event.titulo),
-      areaSolicitante: event.areaSolicitante != null ? String(event.areaSolicitante) : null,
-      fechaTentativa: event.fechaTentativa as Date | string | null,
-      estado: result.eventConfirmed ? "CONFIRMADO" : String(event.estado),
-      tipoEvento: event.tipoEvento != null ? String(event.tipoEvento) : null,
-    },
-    areaRole,
-    decision,
-    reasonStr
-  );
-
-  if (result.eventConfirmed) {
-    notifyEventStatusChanged(
-      {
-        id: String(event.id),
-        titulo: String(event.titulo),
-        areaSolicitante: event.areaSolicitante != null ? String(event.areaSolicitante) : null,
-        fechaTentativa: event.fechaTentativa as Date | string | null,
-        estado: "CONFIRMADO",
-        tipoEvento: event.tipoEvento != null ? String(event.tipoEvento) : null,
-      },
-      String(event.estado),
-      "CONFIRMADO"
-    );
+  if (decisionChanged || result.eventConfirmed) {
+    notifySavedChange({ ...event, estado: result.eventConfirmed ? "CONFIRMADO" : event.estado }, dbUser.id,
+      decision === "APPROVED" ? "Área aprobada" : "Área rechazada", [
+        `Área: ${AREA_LABELS[areaRole]}`,
+        ...(reasonStr ? [`Motivo: ${reasonStr}`] : []),
+        ...(result.eventConfirmed ? [`Estado: ${event.estado} → CONFIRMADO`] : []),
+      ]);
   }
 
   res.json({
@@ -445,5 +428,9 @@ eventDecisionsRouter.patch("/:eventId/fields", authMiddleware, async (req, res) 
     }
   }
 
+  notifySavedChange(updated, dbUser.id, "Datos del evento actualizados", [
+    ...describeChanges(event, updates),
+    `Motivo: ${reasonStr}`,
+  ]);
   res.json(updated);
 });

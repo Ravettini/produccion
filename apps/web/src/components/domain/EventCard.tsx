@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Calendar, Clock } from "lucide-react";
 import type { Event, EventStatus, ProposalStatus, Role } from "../../types";
 import { StatusBadge } from "../ui/StatusBadge";
-import { formatEventDate } from "../../utils/formatters";
+import { formatEventDate, formatCreatedDate } from "../../utils/formatters";
 import { getEventHorario } from "../../utils/eventHelpers";
 import {
   getEventPendingForUser,
@@ -92,6 +92,10 @@ export function EventCard({ event, userRole, userArea, className }: EventCardPro
           </dd>
         </div>
       </dl>
+
+      <p className="text-xs text-slate-500 mb-4">
+        Cargado el <time dateTime={event.createdAt}>{formatCreatedDate(event.createdAt)}</time>
+      </p>
 
       {proposals.length > 0 && (
         <div>

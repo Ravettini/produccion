@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
+import { notifySavedChange } from "../lib/notifications.js";
 import {
   authMiddleware,
   canCreateProposal,
@@ -89,6 +90,7 @@ router.post("/:eventId/proposals", authMiddleware, canCreateProposal, async (req
       toStatus: "DRAFT",
     },
   });
+  notifySavedChange(event, req.user!.id, "Requerimiento creado", [`Requerimiento: ${proposal.titulo}`, `Categoría: ${proposal.categoria}`, String(proposal.descripcion)]);
   res.status(201).json(proposal);
 });
 
