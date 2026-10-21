@@ -14,6 +14,7 @@ export type AudiovisualBriefData = {
   duracion: string;
   formato: string;
   lugar: string;
+  direccion: string;
   fecha: string;
   hora: string;
   contactoDg: string;
@@ -112,11 +113,18 @@ export function buildAudiovisualBriefData(
   }
 
   const lugarEvento = trimOrNull((event as { lugar?: string | null }).lugar);
-  const lugarResolved = lugarEvento ?? resolveLugar(approved);
+  const lugarResolved = lugarEvento ?? trimOrNull(eventDatos.lugar as string | null | undefined) ?? resolveLugar(approved);
   const lugar =
     hasContent(lugarResolved) && lugarResolved !== "Por confirmar"
       ? lugarResolved
       : EMPTY;
+
+  // El catálogo guarda "Sede - Nombre | Dirección". En campo libre se conserva
+  // el valor completo, sin intentar inferir una dirección que no fue ingresada.
+  const separadorDireccion = lugar.indexOf("|");
+  const direccion = separadorDireccion >= 0
+    ? lugar.slice(separadorDireccion + 1).trim()
+    : lugar;
 
   const horaIni = pickField(sources, "horarioComienzo");
 
@@ -135,6 +143,7 @@ export function buildAudiovisualBriefData(
     duracion,
     formato,
     lugar,
+    direccion,
     fecha: event.fechaTentativa ? formatFechaBriefModelo(event.fechaTentativa) : EMPTY,
     hora: horaIni ? `${formatHoraBriefModelo(horaIni)} (Hora de inicio)` : EMPTY,
     contactoDg,
@@ -170,6 +179,7 @@ export function buildAudiovisualBriefText(data: AudiovisualBriefData): string {
     lineas.push(`Formato: ${data.formato}`);
   }
   if (hasContent(data.lugar)) lineas.push(`Lugar: ${data.lugar}`);
+  if (hasContent(data.direccion)) lineas.push(`Dirección: ${data.direccion}`);
   if (hasContent(data.fecha)) lineas.push(`Fecha: ${data.fecha}`);
   if (hasContent(data.hora)) lineas.push(`Hora: ${data.hora}`);
   if (hasContent(data.contactoDg)) {

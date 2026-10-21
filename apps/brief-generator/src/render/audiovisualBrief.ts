@@ -103,6 +103,7 @@ export function buildAudiovisualBriefDocument(input: BriefInput): Document {
       data.formato
     ),
     fieldLineIf("Lugar:", data.lugar),
+    fieldLineIf("Dirección:", data.direccion),
     fieldLineIf("Fecha:", data.fecha),
     fieldLineIf("Hora:", data.hora),
     fieldLineIf(
