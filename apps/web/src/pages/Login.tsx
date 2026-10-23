@@ -34,17 +34,17 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex">
-      <div className="hidden lg:flex lg:w-1/2 relative bg-gradient-to-br from-red-950 via-red-900 to-red-800 p-12 flex-col justify-between overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 relative bg-gradient-to-br from-sidebar via-slate-900 to-brand-900 p-12 flex-col justify-between overflow-hidden">
         <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-20 left-20 w-72 h-72 rounded-full bg-red-500 blur-3xl" />
-          <div className="absolute bottom-20 right-10 w-96 h-96 rounded-full bg-red-400 blur-3xl" />
+          <div className="absolute top-20 left-20 w-72 h-72 rounded-full bg-brand-500 blur-3xl" />
+          <div className="absolute bottom-20 right-10 w-96 h-96 rounded-full bg-cyan-500 blur-3xl" />
         </div>
         <div className="relative">
           <div className="flex items-center gap-3">
             <img src="/logo-azul.png" alt="Agenda" className="w-12 h-12 rounded-2xl shadow-lg" />
             <div>
               <p className="text-white font-semibold text-lg">Eventos Institucionales</p>
-              <p className="text-red-200 text-sm">Gestión y requerimientos</p>
+              <p className="text-slate-400 text-sm">Gestión y requerimientos</p>
             </div>
           </div>
         </div>
@@ -52,11 +52,11 @@ export default function Login() {
           <h2 className="text-3xl font-bold text-white leading-tight">
             Plataforma de gestión de eventos y briefs institucionales
           </h2>
-          <p className="text-red-100 text-lg max-w-md">
+          <p className="text-slate-300 text-lg max-w-md">
             Centralizá requerimientos, validaciones y generación de briefs con trazabilidad completa.
           </p>
         </div>
-        <p className="relative text-red-200 text-sm flex items-center gap-2">
+        <p className="relative text-slate-500 text-sm flex items-center gap-2">
           <Building2 className="w-4 h-4" aria-hidden />
           Sistema interno de gestión gubernamental
         </p>
@@ -107,7 +107,7 @@ export default function Login() {
                     {error}
                   </div>
                 )}
-                <Button type="submit" disabled={loading} variant="danger" size="lg" className="w-full">
+                <Button type="submit" disabled={loading} size="lg" className="w-full">
                   {loading ? "Ingresando…" : "Ingresar"}
                 </Button>
               </form>
