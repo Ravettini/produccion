@@ -27,6 +27,16 @@ test("las pestañas incluyen eventos con múltiples requerimientos y tipos hist�
 });
 
 const event = { tipoEvento: "Institucionales, Producción", areaSolicitante: "Relaciones Gubernamentales", estado: "PENDIENTE" };
+
+test("quien carga para cualquier área conserva acceso a sus propios eventos", () => {
+  for (const role of ["ADMIN", "INSTITUCIONALES", "AGENDA"]) {
+    const user = { id: "nacho", role, area: "Relaciones Gubernamentales" };
+    const propio = { ...event, tipoEvento: "Solo informar", areaSolicitante: "DG Gestión Animal", createdById: user.id };
+    assert.equal(canUserSeeEvent(user, propio), true);
+    assert.equal(canUserSeeEvent(user, { ...propio, createdById: "otra-cuenta" }), false);
+    assert.equal(canUserSeeEvent(user, { ...propio, createdById: null }), false);
+  }
+});
 const legacy = { areaRole: "AGENDA", estado: "APPROVED", updatedAt: "2026-10-01T12:00:00Z", user: { id: "a", name: "Institucionales" } };
 const pending = { areaRole: "INSTITUCIONALES", estado: "PENDING", updatedAt: "2026-10-02T12:00:00Z" };
 

@@ -268,6 +268,12 @@ export function canUserSeeEvent(
     areaDecisions?: { areaRole?: string | null; estado?: string | null }[] | null;
   }
 ): boolean {
+  // Estos roles pueden cargar para cualquier área: deben poder consultar lo que crearon.
+  if (
+    event.createdById === user.id &&
+    ["ADMIN", "INSTITUCIONALES", "AGENDA"].includes(user.role)
+  ) return true;
+
   if (user.role === "ADMIN") {
     return eventInvolvesProduccionOCobertura(event.tipoEvento);
   }

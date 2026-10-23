@@ -93,7 +93,7 @@ export default function EventDetail() {
     (location.state as { acreditappWarning?: string } | null)?.acreditappWarning
   );
 
-  const { data: event, isLoading: loadingEvent } = useQuery({
+  const { data: event, isLoading: loadingEvent, error: eventError, refetch: refetchEvent } = useQuery({
     queryKey: ["event", id],
     queryFn: () => getEvent(id!),
     enabled: !!id,
@@ -261,8 +261,25 @@ export default function EventDetail() {
     }
   }, [confirmEstado, event?.id, event?.necesitaAcreditacion, event?.linkAcreditacionConvocados]);
 
-  if (loadingEvent || !event) {
+  if (loadingEvent) {
     return <DetailSkeleton />;
+  }
+
+  if (eventError || !event) {
+    return (
+      <div className="page-container" role="alert">
+        <EmptyState
+          title="No se pudo abrir el evento"
+          description={eventError instanceof Error ? eventError.message : "El evento no está disponible."}
+          action={
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button onClick={() => void refetchEvent()}>Reintentar</Button>
+              <Button variant="secondary" onClick={() => navigate("/")}>Volver al inicio</Button>
+            </div>
+          }
+        />
+      </div>
+    );
   }
 
   const tabs = [

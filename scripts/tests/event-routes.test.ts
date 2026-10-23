@@ -133,6 +133,18 @@ test("API: visibilidad, decisiones históricas, aprobación y lugar informativo"
     assert.equal((await request("/legacy")).status, 200);
   });
 
+  await t.test("Institucionales puede crear, abrir y listar su evento de otra subsecretaría", async () => {
+    const created = await request("", "inst", "POST", {
+      titulo: "Evento cargado por Nacho", descripcion: "Carga para otra área", tipoEvento: "Producción",
+      areaSolicitante: "DG Gestión Animal", fechaTentativa: "2026-10-23",
+    });
+    assert.equal(created.status, 201);
+    assert.equal(created.body.createdById, "inst");
+    assert.equal((await request(`/${created.body.id}`, "inst")).status, 200);
+    assert.equal((await request("", "inst")).body.some((e: any) => e.id === created.body.id), true);
+    assert.equal((await request(`/${created.body.id}`, "gobc")).status, 403);
+  });
+
   await t.test("consultar el panel no borra el check AGENDA del listado", async () => {
     const panel = await request("/legacy/area-decisions", "inst");
     assert.equal(panel.status, 200);
