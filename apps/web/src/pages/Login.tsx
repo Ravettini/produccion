@@ -34,7 +34,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex">
-      <div className="hidden lg:flex lg:w-1/2 relative bg-gradient-to-br from-sidebar via-slate-900 to-brand-900 p-12 flex-col justify-between overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 relative bg-gradient-to-br from-sidebar via-blue-950 to-brand-900 p-12 flex-col justify-between overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-20 left-20 w-72 h-72 rounded-full bg-brand-500 blur-3xl" />
           <div className="absolute bottom-20 right-10 w-96 h-96 rounded-full bg-cyan-500 blur-3xl" />
