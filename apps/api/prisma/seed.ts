@@ -23,17 +23,40 @@ async function main() {
 
   const admin = await prisma.user.upsert({
     where: { email: adminEmail },
-    update: { area: "Sistema" },
+    update: { area: "Sistema", esSsccyrs: true },
     create: {
       email: adminEmail,
       password: hash,
       name: "Admin Sistema",
       role: "ADMIN",
       area: "Sistema",
+      esSsccyrs: true,
     },
   });
 
-  console.log("[seed] Base de datos en blanco: se configuró únicamente el usuario admin principal:", admin.email);
+  const adminSsccyrs = await prisma.user.upsert({
+    where: { email: "admin.ssccyrs@gobierno.gob" },
+    update: {
+      name: "Admin SSCCYRS",
+      role: "ADMIN",
+      area: "SS. de Cultura Ciudadana y Responsabilidad Social",
+      esSsccyrs: true,
+    },
+    create: {
+      email: "admin.ssccyrs@gobierno.gob",
+      password: hash,
+      name: "Admin SSCCYRS",
+      role: "ADMIN",
+      area: "SS. de Cultura Ciudadana y Responsabilidad Social",
+      esSsccyrs: true,
+    },
+  });
+
+  console.log(
+    "[seed] Base de datos en blanco: usuarios admin:",
+    admin.email,
+    adminSsccyrs.email
+  );
 }
 
 main()

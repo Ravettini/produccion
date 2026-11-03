@@ -143,7 +143,7 @@ export function isDgConvocada(
   return convocadas.some((c) => c.toLowerCase() === area.toLowerCase());
 }
 
-/** El administrador de producción ve eventos con Producción o Cobertura. */
+/** Admin fuera de SSCCYRS: solo eventos con Producción o Cobertura. */
 export function eventInvolvesProduccionOCobertura(tipoEvento: string | null | undefined): boolean {
   return tipoEventoMatchesKeywords(tipoEvento, [
     "producción",
@@ -160,9 +160,10 @@ export function isStaffAdmin(role?: string | null): boolean {
 
 /**
  * ¿El usuario puede ver este evento?
- * - Admin / Validador: todos
- * - Institucionales / Agenda: todos (lectura; las acciones siguen condicionadas a si les corresponde)
- * - Director General / Organización: eventos creados por él, de su área, convocados o CONFIRMADOS de otras DGs
+ * - ADMIN (SSCCYRS): todos los eventos de SSCCYRS (todos los estados/tipos); no vicejefatura ni otras SS
+ * - ADMIN (fuera): solo Producción/Cobertura
+ * - SUPERADMIN / Validador: todos
+ * - Director General / Organización: eventos de su subsecretaría
  * - Producción / Cobertura: solo si tipoEvento los incluye
  */
 /** Eventos de AREA CENTRAL los ve cualquier usuario. */
@@ -275,7 +276,12 @@ export function canUserSeeEvent(
   ) return true;
 
   if (user.role === "ADMIN") {
-    return eventInvolvesProduccionOCobertura(event.tipoEvento);
+    // Admin de SSCCYRS: ve todos los eventos de la subsecretaría (cualquier estado/tipo).
+    // No incluye vicejefatura ni otras subsecretarías. Fuera de SSCCYRS: solo Prod/Cobertura.
+    if (user.esSsccyrs === false) {
+      return eventInvolvesProduccionOCobertura(event.tipoEvento);
+    }
+    return isSubsecretariaCulturaCiudadana(event.areaSolicitante);
   }
 
   if (ROLES_SEE_ALL.has(user.role)) return true;

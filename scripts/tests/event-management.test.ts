@@ -37,6 +37,15 @@ test("quien carga para cualquier área conserva acceso a sus propios eventos", (
     assert.equal(canUserSeeEvent(user, { ...propio, createdById: null }), false);
   }
 });
+
+test("ADMIN SSCCYRS ve todos los eventos de la subsecretaría, no vicejefatura ni otras SS", () => {
+  const admin = { id: "admin-ssccyrs", role: "ADMIN", area: null, esSsccyrs: true };
+  assert.equal(canUserSeeEvent(admin, { ...event, tipoEvento: "Solo informar" }), true);
+  assert.equal(canUserSeeEvent(admin, { ...event, tipoEvento: "Institucionales", estado: "PENDIENTE" }), true);
+  assert.equal(canUserSeeEvent(admin, { ...event, areaSolicitante: "Políticas de Juventud", estado: "CANCELADO" }), true);
+  assert.equal(canUserSeeEvent(admin, { ...event, areaSolicitante: "DG Técnica, Administrativa y Legal" }), false);
+  assert.equal(canUserSeeEvent(admin, { ...event, areaSolicitante: "DG Gestión Animal" }), false);
+});
 const legacy = { areaRole: "AGENDA", estado: "APPROVED", updatedAt: "2026-10-01T12:00:00Z", user: { id: "a", name: "Institucionales" } };
 const pending = { areaRole: "INSTITUCIONALES", estado: "PENDING", updatedAt: "2026-10-02T12:00:00Z" };
 
