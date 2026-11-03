@@ -76,6 +76,7 @@ export const impactColors: Record<ProposalImpact, string> = {
 
 export const roleLabels: Record<Role, string> = {
   ADMIN: "Administrador de producción",
+  ADMINISTRADOR_GENERAL: "Administrador general",
   SUPERADMIN: "Superadmin",
   DIRECTOR_GENERAL: "Director General",
   ORGANIZACION: "Organización (solicitante)",
@@ -89,6 +90,7 @@ export const roleLabels: Record<Role, string> = {
 
 export const roleColors: Record<Role, string> = {
   ADMIN: "bg-violet-50 text-violet-800 ring-1 ring-violet-200",
+  ADMINISTRADOR_GENERAL: "bg-indigo-50 text-indigo-900 ring-1 ring-indigo-300",
   SUPERADMIN: "bg-violet-100 text-violet-950 ring-1 ring-violet-300",
   DIRECTOR_GENERAL: "bg-brand-50 text-brand-800 ring-1 ring-brand-200",
   ORGANIZACION: "bg-brand-50 text-brand-700 ring-1 ring-brand-200",

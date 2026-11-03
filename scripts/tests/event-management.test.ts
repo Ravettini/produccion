@@ -38,13 +38,21 @@ test("quien carga para cualquier área conserva acceso a sus propios eventos", (
   }
 });
 
-test("ADMIN SSCCYRS ve todos los eventos de la subsecretaría, no vicejefatura ni otras SS", () => {
-  const admin = { id: "admin-ssccyrs", role: "ADMIN", area: null, esSsccyrs: true };
+test("ADMINISTRADOR_GENERAL ve todos los eventos de SSCCYRS, no vicejefatura ni otras SS", () => {
+  const admin = { id: "admin-general", role: "ADMINISTRADOR_GENERAL", area: null, esSsccyrs: true };
   assert.equal(canUserSeeEvent(admin, { ...event, tipoEvento: "Solo informar" }), true);
   assert.equal(canUserSeeEvent(admin, { ...event, tipoEvento: "Institucionales", estado: "PENDIENTE" }), true);
   assert.equal(canUserSeeEvent(admin, { ...event, areaSolicitante: "Políticas de Juventud", estado: "CANCELADO" }), true);
   assert.equal(canUserSeeEvent(admin, { ...event, areaSolicitante: "DG Técnica, Administrativa y Legal" }), false);
   assert.equal(canUserSeeEvent(admin, { ...event, areaSolicitante: "DG Gestión Animal" }), false);
+});
+
+test("ADMIN de producción solo ve eventos con Producción o Cobertura", () => {
+  const admin = { id: "admin-prod", role: "ADMIN", area: null, esSsccyrs: true };
+  assert.equal(canUserSeeEvent(admin, { ...event, tipoEvento: "Producción" }), true);
+  assert.equal(canUserSeeEvent(admin, { ...event, tipoEvento: "Institucionales, Cobertura" }), true);
+  assert.equal(canUserSeeEvent(admin, { ...event, tipoEvento: "Solo informar" }), false);
+  assert.equal(canUserSeeEvent(admin, { ...event, tipoEvento: "Institucionales" }), false);
 });
 const legacy = { areaRole: "AGENDA", estado: "APPROVED", updatedAt: "2026-10-01T12:00:00Z", user: { id: "a", name: "Institucionales" } };
 const pending = { areaRole: "INSTITUCIONALES", estado: "PENDING", updatedAt: "2026-10-02T12:00:00Z" };

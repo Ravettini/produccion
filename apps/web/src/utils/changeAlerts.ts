@@ -68,6 +68,7 @@ export function hasUnseenChanges(
 
 const BROAD_ROLES = new Set([
   "ADMIN",
+  "ADMINISTRADOR_GENERAL",
   "SUPERADMIN",
   "DIRECTOR_GENERAL",
   "VALIDADOR",
@@ -76,7 +77,7 @@ const BROAD_ROLES = new Set([
 ]);
 
 /** Roles que aprueban o rechazan requerimientos. */
-const VALIDATOR_ROLES = new Set(["ADMIN", "SUPERADMIN"]);
+const VALIDATOR_ROLES = new Set(["ADMIN", "ADMINISTRADOR_GENERAL", "SUPERADMIN"]);
 
 export type ProposalChangeHint = {
   id: string;

@@ -1,14 +1,14 @@
 import type { User, Proposal, Event } from "../types";
 
 export function isStaffAdmin(role?: string | null): boolean {
-  return role === "ADMIN" || role === "SUPERADMIN";
+  return role === "ADMIN" || role === "ADMINISTRADOR_GENERAL" || role === "SUPERADMIN";
 }
 
 /** El calendario usa el alcance de eventos autorizado por la API. Las cuentas
  * de DG (Organización incluida) no necesitan esperar una aprobación. */
 export function canSeeAllCalendarStatuses(user: User | null): boolean {
   return Boolean(user && [
-    "ADMIN", "SUPERADMIN", "PRODUCCION", "INSTITUCIONALES", "AGENDA",
+    "ADMIN", "ADMINISTRADOR_GENERAL", "SUPERADMIN", "PRODUCCION", "INSTITUCIONALES", "AGENDA",
     "VALIDADOR", "DIRECTOR_GENERAL", "ORGANIZACION",
   ].includes(user.role)) || isOutsideSsccyrs(user);
 }
@@ -21,6 +21,7 @@ const PROPOSAL_CREATOR_ROLES = [
   "INSTITUCIONALES",
   "COBERTURA",
   "ADMIN",
+  "ADMINISTRADOR_GENERAL",
   "SUPERADMIN",
 ];
 
@@ -28,6 +29,7 @@ const PROPOSAL_CREATOR_ROLES = [
 const EVENT_CREATOR_ROLES = [
   "ORGANIZACION",
   "ADMIN",
+  "ADMINISTRADOR_GENERAL",
   "SUPERADMIN",
   "DIRECTOR_GENERAL",
   "VICEJEFATURA",
@@ -40,6 +42,7 @@ const SPECIALTY_ROLES = ["PRODUCCION", "INSTITUCIONALES", "AGENDA", "COBERTURA"]
 /** Categorías de requerimiento que cada especialidad puede aprobar/rechazar. */
 const PROPOSAL_VALIDATE_BY_ROLE: Record<string, string[]> = {
   ADMIN: ["LOGISTICA", "CATERING", "TECNICA", "AGENDA", "PRODUCCION", "OTRO"],
+  ADMINISTRADOR_GENERAL: ["LOGISTICA", "CATERING", "TECNICA", "AGENDA", "PRODUCCION", "OTRO"],
   SUPERADMIN: ["LOGISTICA", "CATERING", "TECNICA", "AGENDA", "PRODUCCION", "OTRO"],
   VALIDADOR: ["LOGISTICA", "CATERING", "TECNICA", "AGENDA", "PRODUCCION", "OTRO"],
   PRODUCCION: ["PRODUCCION", "CATERING", "TECNICA", "LOGISTICA"],

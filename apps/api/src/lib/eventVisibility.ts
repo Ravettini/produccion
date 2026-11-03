@@ -143,7 +143,7 @@ export function isDgConvocada(
   return convocadas.some((c) => c.toLowerCase() === area.toLowerCase());
 }
 
-/** Admin fuera de SSCCYRS: solo eventos con Producción o Cobertura. */
+/** Administrador de producción: solo eventos con Producción o Cobertura. */
 export function eventInvolvesProduccionOCobertura(tipoEvento: string | null | undefined): boolean {
   return tipoEventoMatchesKeywords(tipoEvento, [
     "producción",
@@ -155,13 +155,13 @@ export function eventInvolvesProduccionOCobertura(tipoEvento: string | null | un
 }
 
 export function isStaffAdmin(role?: string | null): boolean {
-  return role === "ADMIN" || role === "SUPERADMIN";
+  return role === "ADMIN" || role === "ADMINISTRADOR_GENERAL" || role === "SUPERADMIN";
 }
 
 /**
  * ¿El usuario puede ver este evento?
- * - ADMIN (SSCCYRS): todos los eventos de SSCCYRS (todos los estados/tipos); no vicejefatura ni otras SS
- * - ADMIN (fuera): solo Producción/Cobertura
+ * - ADMINISTRADOR_GENERAL: todos los eventos de SSCCYRS (todos los estados/tipos); no vicejefatura ni otras SS
+ * - ADMIN: solo Producción/Cobertura
  * - SUPERADMIN / Validador: todos
  * - Director General / Organización: eventos de su subsecretaría
  * - Producción / Cobertura: solo si tipoEvento los incluye
@@ -272,16 +272,17 @@ export function canUserSeeEvent(
   // Estos roles pueden cargar para cualquier área: deben poder consultar lo que crearon.
   if (
     event.createdById === user.id &&
-    ["ADMIN", "INSTITUCIONALES", "AGENDA"].includes(user.role)
+    ["ADMIN", "ADMINISTRADOR_GENERAL", "INSTITUCIONALES", "AGENDA"].includes(user.role)
   ) return true;
 
-  if (user.role === "ADMIN") {
-    // Admin de SSCCYRS: ve todos los eventos de la subsecretaría (cualquier estado/tipo).
-    // No incluye vicejefatura ni otras subsecretarías. Fuera de SSCCYRS: solo Prod/Cobertura.
-    if (user.esSsccyrs === false) {
-      return eventInvolvesProduccionOCobertura(event.tipoEvento);
-    }
+  // Administrador general: todo SSCCYRS (cualquier estado/tipo). Sin vicejefatura ni otras SS.
+  if (user.role === "ADMINISTRADOR_GENERAL") {
     return isSubsecretariaCulturaCiudadana(event.areaSolicitante);
+  }
+
+  // Administrador de producción: solo eventos con Producción o Cobertura.
+  if (user.role === "ADMIN") {
+    return eventInvolvesProduccionOCobertura(event.tipoEvento);
   }
 
   if (ROLES_SEE_ALL.has(user.role)) return true;
@@ -306,7 +307,7 @@ export function filterEventsForUser<T extends {
   datosProduccion?: unknown;
   areaDecisions?: { areaRole?: string | null; estado?: string | null }[] | null;
 }>(user: EventVisibilityUser, events: T[]): T[] {
-  if (user.role === "ADMIN") {
+  if (user.role === "ADMIN" || user.role === "ADMINISTRADOR_GENERAL") {
     return events.filter((e) => canUserSeeEvent(user, e));
   }
   if (ROLES_SEE_ALL.has(user.role)) return events;

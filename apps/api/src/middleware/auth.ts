@@ -77,6 +77,7 @@ export function requireRoles(...roles: string[]) {
  */
 export const canValidate = requireRoles(
   "ADMIN",
+  "ADMINISTRADOR_GENERAL",
   "SUPERADMIN",
   "VALIDADOR",
   "PRODUCCION",
@@ -96,6 +97,7 @@ export const canCreateProposal = requireRoles(
   "INSTITUCIONALES",
   "COBERTURA",
   "ADMIN",
+  "ADMINISTRADOR_GENERAL",
   "SUPERADMIN"
 );
 
@@ -105,7 +107,7 @@ export function rolesAllowedForProposalCategory(
   categoria: string,
   titulo?: string | null
 ): boolean {
-  if (role === "ADMIN" || role === "SUPERADMIN" || role === "VALIDADOR") return true;
+  if (role === "ADMIN" || role === "ADMINISTRADOR_GENERAL" || role === "SUPERADMIN" || role === "VALIDADOR") return true;
   if (role === "PRODUCCION") {
     return ["PRODUCCION", "CATERING", "TECNICA", "LOGISTICA"].includes(categoria);
   }

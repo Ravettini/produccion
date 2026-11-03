@@ -10,8 +10,8 @@ try {
   const user = await prisma.user.upsert({
     where: { email },
     update: {
-      name: "Admin SSCCYRS",
-      role: "ADMIN",
+      name: "Administrador General SSCCYRS",
+      role: "ADMINISTRADOR_GENERAL",
       area: "SS. de Cultura Ciudadana y Responsabilidad Social",
       esSsccyrs: true,
       password: hash,
@@ -19,8 +19,8 @@ try {
     create: {
       email,
       password: hash,
-      name: "Admin SSCCYRS",
-      role: "ADMIN",
+      name: "Administrador General SSCCYRS",
+      role: "ADMINISTRADOR_GENERAL",
       area: "SS. de Cultura Ciudadana y Responsabilidad Social",
       esSsccyrs: true,
     },

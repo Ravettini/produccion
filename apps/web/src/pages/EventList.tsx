@@ -42,7 +42,9 @@ export default function EventList() {
 
   const specialtyHint = isOutsideSsccyrs(user)
     ? "Ves el calendario y los eventos de tu subsecretaría."
-    : user?.role === "ADMIN"
+    : user?.role === "ADMINISTRADOR_GENERAL"
+      ? "Ves todos los eventos y estados de SSCCYRS. No incluye vicejefatura ni otras subsecretarías."
+      : user?.role === "ADMIN"
       ? "Ves y gestionás eventos con Producción o Cobertura. Los que son solo Institucionales no aparecen."
       : user?.role === "SUPERADMIN" || user?.role === "VALIDADOR"
       ? null

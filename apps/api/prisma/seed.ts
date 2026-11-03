@@ -34,19 +34,19 @@ async function main() {
     },
   });
 
-  const adminSsccyrs = await prisma.user.upsert({
+  const adminGeneral = await prisma.user.upsert({
     where: { email: "admin.ssccyrs@gobierno.gob" },
     update: {
-      name: "Admin SSCCYRS",
-      role: "ADMIN",
+      name: "Administrador General SSCCYRS",
+      role: "ADMINISTRADOR_GENERAL",
       area: "SS. de Cultura Ciudadana y Responsabilidad Social",
       esSsccyrs: true,
     },
     create: {
       email: "admin.ssccyrs@gobierno.gob",
       password: hash,
-      name: "Admin SSCCYRS",
-      role: "ADMIN",
+      name: "Administrador General SSCCYRS",
+      role: "ADMINISTRADOR_GENERAL",
       area: "SS. de Cultura Ciudadana y Responsabilidad Social",
       esSsccyrs: true,
     },
@@ -55,7 +55,7 @@ async function main() {
   console.log(
     "[seed] Base de datos en blanco: usuarios admin:",
     admin.email,
-    adminSsccyrs.email
+    adminGeneral.email
   );
 }
 

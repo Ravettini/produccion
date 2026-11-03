@@ -40,7 +40,7 @@ export function Sidebar({
   pendingCount = 0,
 }: SidebarProps) {
   const outside = userRole === "VICEJEFATURA" || esSsccyrs === false;
-  const showAgenda = !outside && ["ADMIN", "SUPERADMIN", "INSTITUCIONALES", "AGENDA"].includes(String(userRole ?? ""));
+  const showAgenda = !outside && ["ADMIN", "ADMINISTRADOR_GENERAL", "SUPERADMIN", "INSTITUCIONALES", "AGENDA"].includes(String(userRole ?? ""));
   const items = navItems;
 
   return (
@@ -143,7 +143,7 @@ export function Sidebar({
           {userRole && (
             <div className="mt-2 flex items-center gap-2 flex-wrap">
               <RoleBadge role={userRole} />
-              {(userRole === "ADMIN" || userRole === "SUPERADMIN") && (
+              {(userRole === "ADMIN" || userRole === "ADMINISTRADOR_GENERAL" || userRole === "SUPERADMIN") && (
                 <span className="inline-flex items-center gap-1 text-xs text-emerald-400">
                   <Shield className="w-3 h-3" aria-hidden />
                   Aprobar / Rechazar
